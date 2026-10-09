@@ -1,0 +1,19 @@
+# Private handoff material and hiring-process notes
+private/
+
+# Transcript-derived data, never committed
+data/
+*.jsonl
+
+# Secrets
+.env
+.env.*
+node_modules/
+.wrangler/
+dist/
+public/app.js
+public/app.js.map
+test-results/
+playwright-report/
+.dev.vars
+.DS_Store
