@@ -20,7 +20,17 @@ export function quoteLine(c: Card): Child {
   return h("p", { class: "why" }, c.why_here, q && !c.why_here.includes(q) ? h("span", {}, " ", h("q", {}, q)) : null);
 }
 
+/**
+ * Draw the decision in front of the person. Afterwards, dictation keeps running only if its
+ * microphone is still on screen and lit: whichever path the draw took (a closed card, a card that
+ * couldn't be evaluated, another decision), speech can never keep writing somewhere unseen.
+ */
 export function renderNow(): void {
+  drawNow();
+  stopVoiceIfMicGone();
+}
+
+function drawNow(): void {
   const root = document.getElementById("now");
   if (!root) return; // not in the focus view
   root.replaceChildren();
@@ -287,6 +297,14 @@ let voice: { rec: SpeechRec; flowId: string } | null = null;
 /** Stop dictation when the card it was writing into is no longer the one in front of the person. */
 export function stopVoiceUnlessFor(flowId: string): void {
   if (voice && voice.flowId !== flowId) {
+    voice.rec.stop();
+    voice = null;
+  }
+}
+
+/** Stop dictation when no lit microphone is on screen to show that it is listening. */
+export function stopVoiceIfMicGone(): void {
+  if (voice && !document.querySelector('.mic[aria-pressed="true"]')) {
     voice.rec.stop();
     voice = null;
   }
