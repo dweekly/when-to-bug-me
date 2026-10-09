@@ -4,7 +4,7 @@
 
 import { buildAgenda } from "../shared/agenda";
 import { EXAMPLES } from "../shared/examples";
-import { MAX_FACTS, MAX_RULE_CHARS, MAX_RULES, REROUTE_CONCURRENCY } from "../shared/constants";
+import { MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, REROUTE_CONCURRENCY } from "../shared/constants";
 import {
   GLOW_START,
   type GlowEvent,
@@ -333,6 +333,12 @@ function renderNow(): void {
   const root = $("now");
   root.replaceChildren();
   if (!S.current || (S.answered[S.current] && !unfinished(S.current) && (!F || F.id !== S.current))) S.current = firstAgendaId();
+  // A re-route can settle the card in front of the person; then it is no longer theirs to decide.
+  if (S.current && !S.answered[S.current] && !unfinished(S.current) && routeOf(S.current) === "settle") {
+    announce("A rule change means Bug Me now handles that one; it is under Decisions made for you.");
+    if (F?.id === S.current) F = null;
+    S.current = firstAgendaId();
+  }
   const id = F && F.id === S.current ? F.id : S.current;
   if (!id) {
     root.append(
@@ -604,6 +610,7 @@ function followup(d: Decision, route: RouteKind): Child {
       h("p", {}, "Your answer surprised me. Your reason can become guidance for every agent."),
       h("label", { for: "why", class: "sr-only" }, "Why did you choose that?"),
       h("div", { class: "basis-row" }, ta, micButton(ta, false, flow, (t) => (flow.basis = t))),
+      flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
       exampleButton(d, ta),
       h(
         "div",
@@ -987,6 +994,7 @@ async function finalize(flow: Flow, d: Decision, route: RouteKind, choice: strin
   save();
   if (shouldAskWhy(choice, r.guess, basis)) {
     flow.phase = "why";
+    save(); // saved before it is shown, so a reload keeps the question
     if (showing(flow)) {
       render();
       (document.getElementById("why") as HTMLTextAreaElement | null)?.focus();
@@ -1024,6 +1032,13 @@ async function propose(flow: Flow, d: Decision): Promise<void> {
     done(flow, "");
     return;
   }
+  if (basis.length > MAX_REASON_CHARS) {
+    flow.phase = flow.phase === "busy" ? "why" : flow.phase;
+    flow.error = `Please keep it under ${MAX_REASON_CHARS} characters (it's ${basis.length}); the gist is enough.`;
+    if (showing(flow)) renderNow();
+    return;
+  }
+  flow.error = "";
   recordLateReason(d, basis);
   flow.phase = "busy";
   flow.message = "Turning that into guidance…";
@@ -1159,6 +1174,12 @@ async function reroute(ids: string[], cause: string): Promise<string[]> {
       try {
         const card = await api<Card>("/api/route", { id, rules: S.rules, facts: S.facts });
         if (S !== s0 || S.version !== version) return; // answered under older guidance; the newer pass re-checks it
+        if (S.answered[id]) {
+          // The person answered while this re-check was out; their answer stands.
+          S.pending = S.pending.filter((x) => x !== id);
+          delete S.pendingCause[id];
+          continue;
+        }
         const before = routeOf(id);
         S.cards[id] = card;
         S.evaluated[id] = true;

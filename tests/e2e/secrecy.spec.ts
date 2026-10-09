@@ -9,6 +9,9 @@ const LEAKS = ['"guess"', '"p":', '"send_down"', '"conflicts"'];
 
 test("no guess in the DOM, the queue response or the page bundle before answering", async ({ page }) => {
   await page.goto("/");
+  // Let the first load's queue request finish, so the listener below can only catch the reload's
+  // (otherwise it could catch the first one, whose body the browser discards on reload).
+  await waitForLoad(page);
   await page.evaluate("localStorage.clear()");
   const queue = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/queue");
   await page.reload();
