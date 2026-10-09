@@ -38,6 +38,11 @@ async function boot(): Promise<void> {
       go({ view: "home" });
     }
   });
+  // "Skip to content" must not change the hash (the router would read it as Home): move focus instead.
+  document.querySelector(".skip")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    $("view").focus();
+  });
   window.addEventListener("hashchange", () => {
     render();
     // Move focus to the new view's card or heading, so keyboard and screen-reader users land in it.

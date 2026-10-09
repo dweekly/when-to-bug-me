@@ -13,7 +13,7 @@ export interface TourStep {
   text: string;
   /** How the step finishes: the visitor clicks something matching this selector, an element
    *  matching it appears, or they press Next. */
-  until: { click: string } | { appear: string } | "next";
+  until: { click: string } | { appear: string } | { event: string } | "next";
   /** Which side of the target the popover sits on, when it must not cover what the visitor clicks next. */
   side?: "top" | "bottom" | "left" | "right";
   /** A step that may not happen on this path (pushback is rationed and depends on the record):
@@ -65,7 +65,7 @@ export const TOURS: Tour[] = [
       { target: "#now .followup", title: "A reason becomes guidance", text: "Keep it (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The 7:30am Berlin invite was checked again under your new guidance.", until: { click: "#now .rerouted button" } },
       { target: "#now .actions .ghost", title: "Not now", text: "Not sure yet? Set it aside, and say what you'd need.", until: { click: "#now .actions .ghost" } },
-      { target: "#now .punt", title: "What would you need?", text: "Pick one and say it in a sentence. The agent is told exactly that.", until: { click: "#now .punt .primary" }, example: { textarea: "#punt-reason", text: "Ask the Berlin team whether 9:30am Pacific works; that's still 18:30 for them." } },
+      { target: "#now .punt", title: "What would you need?", text: "Pick one and say it in a sentence. The agent is told exactly that.", until: { event: "bugme:set-aside" }, example: { textarea: "#punt-reason", text: "Ask the Berlin team whether 9:30am Pacific works; that's still 18:30 for them." } },
       { go: "#/", target: "#aside", title: "Set aside, not lost", text: "Back on the overview, it waits here with your reason until you resume it.", until: "next" },
     ],
   },

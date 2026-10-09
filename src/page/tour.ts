@@ -68,8 +68,30 @@ function confirmFresh(tour: Tour, ok: () => void): void {
   dlg.showModal();
 }
 
+/**
+ * driver.js traps Tab inside the highlighted element and the popover, with no option to turn that
+ * off; a step often needs a control outside the highlight (type a reason, then press Decide). This
+ * capture-phase listener keeps driver.js from seeing Tab during a tour, so the page's own order works.
+ */
+function freeTab(e: KeyboardEvent): void {
+  if (e.key === "Tab" && tourActive()) e.stopImmediatePropagation();
+}
+
+/** Escape pressed inside a settings prototype (a sandboxed frame) arrives as a message; it ends the tour too. */
+function prototypeEscape(e: MessageEvent): void {
+  const fromPrototype = [...document.querySelectorAll<HTMLIFrameElement>(".variant iframe")].some((f) => f.contentWindow === e.source);
+  if (fromPrototype && (e.data as { type?: string } | null)?.type === "bugme-escape" && tourActive()) stopTour();
+}
+
+let listening = false;
+
 function begin(tour: Tour): void {
   stopTour();
+  if (!listening) {
+    window.addEventListener("keydown", freeTab, true);
+    window.addEventListener("message", prototypeEscape);
+    listening = true;
+  }
   setS(fresh(Q));
   setF(null);
   stopVoiceUnlessFor("");
@@ -105,10 +127,12 @@ export function stopTour(): void {
 export function tourAfterRender(): void {
   if (!run || run.stopped) return;
   const step = run.tour.steps[run.index];
+  if (!step) return; // past the last step: the closing popover is showing, nothing to re-find
   const el = document.querySelector(step.target);
   if (el && run.drv.isActive() && run.drv.getActiveElement() !== el) show(run, step, el);
 }
 
+/** Wait for an element. `ms` of Infinity waits as long as the tour runs (the visitor may take their time). */
 function waitFor(selector: string, r: Running, ms = STEP_WAIT_MS): Promise<Element | null> {
   return new Promise((resolve) => {
     const found = document.querySelector(selector);
@@ -122,10 +146,12 @@ function waitFor(selector: string, r: Running, ms = STEP_WAIT_MS): Promise<Eleme
       }
     });
     obs.observe(document.body, { childList: true, subtree: true });
-    const timer = setTimeout(() => {
-      obs.disconnect();
-      resolve(null);
-    }, ms);
+    const timer = Number.isFinite(ms)
+      ? setTimeout(() => {
+          obs.disconnect();
+          resolve(null);
+        }, ms)
+      : undefined;
   });
 }
 
@@ -190,8 +216,15 @@ function stepDone(r: Running, step: TourStep): Promise<void> {
       };
       document.addEventListener("click", onClick, true);
       cleanup = () => document.removeEventListener("click", onClick, true);
+    } else if ("event" in step.until) {
+      // Finishes only when the app reports the action actually succeeded (e.g. a decision was set aside).
+      const name = step.until.event;
+      const onEvent = () => r.finishStep?.();
+      window.addEventListener(name, onEvent);
+      cleanup = () => window.removeEventListener(name, onEvent);
     } else {
-      void waitFor(step.until.appear, r).then((el) => el && r.finishStep?.());
+      // The visitor is doing something (typing a reason): wait as long as it takes.
+      void waitFor(step.until.appear, r, Infinity).then((el) => el && r.finishStep?.());
     }
   });
 }
@@ -200,7 +233,8 @@ async function play(r: Running): Promise<void> {
   const steps = r.tour.steps;
   while (r.index < steps.length && !r.stopped) {
     const step = steps[r.index];
-    if (step.go && location.hash !== step.go) go(parseHash(step.go));
+    // Always navigate, even to the current URL: the router re-renders, so the fresh morning shows.
+    if (step.go) go(parseHash(step.go));
     const el = await waitFor(step.target, r, step.optional ? OPTIONAL_WAIT_MS : STEP_WAIT_MS);
     if (r.stopped) return;
     if (!el && step.optional) {

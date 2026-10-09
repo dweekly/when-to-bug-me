@@ -281,6 +281,7 @@ export function setAside(flow: Flow, d: Decision): void {
   // The answer in progress is dropped: nothing was final, and the guess was never revealed.
   delete S.flows[d.id];
   announce(`Set aside. The agent was asked: ${punt.instruction}`);
+  window.dispatchEvent(new CustomEvent("bugme:set-aside", { detail: { id: d.id } }));
   next();
 }
 
@@ -290,6 +291,9 @@ export function resume(id: string): void {
   if (!punt) return;
   (S.puntHistory[id] ??= []).push(punt);
   delete S.punts[id];
+  // A decision the person set aside stays theirs: even if a re-route says it could now be settled,
+  // resuming brings it back to them, never to "Decided for you".
+  if (!S.reopened.includes(id)) S.reopened.push(id);
   S.flows[id] = newFlow(id);
   log("resume", { id, reason_kind: punt.kind, reason: punt.reason });
   startSession(id);

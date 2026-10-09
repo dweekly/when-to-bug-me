@@ -121,6 +121,8 @@ function spy(){const line=parseFloat(getComputedStyle(root).scrollPaddingTop)+24
 addEventListener('scroll',spy,{passive:true});addEventListener('resize',spy);
 links.forEach((a,i)=>a.addEventListener('click',e=>{e.preventDefault();const h=secs[i].querySelector('h2');secs[i].scrollIntoView({behavior:calm.matches?'auto':'smooth',block:'start'});cur(a);h.focus({preventScroll:true})}));
 cur(links[0]);
+// Escape inside this frame is forwarded to the page around it (the guided tour ends on Escape).
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") parent.postMessage({ type: "bugme-escape" }, "*"); });
 </script>
 </body>
 </html>

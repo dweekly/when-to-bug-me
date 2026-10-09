@@ -114,6 +114,8 @@ const tabs=$$('[role=tab]'),wide=matchMedia('(min-width:440px)'),tl=$('[role=tab
 const orient=()=>tl.setAttribute('aria-orientation',wide.matches?'vertical':'horizontal');orient();wide.addEventListener('change',orient);
 function sel(t,f){tabs.forEach(x=>{const on=x===t;x.setAttribute('aria-selected',on);x.tabIndex=on?0:-1;document.getElementById(x.getAttribute('aria-controls')).hidden=!on});if(f)t.focus()}
 tabs.forEach((t,i)=>{t.addEventListener('click',()=>sel(t));t.addEventListener('keydown',e=>{const d={ArrowRight:1,ArrowDown:1,ArrowLeft:-1,ArrowUp:-1}[e.key],n=tabs.length;const j=d?(i+d+n)%n:e.key==='Home'?0:e.key==='End'?n-1:-1;if(j<0)return;e.preventDefault();sel(tabs[j],1)})});
+// Escape inside this frame is forwarded to the page around it (the guided tour ends on Escape).
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") parent.postMessage({ type: "bugme-escape" }, "*"); });
 </script>
 </body>
 </html>

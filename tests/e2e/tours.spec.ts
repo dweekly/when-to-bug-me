@@ -17,6 +17,13 @@ async function act(page: Page, step: TourStep): Promise<void> {
     await page.locator(".driver-popover-next-btn").click();
     return;
   }
+  if ("event" in step.until) {
+    // The set-aside step: pick what you'd need, give the sentence, set it aside.
+    await page.locator(".chip-btn").nth(1).click();
+    await page.locator(".driver-popover .bm-example").click();
+    await page.locator("#now .punt .primary").click();
+    return;
+  }
   if ("click" in step.until) {
     // Setting aside needs a kind picked before the sentence.
     if (step.until.click.includes(".punt")) await page.locator(".chip-btn").nth(1).click();

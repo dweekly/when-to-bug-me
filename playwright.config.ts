@@ -10,6 +10,9 @@ const PORT = 8799;
 const RECORDED_PORT = 8798;
 /** A throwaway sealing key per test run, so a fresh clone needs no .dev.vars to run the suite. */
 const SEAL_KEY = randomBytes(32).toString("base64");
+/** Wrangler vars the recorded server overrides to empty, so a developer's .dev.vars (which may hold a
+ *  real Anthropic key, or turn on the fake model) cannot leak into the keyless run. */
+const BLANKED = ["ANTHROPIC_API_KEY", "FAKE_MODEL"].map((name) => `--var ${name}:`).join(" ");
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -31,18 +34,18 @@ export default defineConfig({
     },
     {
       // Neither the fake model nor an Anthropic key, so only recorded answers. Isolated state, its own seal key.
-      command: `npx wrangler dev --var SEAL_KEY:${SEAL_KEY} --port ${RECORDED_PORT} --persist-to .wrangler/e2e-recorded-state`,
+      command: `npx wrangler dev --var SEAL_KEY:${SEAL_KEY} ${BLANKED} --port ${RECORDED_PORT} --persist-to .wrangler/e2e-recorded-state`,
       url: `http://localhost:${RECORDED_PORT}/api/queue`,
       reuseExistingServer: false,
       timeout: 120_000,
     },
   ],
   projects: [
-    { name: "desktop", testIgnore: /tours\.spec\.ts/, use: { viewport: { width: 1440, height: 1000 } } },
-    { name: "phone", testIgnore: /tours\.spec\.ts/, use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    { name: "desktop", testIgnore: /tours.*\.spec\.ts/, use: { viewport: { width: 1440, height: 1000 } } },
+    { name: "phone", testIgnore: /tours.*\.spec\.ts/, use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
     // Every tour, start to finish, on the recorded run with no key: what a reviewer gets from a keyless deploy.
-    { name: "recorded-desktop", testMatch: /tours\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 1440, height: 1000 } } },
-    { name: "recorded-phone", testMatch: /tours\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    { name: "recorded-desktop", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 1440, height: 1000 } } },
+    { name: "recorded-phone", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
     // The narrowest phone the layout promises (no horizontal scroll at 320px); only stage 2's layout check.
     { name: "narrow", testMatch: /stage2\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
   ],

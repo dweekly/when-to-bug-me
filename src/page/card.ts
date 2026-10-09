@@ -6,7 +6,7 @@ import { EXAMPLES } from "../shared/examples";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { answer, done, finalize, glowEvent, keepFact, next, propose, setAside } from "./actions";
+import { answer, done, finalize, glowEvent, keepFact, next, propose, resume, setAside } from "./actions";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
 import { go } from "./router";
 import { tourAfterRender } from "./tour";
@@ -35,6 +35,10 @@ export function renderNow(): void {
   }
   const d = byId.get(id)!;
   const c = S.cards[id];
+  // Opened by link or Back: a decision already answered is shown, not reopened; a set-aside one
+  // needs an explicit Resume before it can be answered.
+  if (S.answered[id] && !S.flows[id]) return renderClosed(root, d, "answered");
+  if (S.punts[id]) return renderClosed(root, d, "aside");
   if (!F || F.id !== id) setF((S.flows[id] ??= newFlow(id)));
   const flow = F!;
   stopVoiceUnlessFor(flow.id);
@@ -172,6 +176,27 @@ export function renderNow(): void {
   );
   arrived.add(id);
   root.append(card);
+  tourAfterRender();
+}
+
+/** A read-only card for a decision that is answered, or set aside and waiting for Resume. */
+function renderClosed(root: HTMLElement, d: Decision, why: "answered" | "aside"): void {
+  const c = S.cards[d.id];
+  const headline = (isCard(c) && c.headline) || d.question;
+  const body: Child[] = [];
+  if (why === "answered") {
+    const a = S.answered[d.id];
+    const chosen = d.options.find((o) => o.key === a.final);
+    body.push(h("p", {}, h("span", { class: "quiet" }, "You decided: "), chosen?.label ?? a.final), a.basis ? h("p", { class: "quiet" }, "“", a.basis, "”") : null);
+  } else {
+    const p = S.punts[d.id];
+    body.push(
+      h("p", {}, h("span", { class: "quiet" }, "Set aside: "), "“", p.reason, "”"),
+      h("p", { class: "senddown" }, `The agent was asked (simulated): ${p.instruction}`),
+      h("div", { class: "actions" }, h("button", { type: "button", class: "primary", onclick: () => resume(d.id) }, "Resume")),
+    );
+  }
+  root.append(h("article", { class: "card steady closed", "aria-labelledby": "now-q" }, h("h3", { id: "now-q" }, headline), ...body));
   tourAfterRender();
 }
 
