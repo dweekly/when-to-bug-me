@@ -4,7 +4,7 @@
 
 import { buildAgenda } from "../shared/agenda";
 import { EXAMPLES } from "../shared/examples";
-import { REROUTE_CONCURRENCY } from "../shared/constants";
+import { MAX_FACTS, MAX_RULE_CHARS, MAX_RULES, REROUTE_CONCURRENCY } from "../shared/constants";
 import {
   GLOW_START,
   type GlowEvent,
@@ -18,6 +18,7 @@ import {
   shouldAskWhy,
   shouldProposeGuidance,
   shouldPushBack,
+  substantiveBasis,
   topGuess,
 } from "../shared/lifecycle";
 import type { Card, Decision, Fact, FactOutput, Persona, RouteKind, Rule, Source } from "../shared/types";
@@ -74,6 +75,10 @@ interface State {
   /** id -> a one-line note on why its route just changed. */
   changes: Record<string, string>;
   pending: string[];
+  /** The cause that first queued each pending re-check, kept if a newer edit takes over the pass. */
+  pendingCause: Record<string, string>;
+  /** Cards re-evaluated under the person's own rules and facts; kept across reloads. */
+  evaluated: Record<string, true>;
   newFacts: string[];
   /** Bumped on every rule or fact change; answers from an older version are ignored. */
   version: number;
@@ -98,7 +103,14 @@ interface Flow {
   message: string;
   /** Decisions whose route changed because of guidance kept on this card. */
   rerouted: string[];
+  /** The proposed guidance as the person is editing it, kept across re-renders. */
+  factDraft: string;
+  /** Why the last attempt to keep guidance was refused (too long, too many). */
+  error: string;
 }
+
+/** A rule being edited, kept across re-renders so an async update never wipes the draft. */
+let ruleDraft: { id: string; text: string; error: string; focus: boolean } | null = null;
 let F: Flow | null = null;
 
 function fresh(q: Queue): State {
@@ -116,6 +128,8 @@ function fresh(q: Queue): State {
     current: null,
     changes: {},
     pending: [],
+    pendingCause: {},
+    evaluated: {},
     newFacts: [],
     version: 0,
   };
@@ -138,8 +152,11 @@ function load(q: Queue): State {
         // Cards the person's own changes produced are kept; every other card comes fresh from this
         // load, so a redeploy (new seal key, new recorded run) never leaves stale sealed guesses behind.
         const base = fresh(q);
-        const kept = Object.fromEntries(Object.entries(s.cards).filter(([id]) => s.changes?.[id]));
-        return { ...base, ...s, cards: { ...base.cards, ...kept }, pending: [] };
+        const kept = Object.fromEntries(Object.entries(s.cards).filter(([id]) => s.evaluated?.[id] || s.changes?.[id]));
+        // A re-check interrupted by the reload is not silently dropped: it is marked possibly stale.
+        const changes = { ...(s.changes ?? {}) };
+        for (const id of s.pending ?? []) changes[id] = "A re-check was interrupted when the page reloaded, so this may be out of date.";
+        return { ...base, ...s, evaluated: s.evaluated ?? {}, changes, cards: { ...base.cards, ...kept }, pending: [], pendingCause: {} };
       }
     }
   } catch {
@@ -300,7 +317,7 @@ function renderNow(): void {
   }
   const d = byId.get(id)!;
   const c = S.cards[id];
-  if (!F || F.id !== id) F = { id, choice: null, basis: "", phase: "choose", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [] };
+  if (!F || F.id !== id) F = { id, choice: null, basis: "", phase: "choose", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "" };
   if (!isCard(c)) {
     root.append(h("div", { class: "card" }, h("h3", {}, d.question), h("p", { class: "adjusted" }, `Couldn't evaluate this one: ${c?.unavailable ?? "no route yet"}.`)));
     return;
@@ -509,10 +526,10 @@ function followup(d: Decision, route: RouteKind): Child {
       h(
         "div",
         { class: "actions" },
-        h("button", { type: "button", class: "primary", onclick: () => void finalize(d, route, F!.choice!, "kept") }, "Yes, this one is an exception"),
+        h("button", { type: "button", class: "primary", onclick: () => void finalize(F!, d, route, F!.choice!, "kept") }, "Yes, this one is an exception"),
         ...d.options
           .filter((o) => o.key !== F!.choice)
-          .map((o) => h("button", { type: "button", class: "ghost", onclick: () => void finalize(d, route, o.key, "changed") }, `Change to “${o.label}”`)),
+          .map((o) => h("button", { type: "button", class: "ghost", onclick: () => void finalize(F!, d, route, o.key, "changed") }, `Change to “${o.label}”`)),
       ),
     );
   }
@@ -526,6 +543,9 @@ function followup(d: Decision, route: RouteKind): Child {
       : [h("p", {}, h("b", {}, "Bug Me's guess, hidden until now: "), `${guessed.label} (${Math.round(top.p * 100)}%).`, top.option === F.choice ? " You agreed." : " You went the other way.")];
   if (F.phase === "why") {
     const ta = h("textarea", { class: "fact-edit", id: "why", rows: 2, placeholder: "Say it or type it" }) as HTMLTextAreaElement;
+    const flow = F;
+    ta.value = flow.basis;
+    ta.addEventListener("input", () => (flow.basis = ta.value));
     parts.push(
       h("p", { class: "big" }, "I'm curious: why?"),
       h("p", {}, "Your answer surprised me. Your reason can become guidance for every agent."),
@@ -535,8 +555,8 @@ function followup(d: Decision, route: RouteKind): Child {
       h(
         "div",
         { class: "actions" },
-        h("button", { type: "button", class: "primary", onclick: () => { F!.basis = ta.value; void propose(d); } }, "Tell Bug Me"),
-        h("button", { type: "button", class: "linkish", onclick: () => done(d, "Skipped the why.") }, "skip"),
+        h("button", { type: "button", class: "primary", onclick: () => { flow.basis = ta.value; void propose(flow, d); } }, "Tell Bug Me"),
+        h("button", { type: "button", class: "linkish", onclick: () => done(flow, "Skipped the why.") }, "skip"),
       ),
     );
   }
@@ -544,21 +564,24 @@ function followup(d: Decision, route: RouteKind): Child {
     const p = F.proposal;
     if (p.kind === "none") {
       parts.push(h("p", {}, p.confirm || "Got it. Nothing to remember from that one."));
-      parts.push(h("button", { type: "button", class: "primary", onclick: () => done(d, "") }, "Next decision"));
+      parts.push(h("button", { type: "button", class: "primary", onclick: () => done(F!, "") }, "Next decision"));
     } else {
       const input = h("textarea", { class: "fact-edit", id: "fact-text", rows: 2, "aria-label": "Proposed guidance (you can edit it)" }) as HTMLTextAreaElement;
-      input.value = p.text;
+      const flow = F;
+      input.value = flow.factDraft || p.text;
+      input.addEventListener("input", () => (flow.factDraft = input.value));
       const replacing = p.kind === "replace" ? S.facts.find((f) => f.id === p.replaces) : undefined;
       parts.push(
         h("p", {}, p.confirm),
         h("p", {}, h("b", {}, replacing ? `Replace “${replacing.text}” with:` : "Remember this for every agent?")),
         input,
+        flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
         h("p", { class: "senddown" }, `${SOURCE_LABEL[p.source]} · would re-check ${p.reroute.length} waiting decision${p.reroute.length === 1 ? "" : "s"}`),
         h(
           "div",
           { class: "actions" },
-          h("button", { type: "button", class: "primary", onclick: () => void keepFact(d, input.value, p) }, "Keep it"),
-          h("button", { type: "button", class: "ghost", onclick: () => { log("guidance_discarded", { id: d.id, text: p.text }); done(d, "Discarded."); } }, "Don't keep"),
+          h("button", { type: "button", class: "primary", onclick: () => void keepFact(flow, d, input.value, p) }, "Keep it"),
+          h("button", { type: "button", class: "ghost", onclick: () => { log("guidance_discarded", { id: d.id, text: p.text }); done(flow, "Discarded."); } }, "Don't keep"),
         ),
       );
     }
@@ -688,6 +711,8 @@ function renderSettled(): void {
         h("span", {}, (c.headline || d.question).replace(/\?$/, ""), ": "),
         h("span", { class: "picked" }, opt?.label ?? c.settle_option),
         h("span", { class: "why-s" }, `${c.why_here} · ${SOURCE_LABEL[c.source]}`),
+        S.changes[id] ? h("span", { class: "change-note" }, S.changes[id]) : null,
+        S.pending.includes(id) ? h("span", { class: "change-note" }, "re-checking…") : null,
         h(
           "div",
           { class: "marks" },
@@ -705,14 +730,26 @@ function renderRules(): void {
   root.replaceChildren();
   for (const r of S.rules) {
     const li = h("li", {}, h("span", { class: "rid" }, r.id));
+    if (ruleDraft?.id === r.id) {
+      // The draft lives outside the DOM, so a re-render (from a re-route finishing) never wipes it.
+      const draft = ruleDraft;
+      const ta = h("textarea", { "aria-label": `Rule ${r.id}` }) as HTMLTextAreaElement;
+      ta.value = draft.text;
+      ta.addEventListener("input", () => (draft.text = ta.value));
+      const saveBtn = h("button", { type: "button", class: "ghost", onclick: () => void editRule(r.id, ta.value) }, "Save and re-route");
+      const cancel = h("button", { type: "button", class: "linkish", onclick: () => { ruleDraft = null; renderRules(); } }, "cancel");
+      li.append(h("div", {}, ta, draft.error ? h("p", { class: "change-note", role: "alert" }, draft.error) : null, h("div", { class: "row" }, saveBtn, cancel)));
+      root.append(li);
+      if (draft.focus) {
+        draft.focus = false;
+        ta.focus();
+      }
+      continue;
+    }
     const btn = h("button", { type: "button", class: "rtext", title: "Edit this rule", "aria-label": `Edit rule ${r.id}: ${r.text}` }, r.text);
     btn.addEventListener("click", () => {
-      const ta = h("textarea", { "aria-label": `Rule ${r.id}` }) as HTMLTextAreaElement;
-      ta.value = r.text;
-      const saveBtn = h("button", { type: "button", class: "ghost", onclick: () => void editRule(r.id, ta.value) }, "Save and re-route");
-      const cancel = h("button", { type: "button", class: "linkish", onclick: () => renderRules() }, "cancel");
-      li.replaceChildren(h("span", { class: "rid" }, r.id), h("div", {}, ta, h("div", { class: "row" }, saveBtn, cancel)));
-      ta.focus();
+      ruleDraft = { id: r.id, text: r.text, error: "", focus: true };
+      renderRules();
     });
     li.append(btn);
     root.append(li);
@@ -785,133 +822,174 @@ function glowEvent(e: GlowEvent): void {
   S.mood = moodAfter(e, S.glow, waiting);
 }
 
+/**
+ * Every async step below captures the flow that started it. Its results are always recorded against
+ * that flow's own decision and choice; the screen is only updated if that flow is still the one in
+ * front of the person (they may have opened another card while a request was in flight).
+ */
+function showing(flow: Flow): boolean {
+  return F === flow;
+}
+
 async function answer(d: Decision, route: RouteKind): Promise<void> {
-  if (!F || !F.choice) return;
+  const flow = F;
+  if (!flow || !flow.choice) return;
+  const choice = flow.choice;
   const c = S.cards[d.id] as Card;
-  F.initial = F.choice;
-  F.phase = "busy";
-  F.message = "Checking against your record…";
+  flow.initial = choice;
+  flow.phase = "busy";
+  flow.message = "Checking against your record…";
   renderNow();
   try {
-    const r = await api<{ pushback: string | null }>("/api/answer", { id: d.id, sealed: c.sealed, choice: F.choice, stage: "check" });
+    const r = await api<{ pushback: string | null }>("/api/answer", { id: d.id, sealed: c.sealed, choice, stage: "check" });
     if (shouldPushBack(r.pushback, S.pushbacksUsed)) {
       S.pushbacksUsed++;
-      F.pushback = r.pushback;
-      F.phase = "pushback";
-      log("pushback", { id: d.id, choice: F.choice, quoted: r.pushback });
-      renderNow();
+      flow.pushback = r.pushback;
+      flow.phase = "pushback";
+      log("pushback", { id: d.id, choice, quoted: r.pushback });
+      save();
+      if (showing(flow)) renderNow();
       return;
     }
-    await finalize(d, route, F.choice, null);
+    await finalize(flow, d, route, choice, null);
   } catch (e) {
-    F.phase = "choose";
-    F.message = `Something went wrong: ${(e as Error).message}`;
-    renderNow();
+    flow.phase = "choose";
+    flow.message = `Something went wrong: ${(e as Error).message}`;
+    if (showing(flow)) renderNow();
   }
 }
 
-async function finalize(d: Decision, route: RouteKind, choice: string, pushbackOutcome: "kept" | "changed" | null): Promise<void> {
-  if (!F) return;
+async function finalize(flow: Flow, d: Decision, route: RouteKind, choice: string, pushbackOutcome: "kept" | "changed" | null): Promise<void> {
   const c = S.cards[d.id] as Card;
-  F.choice = choice;
-  F.phase = "busy";
-  renderNow();
+  flow.choice = choice;
+  flow.phase = "busy";
+  if (showing(flow)) renderNow();
   let r: { guess: Guess; send_down: string };
   try {
     r = await api<{ guess: Guess; send_down: string }>("/api/answer", { id: d.id, sealed: c.sealed, choice, stage: "final" });
   } catch (e) {
-    F.phase = "choose";
-    F.message = `Couldn't record that answer: ${(e as Error).message}. Try again.`;
-    renderNow();
+    flow.phase = "choose";
+    flow.message = `Couldn't record that answer: ${(e as Error).message}. Try again.`;
+    if (showing(flow)) renderNow();
     return;
   }
-  F.guess = r.guess;
-  F.send_down = r.send_down;
-  const basis = F.basis.trim();
-  S.answered[d.id] = { initial: F.initial ?? choice, final: choice, basis, guess: r.guess, route, pushback: F.pushback, send_down: r.send_down, marks: [] };
+  flow.guess = r.guess;
+  flow.send_down = r.send_down;
+  const basis = flow.basis.trim();
+  S.answered[d.id] = { initial: flow.initial ?? choice, final: choice, basis, guess: r.guess, route, pushback: flow.pushback, send_down: r.send_down, marks: [] };
   log("answer", {
     id: d.id,
     route,
-    initial: F.initial,
+    initial: flow.initial,
     final: choice,
     basis,
     guess_before_answer: r.guess,
-    pushback: F.pushback,
+    pushback: flow.pushback,
     pushback_outcome: pushbackOutcome,
     source: c.source,
   });
-  glowEvent({ kind: "answered", route, basis: hasBasis(basis), againstRecommendation: choice !== d.recommended });
+  glowEvent({ kind: "answered", route, basis: substantiveBasis(basis), againstRecommendation: choice !== d.recommended });
   save();
   if (shouldAskWhy(choice, r.guess, basis)) {
-    F.phase = "why";
-    renderHeader();
-    renderNow();
-    (document.getElementById("why") as HTMLTextAreaElement | null)?.focus();
+    flow.phase = "why";
+    if (showing(flow)) {
+      render();
+      (document.getElementById("why") as HTMLTextAreaElement | null)?.focus();
+    }
     return;
   }
   if (shouldProposeGuidance(choice, d.recommended, r.guess, basis)) {
-    await propose(d);
+    await propose(flow, d);
     return;
   }
-  done(d, "");
+  done(flow, "");
 }
 
-async function propose(d: Decision): Promise<void> {
-  if (!F) return;
-  const basis = F.basis.trim();
+/** A reason given after the answer was final (the why prompt) is added to the record and the answer. */
+function recordLateReason(d: Decision, basis: string): void {
+  const a = S.answered[d.id];
+  if (!a || a.basis === basis) return;
+  a.basis = basis;
+  for (let i = S.record.length - 1; i >= 0; i--) {
+    const ev = S.record[i];
+    if (ev.kind === "answer" && ev.id === d.id) {
+      ev.basis = basis;
+      ev.basis_given_after_reveal = true;
+      break;
+    }
+  }
+  log("reason", { id: d.id, basis, after_answer: true });
+  glowEvent({ kind: "answered", route: a.route, basis: substantiveBasis(basis), againstRecommendation: a.final !== d.recommended });
+}
+
+async function propose(flow: Flow, d: Decision): Promise<void> {
+  const basis = flow.basis.trim();
   if (!hasBasis(basis)) {
-    done(d, "");
+    done(flow, "");
     return;
   }
-  S.answered[d.id].basis = basis;
-  F.phase = "busy";
-  F.message = "Turning that into guidance…";
-  renderNow();
+  recordLateReason(d, basis);
+  flow.phase = "busy";
+  flow.message = "Turning that into guidance…";
+  save();
+  if (showing(flow)) render();
   try {
     const p = await api<FactOutput & { reroute: string[]; source: Source }>("/api/fact", {
       id: d.id,
-      choice: F.choice,
+      choice: flow.choice,
       reason: basis,
       rules: S.rules,
       facts: S.facts,
       waiting: waitingIds().filter((x) => x !== d.id),
     });
-    F.proposal = p;
-    F.phase = "proposal";
+    flow.proposal = p;
+    flow.factDraft = p.text;
+    flow.phase = "proposal";
     log("guidance_proposed", { id: d.id, kind: p.kind, text: p.text, replaces: p.replaces, reroute: p.reroute, source: p.source });
   } catch (e) {
-    F.phase = "done";
-    F.message = `Couldn't turn that into guidance right now (${(e as Error).message}). Your answer and reason are recorded.`;
+    flow.phase = "done";
+    flow.message = `Couldn't turn that into guidance right now (${(e as Error).message}). Your answer and reason are recorded.`;
   }
   save();
-  renderNow();
+  if (showing(flow)) renderNow();
 }
 
-async function keepFact(d: Decision, text: string, p: FactOutput & { reroute: string[] }): Promise<void> {
-  const t = text.trim();
-  if (!t) return;
-  const label = d.options.find((o) => o.key === F?.choice)?.label ?? "";
+/** Why a rule or fact text can't be saved, or "" if it can. Mirrors the Worker's limits. */
+function guidanceProblem(text: string, adding: "rule" | "fact" | null): string {
+  if (!text) return "It can't be empty.";
+  if (text.length > MAX_RULE_CHARS) return `Keep it under ${MAX_RULE_CHARS} characters (it's ${text.length}).`;
+  if (adding === "fact" && S.facts.length >= MAX_FACTS) return `Bug Me holds at most ${MAX_FACTS} standing facts in this demo.`;
+  if (adding === "rule" && S.rules.length >= MAX_RULES) return `At most ${MAX_RULES} rules in this demo.`;
+  return "";
+}
+
+async function keepFact(flow: Flow, d: Decision, text: string, p: FactOutput & { reroute: string[] }): Promise<void> {
+  const t = text.replace(/\s+/g, " ").trim();
+  const problem = guidanceProblem(t, p.kind === "add" ? "fact" : null);
+  if (problem) {
+    flow.error = problem;
+    if (showing(flow)) renderNow();
+    return;
+  }
+  flow.error = "";
+  const label = d.options.find((o) => o.key === flow.choice)?.label ?? "";
   const fact = keptFact(S.facts, p, t, label);
   S.facts = withFact(S.facts, fact);
   S.newFacts.push(fact.id);
   S.version++;
   log("guidance_kept", { id: d.id, fact, edited: t !== p.text });
   glowEvent({ kind: "guidance_kept" });
-  done(d, `Kept. Every agent now gets: “${t}”`);
-  const flow = F;
+  done(flow, `Kept. Every agent now gets: “${t}”`);
   const changed = await reroute(p.reroute, `because you told me: “${t.replace(/[.\s]+$/, "")}”`);
-  if (flow && F === flow) {
-    flow.rerouted = changed;
-    renderNow();
-  }
+  flow.rerouted = changed;
+  if (showing(flow)) renderNow();
 }
 
-function done(d: Decision, message: string): void {
-  if (!F) return;
-  F.phase = "done";
-  F.message = message;
+function done(flow: Flow, message: string): void {
+  flow.phase = "done";
+  flow.message = message;
   save();
-  render();
+  if (showing(flow)) render();
 }
 
 function next(): void {
@@ -933,10 +1011,19 @@ function undo(id: string): void {
 async function editRule(id: string, text: string): Promise<void> {
   const t = text.replace(/\s+/g, " ").trim();
   const old = S.rules.find((r) => r.id === id);
-  if (!old || !t || t === old.text) {
+  if (!old) return;
+  if (t === old.text) {
+    ruleDraft = null;
     renderRules();
     return;
   }
+  const problem = guidanceProblem(t, null);
+  if (problem) {
+    ruleDraft = { id, text, error: problem, focus: true };
+    renderRules();
+    return;
+  }
+  ruleDraft = null;
   S.rules = S.rules.map((r) => (r.id === id ? { ...r, text: t } : r));
   S.version++;
   log("rule_edited", { rule: id, from: old.text, to: t });
@@ -946,42 +1033,60 @@ async function editRule(id: string, text: string): Promise<void> {
   await reroute(waitingIds(), `because you edited ${id}: “${t.replace(/[.\s]+$/, "")}”`);
 }
 
-/** Re-route the given decisions under the current rules and facts, and note every change with its cause. */
+/**
+ * Re-route decisions under the current rules and facts, noting every change with its cause. A newer
+ * edit supersedes an older pass: decisions the older pass had not finished stay pending and are
+ * carried into the newer pass (each keeps the cause that first queued it), so nothing is abandoned.
+ */
 async function reroute(ids: string[], cause: string): Promise<string[]> {
   const version = S.version;
-  const todo = ids.filter((id) => !S.answered[id]);
-  S.pending = [...new Set([...S.pending, ...todo])];
+  for (const id of ids) if (!S.answered[id] && !S.pending.includes(id)) S.pendingCause[id] = cause;
+  const todo = [...new Set([...S.pending, ...ids])].filter((id) => !S.answered[id]);
+  S.pending = todo;
   render();
   const changedIds: string[] = [];
+  let failed = 0;
   const queue = [...todo];
   const worker = async () => {
     while (queue.length) {
+      if (S.version !== version) return; // superseded: the newer pass now owns everything still pending
       const id = queue.shift()!;
+      const why = S.pendingCause[id] ?? cause;
       try {
         const card = await api<Card>("/api/route", { id, rules: S.rules, facts: S.facts });
-        if (S.version !== version) return; // a newer edit superseded this one; its own re-route wins
+        if (S.version !== version) return; // answered under older guidance; the newer pass re-checks it
         const before = routeOf(id);
         S.cards[id] = card;
+        S.evaluated[id] = true;
         const after = routeOf(id);
         if (before !== after && before && after) {
           changedIds.push(id);
-          S.changes[id] = `Moved from “${ROUTE_LABEL[before]}” to “${ROUTE_LABEL[after]}” ${cause}.`;
-          log("rerouted", { id, from: before, to: after, cause, source: card.source });
-        } else if (card.fact_quoted && cause.includes(card.fact_quoted)) {
-          S.changes[id] = `Now framed by what you said ${cause.replace(/^because you told me: /, "")}.`;
+          S.changes[id] = `Moved from “${ROUTE_LABEL[before]}” to “${ROUTE_LABEL[after]}” ${why}.`;
+          log("rerouted", { id, from: before, to: after, cause: why, source: card.source });
+        } else if (card.fact_quoted && why.includes(card.fact_quoted.replace(/[.\s]+$/, ""))) {
+          S.changes[id] = `Now framed by what you said ${why.replace(/^because you told me: /, "")}.`;
+        } else if (S.changes[id]?.startsWith("Couldn't re-check")) {
+          delete S.changes[id];
         }
       } catch (e) {
-        if ((e as { unavailable?: boolean }).unavailable) S.changes[id] = `Couldn't re-check this one: ${(e as Error).message}.`;
-      } finally {
-        S.pending = S.pending.filter((x) => x !== id);
-        render();
+        if (S.version !== version) return;
+        failed++;
+        S.changes[id] = `Couldn't re-check this one under your latest guidance (${(e as Error).message}), so it may be out of date.`;
+        log("reroute_failed", { id, cause: why, error: (e as Error).message });
       }
+      S.pending = S.pending.filter((x) => x !== id);
+      delete S.pendingCause[id];
+      render();
     }
   };
   await Promise.all(Array.from({ length: Math.min(REROUTE_CONCURRENCY, todo.length) }, worker));
-  save();
-  const n = changedIds.length;
-  announce(n ? `${n} waiting decision${n === 1 ? "" : "s"} re-routed ${cause}.` : "Re-checked; nothing waiting changed route.");
+  if (S.version === version) {
+    save();
+    const n = changedIds.length;
+    const parts = [n ? `${n} decision${n === 1 ? "" : "s"} re-routed ${cause}.` : "Re-checked; nothing changed route."];
+    if (failed) parts.push(`${failed} couldn't be re-checked and may be out of date.`);
+    announce(parts.join(" "));
+  }
   return changedIds;
 }
 
