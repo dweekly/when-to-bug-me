@@ -13,5 +13,7 @@ await build({
   outfile: "public/app.js",
 });
 mkdirSync("public/variants", { recursive: true });
+// The tour engine's stylesheet, linked from app.html; our dark theme overrides it in style.css.
+cpSync("node_modules/driver.js/dist/driver.css", "public/driver.css");
 cpSync("fixtures/variants", "public/variants", { recursive: true });
 console.log("built public/app.js and public/variants/");

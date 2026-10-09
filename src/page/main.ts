@@ -12,6 +12,7 @@ import { stopVoiceUnlessFor } from "./card";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
 import { type Queue, Q, S, fresh, load, save, setById, setF, setQ, setS } from "./state";
+import { startTour } from "./tour";
 import { render } from "./views";
 
 async function boot(): Promise<void> {
@@ -46,6 +47,12 @@ async function boot(): Promise<void> {
     window.scrollTo({ top: 0 });
   });
   render();
+  // A tour link (/app?tour=<id>, as the explainer's cards use) starts that tour.
+  const tour = new URLSearchParams(location.search).get("tour");
+  if (tour) {
+    history.replaceState(null, "", location.pathname + location.hash);
+    startTour(tour);
+  }
 }
 
 boot().catch((e) => {

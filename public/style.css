@@ -217,6 +217,29 @@ dialog.ts::backdrop { background: rgba(8, 10, 22, 0.75); }
 dialog.ts h2 { font-size: 20px; margin: 0 0 8px; }
 dialog.ts .ts-box { min-height: 70px; margin: 12px 0; }
 
+/* ---------- Tours (driver.js, themed) ---------- */
+/* The tour guides; it never blocks the page. driver.js turns off clicks everywhere but the highlighted
+   element (.driver-active *); here the whole page stays usable and only the overlay ignores clicks. */
+.driver-active * { pointer-events: auto; }
+.driver-overlay, .driver-overlay * { pointer-events: none !important; }
+.driver-popover.bm-tour { background: var(--night-3); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); max-width: min(340px, calc(100vw - 32px)); box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.8); }
+.driver-popover.bm-tour .driver-popover-title { font: 600 18px/1.25 var(--display); color: var(--ink); }
+.driver-popover.bm-tour .driver-popover-description { font: 15px/1.5 var(--body); color: var(--ink-2); }
+.driver-popover.bm-tour .driver-popover-progress-text { color: var(--ink-3); font-size: 12px; }
+.driver-popover.bm-tour .driver-popover-footer button { background: var(--glow); color: var(--glow-ink); border: 0; border-radius: 8px; padding: 7px 12px; font: 700 14px var(--body); text-shadow: none; }
+.driver-popover.bm-tour .driver-popover-close-btn { color: var(--ink-3); }
+.driver-popover.bm-tour .driver-popover-arrow-side-top { border-top-color: var(--night-3); }
+.driver-popover.bm-tour .driver-popover-arrow-side-bottom { border-bottom-color: var(--night-3); }
+.driver-popover.bm-tour .driver-popover-arrow-side-left { border-left-color: var(--night-3); }
+.driver-popover.bm-tour .driver-popover-arrow-side-right { border-right-color: var(--night-3); }
+.driver-popover.bm-tour button.bm-example { margin-top: 10px; background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: 14px var(--body); cursor: pointer; }
+.tours-btn { background: none; border: 1px solid var(--line); cursor: pointer; }
+dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
+.tour-list { list-style: none; padding: 0; margin: 8px 0 16px; display: grid; gap: 4px; }
+.tour-item { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: start; width: 100%; text-align: left; background: none; border: 0; border-radius: 10px; padding: 10px; cursor: pointer; color: var(--ink); }
+.tour-item:hover { background: var(--night-3); }
+.tour-blurb { display: block; color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+
 @media (max-width: 560px) {
   .synthetic { margin-left: 0; }
   .project-row { grid-template-columns: minmax(0, 1fr) auto 20px; }

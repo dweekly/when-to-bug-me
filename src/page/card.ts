@@ -9,6 +9,7 @@ import { PUNT_KINDS } from "../shared/punt";
 import { answer, done, finalize, glowEvent, keepFact, next, propose, setAside } from "./actions";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
 import { go } from "./router";
+import { tourAfterRender } from "./tour";
 import { renderVisual } from "./visuals";
 import { type Child, $, announce, h } from "./dom";
 import { type Flow, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
@@ -171,6 +172,7 @@ export function renderNow(): void {
   );
   arrived.add(id);
   root.append(card);
+  tourAfterRender();
 }
 
 /** Cards already shown on this visit; only a card's first appearance animates in. */

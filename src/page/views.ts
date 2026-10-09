@@ -13,6 +13,7 @@ import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
 import { renderSky } from "./sky";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
+import { openToursMenu, tourAfterRender } from "./tour";
 
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
 let ruleDraft: { id: string; text: string; error: string; focus: boolean } | null = null;
@@ -81,6 +82,7 @@ function renderBar(route: Route): void {
       nav({ view: "settled" }, `Decided for you${settledCount ? ` · ${settledCount}` : ""}`),
       nav({ view: "rules" }, "Rules"),
       nav({ view: "record" }, "Record"),
+      h("button", { type: "button", class: "nav tours-btn", onclick: () => openToursMenu() }, "Tours"),
     ),
     h("a", { href: "/#real", class: "synthetic", title: "Everything here is made up. See what is real." }, { live: "Synthetic · live Claude", recorded: "Synthetic · recorded Claude", fake: "Synthetic · code stand-in" }[Q.mode]),
   );
@@ -398,6 +400,7 @@ export function render(): void {
   else if (route.view === "settled") renderSettledView(view);
   else if (route.view === "rules") renderRulesView(view);
   else renderRecordView(view);
+  tourAfterRender();
 }
 
 /** Replace the rule being edited (actions.ts saves or rejects a draft from outside this module). */
