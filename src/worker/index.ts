@@ -9,7 +9,7 @@
 // API key exists, otherwise live Claude behind the cache and the spend cap.
 
 import { MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES } from "../shared/constants";
-import { enforceSettleInvariant, verifiedQuotes } from "../shared/route";
+import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
 import { type Env, ModelUnavailable, NeedsSession, factFor, routeFor } from "./model";
@@ -82,9 +82,10 @@ async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, ru
   const inv = enforceSettleInvariant(out, d, rules);
   const quotes = verifiedQuotes(out, rules, facts);
   const version = await contextVersion(rules, facts);
+  const conflicts = verifiedConflicts(out, rules, facts);
   const sealed = await seal(
     key,
-    { id: d.id, guess: out.guess, conflicts: out.conflicts, send_down: out.send_down },
+    { id: d.id, guess: out.guess, conflicts, send_down: out.send_down },
     { decisionId: d.id, optionKeys: d.options.map((o) => o.key), contextVersion: version },
   );
   return {

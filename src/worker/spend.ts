@@ -17,13 +17,15 @@ function utcDay(now = new Date()): string {
 }
 
 export class SpendCounter extends DurableObject {
-  private async read(): Promise<SpendState> {
-    const day = utcDay();
+  private async read(day = utcDay()): Promise<SpendState> {
     const spent = ((await this.ctx.storage.get<number>(`spent:${day}`)) ?? 0) as number;
     return { day, spent, cap: DAILY_SPEND_CAP_USD };
   }
 
-  /** Reserve `amount` dollars if it fits under today's cap. Calls on one object run one at a time. */
+  /**
+   * Reserve `amount` dollars if it fits under today's cap. Calls on one object run one at a time.
+   * The returned state's `day` names the ledger row the reservation lives in; pass it to reconcile.
+   */
   async reserve(amount: number): Promise<{ ok: boolean; state: SpendState }> {
     const s = await this.read();
     if (s.spent + amount > s.cap) return { ok: false, state: s };
@@ -32,9 +34,12 @@ export class SpendCounter extends DurableObject {
     return { ok: true, state: s };
   }
 
-  /** Replace a reservation with the actual charge, once the response's usage is known. */
-  async reconcile(reserved: number, actual: number): Promise<SpendState> {
-    const s = await this.read();
+  /**
+   * Replace a reservation with the actual charge, once the response's usage is known, in the day the
+   * reservation was made (a call that crosses UTC midnight still settles against its own day).
+   */
+  async reconcile(day: string, reserved: number, actual: number): Promise<SpendState> {
+    const s = await this.read(day);
     s.spent = Math.max(0, s.spent - reserved + actual);
     await this.ctx.storage.put(`spent:${s.day}`, s.spent);
     return s;

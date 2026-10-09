@@ -65,13 +65,15 @@ async function route(id: string, f: Fact[]): Promise<{ out: RouteOutput; route: 
   return { out, route: enforceSettleInvariant(out, d, rules).route };
 }
 
-async function factAfter(exId: string, reason?: string): Promise<Fact[]> {
+/** The facts after keeping the guidance from an example's reason, and the kept fact's text ("" if none). */
+async function factAfter(exId: string, reason?: string): Promise<{ facts: Fact[]; added: string }> {
   const ex = EXAMPLES.find((e) => e.id === exId)!;
   const d = byId.get(exId)!;
   const others = decisions.filter((x) => x.id !== exId);
   const fo = parseFactOutput(await call(`fact ${exId}`, factPrompt(persona, rules, facts, d, ex.choice, reason ?? ex.reason, others), FACT_SCHEMA), facts);
-  if (fo.kind === "none") return facts;
-  return withFact(facts, keptFact(facts, fo, fo.text, d.options.find((o) => o.key === ex.choice)!.label));
+  if (fo.kind === "none") return { facts, added: "" };
+  const kept = keptFact(facts, fo, fo.text, d.options.find((o) => o.key === ex.choice)!.label);
+  return { facts: withFact(facts, kept), added: kept.text };
 }
 
 const describe = (r: { out: RouteOutput; route: string }) => {
@@ -90,28 +92,28 @@ const checks: Check[] = [
   },
   {
     name: "berlin-sync, after the flight reason (recorded wording)",
-    expect: "not settled; guess favors declining (B); quotes the new fact",
+    expect: "not settled; guess favors declining (B); quotes the newly kept fact",
     run: async () => {
-      const f = await factAfter("onsite-flight");
+      const { facts: f, added } = await factAfter("onsite-flight");
       const r = await route("berlin-sync", f);
       const q = verifiedQuotes(r.out, rules, f);
-      return { pass: r.route !== "settle" && topGuess(r.out.guess).option === "B" && Boolean(q.fact_quoted), detail: describe(r) };
+      return { pass: Boolean(added) && r.route !== "settle" && topGuess(r.out.guess).option === "B" && q.fact_quoted === added, detail: describe(r) };
     },
   },
   {
     name: "berlin-sync, after a paraphrased flight reason (whole loop)",
     expect: "fact proposed; berlin-sync not settled; guess favors B",
     run: async () => {
-      const f = await factAfter("onsite-flight", "No dawn flights for me. I'm on the school run until half past eight.");
+      const { facts: f, added } = await factAfter("onsite-flight", "No dawn flights for me. I'm on the school run until half past eight.");
       const r = await route("berlin-sync", f);
-      return { pass: f.length > facts.length && r.route !== "settle" && topGuess(r.out.guess).option === "B", detail: describe(r) };
+      return { pass: Boolean(added) && r.route !== "settle" && topGuess(r.out.guess).option === "B", detail: describe(r) };
     },
   },
   {
     name: "formatter-run (control), after the flight reason",
     expect: "still settled",
     run: async () => {
-      const f = await factAfter("onsite-flight");
+      const { facts: f } = await factAfter("onsite-flight");
       const r = await route("formatter-run", f);
       return { pass: r.route === "settle", detail: describe(r) };
     },
@@ -126,23 +128,23 @@ const checks: Check[] = [
   },
   {
     name: "webhook-rename, after the API rename reason",
-    expect: "a decision; guess favors keeping the name (B) at >= 0.6; quotes the new fact",
+    expect: "a decision; guess favors keeping the name (B) at >= 0.6; quotes the newly kept fact",
     run: async () => {
-      const f = await factAfter("api-rename");
+      const { facts: f, added } = await factAfter("api-rename");
       const r = await route("webhook-rename", f);
       const t = topGuess(r.out.guess);
       const q = verifiedQuotes(r.out, rules, f);
-      return { pass: r.route === "decide" && t.option === "B" && t.p >= 0.6 && Boolean(q.fact_quoted), detail: describe(r) };
+      return { pass: Boolean(added) && r.route === "decide" && t.option === "B" && t.p >= 0.6 && q.fact_quoted === added, detail: describe(r) };
     },
   },
   {
     name: "free-tier (control), after the API rename reason",
     expect: "still a decision; does not quote the new fact",
     run: async () => {
-      const f = await factAfter("api-rename");
+      const { facts: f, added } = await factAfter("api-rename");
       const r = await route("free-tier", f);
-      const newest = f[f.length - 1].text;
-      return { pass: r.route === "decide" && r.out.fact_quoted !== newest, detail: describe(r) };
+      const q = verifiedQuotes(r.out, rules, f);
+      return { pass: r.route === "decide" && (!added || q.fact_quoted !== added), detail: describe(r) };
     },
   },
 ];

@@ -62,15 +62,30 @@ function cacheUrl(key: string): string {
   return `https://bugme-cache.invalid/${key}`;
 }
 
-/** Ask the model (or a stored answer to the identical request) for JSON matching `schema`. */
-async function ask(env: Env, canSpend: boolean, prompt: string, schema: object): Promise<{ raw: unknown; source: Source }> {
+/**
+ * Ask the model (or a stored answer to the identical request) for JSON matching `schema`, checked by
+ * `validate` before it is returned or cached, so a malformed live answer is never stored.
+ */
+async function ask<T>(
+  env: Env,
+  canSpend: boolean,
+  prompt: string,
+  schema: object,
+  validate: (raw: unknown) => T,
+): Promise<{ out: T; source: Source }> {
   const key = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion: PROMPT_VERSION, schema, prompt });
   const rec = RECORDED[key];
-  if (rec) return { raw: rec.output, source: "recorded" };
+  if (rec) return { out: validate(rec.output), source: "recorded" };
 
   const cache = (caches as unknown as { default: Cache }).default;
   const hit = await cache.match(cacheUrl(key));
-  if (hit) return { raw: await hit.json(), source: "cached" };
+  if (hit) {
+    try {
+      return { out: validate(await hit.json()), source: "cached" };
+    } catch {
+      await cache.delete(cacheUrl(key)); // stored before validation existed or under an older parser
+    }
+  }
 
   if (!env.ANTHROPIC_API_KEY) throw new ModelUnavailable("no API key configured; only recorded answers are available");
   if (!canSpend) throw new NeedsSession("a quick human check is needed before live calls");
@@ -91,24 +106,26 @@ async function ask(env: Env, canSpend: boolean, prompt: string, schema: object):
     console.error("live call failed", e instanceof Anthropic.APIError ? `${e.status} ${e.message}` : e);
     throw new ModelUnavailable("the live model call failed");
   }
-  await counter.reconcile(RESERVE_PER_CALL_USD, priceOf(msg.usage));
+  await counter.reconcile(r.state.day, RESERVE_PER_CALL_USD, priceOf(msg.usage));
   if (msg.stop_reason === "refusal") throw new ModelUnavailable("the model declined this request");
   if (msg.stop_reason === "max_tokens") throw new ModelUnavailable("the model's answer was cut off");
   const text = msg.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
   let raw: unknown;
+  let out: T;
   try {
     raw = JSON.parse(text);
-  } catch {
-    throw new ModelUnavailable("the model's answer was not valid JSON");
+    out = validate(raw);
+  } catch (e) {
+    console.error("live answer rejected", e instanceof Error ? e.message : e);
+    throw new ModelUnavailable("the model's answer did not pass validation");
   }
   await cache.put(cacheUrl(key), new Response(JSON.stringify(raw), { headers: { "cache-control": "max-age=604800" } }));
-  return { raw, source: "live" };
+  return { out, source: "live" };
 }
 
 export async function routeFor(env: Env, canSpend: boolean, d: Decision, rules: Rule[], facts: Fact[]): Promise<{ out: RouteOutput; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeRoute(d, rules, facts), source: "code" };
-  const { raw, source } = await ask(env, canSpend, routePrompt(persona, rules, facts, d), ROUTE_SCHEMA);
-  return { out: parseRouteOutput(raw, d), source };
+  return ask(env, canSpend, routePrompt(persona, rules, facts, d), ROUTE_SCHEMA, (raw) => parseRouteOutput(raw, d));
 }
 
 export async function factFor(
@@ -122,6 +139,5 @@ export async function factFor(
   waiting: Decision[],
 ): Promise<{ out: FactOutput; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeFact(d, reason, waiting, facts), source: "code" };
-  const { raw, source } = await ask(env, canSpend, factPrompt(persona, rules, facts, d, choice, reason, waiting), FACT_SCHEMA);
-  return { out: parseFactOutput(raw, facts), source };
+  return ask(env, canSpend, factPrompt(persona, rules, facts, d, choice, reason, waiting), FACT_SCHEMA, (raw) => parseFactOutput(raw, facts));
 }

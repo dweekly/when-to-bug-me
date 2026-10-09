@@ -183,3 +183,12 @@ export function verifiedQuotes(out: RouteOutput, rules: Rule[], facts: Fact[]) {
     fact_quoted: verifyQuote(out.fact_quoted, factTexts),
   };
 }
+
+/**
+ * Pushback quotes the person's own record, so a conflict whose quote occurs in no current rule or
+ * fact is dropped, and a faithful one carries the exact source text.
+ */
+export function verifiedConflicts(out: RouteOutput, rules: Rule[], facts: Fact[]): RouteOutput["conflicts"] {
+  const record = [...rules.map((r) => r.text), ...facts.map((f) => f.text)];
+  return out.conflicts.map((c) => ({ option: c.option, quoted: verifyQuote(c.quoted, record) })).filter((c) => c.quoted);
+}
