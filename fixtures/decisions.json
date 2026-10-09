@@ -155,7 +155,7 @@
     ],
     "recommended": "A",
     "context": "An internal meeting during work hours; the invite goes to four engineers.",
-    "bounds": {"A": {"reversible": "yes", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
+    "bounds": {"A": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Rescheduling four reviewers costs their time and goodwill."}, "B": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Rescheduling four reviewers costs their time and goodwill."}},
     "tags": ["calendar", "meetings"]
   },
   {
@@ -380,7 +380,7 @@
     "recommended": "A",
     "context": "Fares are refundable for 24 hours after booking. The onsite agenda starts at 10:00.",
     "pair": "berlin-sync",
-    "bounds": {"A": {"reversible": "partly", "cost_usd": 212}, "B": {"reversible": "partly", "cost_usd": 392}},
+    "bounds": {"A": {"reversible": "partly", "cost_usd": 212, "undo_cost": "Refundable for 24 hours; after that the fare is lost."}, "B": {"reversible": "partly", "cost_usd": 392, "undo_cost": "Refundable for 24 hours; after that the fare is lost."}},
     "tags": ["travel", "schedule-personal", "early-morning"],
     "visual": {"kind": "timeline", "from": "05:00", "to": "13:00", "marks": [{"at": "10:00", "label": "Onsite starts"}], "bars": [{"option": "A", "from": "06:05", "to": "08:50", "label": "$212"}, {"option": "B", "from": "09:40", "to": "12:35", "label": "$392"}]}
   },
@@ -399,7 +399,7 @@
     "recommended": "A",
     "context": "A routine internal invite from colleagues. The scheduler can propose another time automatically.",
     "pair": "onsite-flight",
-    "bounds": {"A": {"reversible": "yes", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
+    "bounds": {"A": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Declining after accepting is rude to the organizers, and the meeting would cost Jordan every Tuesday morning."}, "B": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Declining tells the Berlin team no; proposing a time keeps it friendly."}},
     "tags": ["calendar", "meetings", "schedule-personal", "early-morning"],
     "visual": {"kind": "clocks", "zones": [{"label": "Jordan (Pacific)", "time": "07:30"}, {"label": "Berlin", "time": "16:30"}], "repeat": "Every Tuesday, 30 minutes"}
   },
