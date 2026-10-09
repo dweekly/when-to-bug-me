@@ -41,6 +41,31 @@ function hours(minutes: number): string {
   return `${h} h`;
 }
 
+/** The one time estimate used everywhere (home, sections, interstitials, explainer). Heuristic constants. */
+export function estimateMinutes(decisions: number, checkIns: number): number {
+  return decisions * MINUTES_PER_DECISION + checkIns * MINUTES_PER_CHECK_IN;
+}
+
+/** Overnight totals by effective route (after the code invariant), regardless of what has been done since. */
+export function overnightTotals(routes: Record<string, RouteKind>): { settle: number; check_in: number; decide: number; minutes: number } {
+  const t = { settle: 0, check_in: 0, decide: 0 };
+  for (const r of Object.values(routes)) t[r]++;
+  return { ...t, minutes: estimateMinutes(t.decide, t.check_in) };
+}
+
+/**
+ * The next decision in a focus session: finish the current project's active items before moving on,
+ * then take the next project in agenda order. Returns the id and whether the project changed.
+ */
+export function nextInSession(agenda: Agenda, currentProject: string | null): { id: string | null; changedProject: boolean; project: string | null } {
+  const items = (s: AgendaSection) => [...s.decisions, ...s.check_ins];
+  const same = agenda.sections.find((s) => s.project.id === currentProject);
+  if (same && items(same).length) return { id: items(same)[0].id, changedProject: false, project: same.project.id };
+  const nextSection = agenda.sections.find((s) => items(s).length);
+  if (!nextSection) return { id: null, changedProject: currentProject !== null, project: null };
+  return { id: items(nextSection)[0].id, changedProject: currentProject !== null && nextSection.project.id !== currentProject, project: nextSection.project.id };
+}
+
 /** Within a section: most agents unblocked first, then longest waiting, then id for a stable order. */
 function byPriority(a: Decision, b: Decision): number {
   return b.unblocks - a.unblocks || b.waiting_minutes - a.waiting_minutes || a.id.localeCompare(b.id);
@@ -61,10 +86,12 @@ export function buildAgenda(
   projects: Project[],
   /** Decisions already answered this session; they leave the agenda. */
   done: Set<string> = new Set(),
+  /** Decisions the person set aside ("Not now"); listed separately, never in a section. */
+  aside: Set<string> = new Set(),
 ): Agenda {
-  const waiting = decisions.filter((d) => !done.has(d.id) && routes[d.id] && routes[d.id] !== "settle");
+  const waiting = decisions.filter((d) => !done.has(d.id) && !aside.has(d.id) && routes[d.id] && routes[d.id] !== "settle");
   const settled = decisions
-    .filter((d) => routes[d.id] === "settle")
+    .filter((d) => routes[d.id] === "settle" && !aside.has(d.id))
     .sort((a, b) => b.waiting_minutes - a.waiting_minutes || a.id.localeCompare(b.id))
     .map((d) => d.id);
 
@@ -75,7 +102,7 @@ export function buildAgenda(
     const decide = mine.filter((d) => routes[d.id] === "decide").sort(byPriority);
     const quick = mine.filter((d) => routes[d.id] === "check_in").sort(byPriority);
     const unblocks = mine.reduce((s, d) => s + d.unblocks, 0);
-    const minutes = decide.length * MINUTES_PER_DECISION + quick.length * MINUTES_PER_CHECK_IN;
+    const minutes = estimateMinutes(decide.length, quick.length);
     const parts = [];
     if (decide.length) parts.push(count(decide.length, "decision").toLowerCase());
     if (quick.length) parts.push(count(quick.length, "quick check-in").toLowerCase());
