@@ -11,7 +11,6 @@ test.beforeEach(async ({ page }) => {
 test("Back onto an answered decision shows it read-only; it cannot be answered again", async ({ page }) => {
   await openDecision(page, "incident-action-items");
   await option(page, "File all five as drafted").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await page.getByRole("button", { name: "Next decision" }).click();
   await page.goBack();
   await expect(page.locator("#now")).toContainText("You decided:");
@@ -78,7 +77,6 @@ test("dictation stops when Not now opens or closes, so speech never lands in the
   });
   await page.reload();
   await openDecision(page, "api-rename");
-  await option(page, "Keep user_id").click();
   await page.locator("#now").getByRole("button", { name: "Answer by voice" }).click();
   await page.locator("#now").getByRole("button", { name: "Not now" }).click();
   expect(await page.evaluate("window.__recs.at(-1).stopped === true")).toBe(true);
@@ -107,7 +105,6 @@ test("dictation stops when a finished decision is opened", async ({ page }) => {
   // Finish one decision, then start dictating on another and open the finished one by its link.
   await openDecision(page, "incident-action-items");
   await option(page, "File all five").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await expect.poll(async () => Boolean((await stored(page))?.answered?.["incident-action-items"])).toBe(true);
   // A later visit: the answer is kept but its in-progress card is gone, so it opens read-only.
   await page.evaluate(() => {
@@ -118,7 +115,6 @@ test("dictation stops when a finished decision is opened", async ({ page }) => {
   });
   await page.reload();
   await openDecision(page, "api-rename");
-  await option(page, "Keep user_id").click();
   await page.locator("#now").getByRole("button", { name: "Answer by voice" }).click();
   await page.evaluate("location.hash = '#/d/incident-action-items'");
   await expect(page.locator("#now .closed")).toBeVisible();

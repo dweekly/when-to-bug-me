@@ -17,7 +17,7 @@ import { EFFORT, MAX_REROUTES_PER_FACT, MAX_TOKENS, MODEL, PRICE_PER_MTOK } from
 import { parseFactOutput } from "../src/shared/fact";
 import { modelCacheKey } from "../src/shared/hash";
 import { keptFact, withFact } from "../src/shared/lifecycle";
-import { FACT_SCHEMA, PROMPT_VERSION, ROUTE_SCHEMA, factPrompt, routePrompt } from "../src/shared/prompts";
+import { FACT_SCHEMA, PROMPT_VERSION, routeSchema, factPrompt, routePrompt } from "../src/shared/prompts";
 import { parseRouteOutput } from "../src/shared/route";
 import type { Decision, Fact, Persona, Rule } from "../src/shared/types";
 import { EXAMPLES } from "../src/shared/examples";
@@ -39,6 +39,8 @@ const dryRun = process.argv.includes("--dry-run");
 const recorded = JSON.parse(readFileSync(OUT, "utf8")) as { note: string; entries: Record<string, unknown> };
 let spent = 0;
 let calls = 0;
+/** Calls whose answer failed validation: reported, not recorded, and the run exits non-zero. */
+const rejected: string[] = [];
 
 function keychain(service: string): string {
   return execFileSync("security", ["find-generic-password", "-a", process.env.USER ?? "", "-s", service, "-w"], { encoding: "utf8" }).trim();
@@ -71,7 +73,13 @@ async function ask(label: string, prompt: string, schema: object, validate: (raw
   if (msg.stop_reason !== "end_turn") throw new Error(`${label}: stop_reason ${msg.stop_reason}`);
   const text = msg.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
   const output = JSON.parse(text);
-  validate(output); // throws on a semantically invalid answer; nothing is recorded and a rerun retries
+  try {
+    validate(output); // throws on a semantically invalid answer; nothing is recorded and a rerun retries
+  } catch (e) {
+    rejected.push(label);
+    console.error(`${label}: REJECTED (${(e as Error).message}); not recorded. The model returned:\n${JSON.stringify(output, null, 2)}`);
+    return null;
+  }
   recorded.entries[key] = { label, output, model: MODEL, recorded_at: new Date().toISOString(), usage: { input: u.input_tokens, output: u.output_tokens }, ms: Date.now() - t0 };
   console.log(`${label}: $${cost.toFixed(4)} in ${Date.now() - t0} ms (total $${spent.toFixed(3)})`);
   return output;
@@ -87,7 +95,7 @@ async function pool<T>(items: T[], fn: (t: T) => Promise<void>): Promise<void> {
 async function routeAll(ids: string[], r: Rule[], f: Fact[], tag: string): Promise<void> {
   await pool(ids, async (id) => {
     const d = byId.get(id)!;
-    const out = await ask(`route ${id} [${tag}]`, routePrompt(persona, r, f, d), ROUTE_SCHEMA, (raw) => parseRouteOutput(raw, d));
+    const out = await ask(`route ${id} [${tag}]`, routePrompt(persona, r, f, d), routeSchema(d.options.map((o) => o.key)), (raw) => parseRouteOutput(raw, d));
     if (out) {
       const p = parseRouteOutput(out, d);
       const top = p.guess.reduce((a, b) => (b.p > a.p ? b : a));
@@ -116,6 +124,10 @@ async function main(): Promise<void> {
   }
   writeFileSync(OUT, `${JSON.stringify(recorded, null, 2)}\n`);
   console.log(`${dryRun ? "would make" : "made"} ${calls} call(s); spent $${spent.toFixed(3)}; ${Object.keys(recorded.entries).length} entries recorded`);
+  if (rejected.length) {
+    console.error(`${rejected.length} answer(s) failed validation and were not recorded: ${rejected.join("; ")}. Rerun to retry them.`);
+    process.exit(1);
+  }
 }
 
 main().catch((e) => {

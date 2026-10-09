@@ -3,7 +3,7 @@
 // read, and the decision) and returns schema-valid output, so the whole app can be exercised end to
 // end without a key. It is keyword matching, not judgment; nothing it produces is shown as live.
 
-import type { Decision, Fact, FactOutput, RouteKind, RouteOutput, Rule } from "./types";
+import type { AskOutput, Decision, Fact, FactOutput, RouteKind, RouteOutput, Rule } from "./types";
 
 /** Which written rule governs each topic tag, found by matching the rule's current text. */
 const TAG_RULES: [tag: string, rule: RegExp][] = [
@@ -132,11 +132,26 @@ export function fakeRoute(d: Decision, rules: Rule[], allFacts: Fact[]): RouteOu
     why_here: why,
     headline: TRANSLATIONS[d.id] ? "Recompute past invoices' tax and send corrections, or leave them?" : d.question,
     in_your_terms: TRANSLATIONS[d.id] ?? d.context,
+    briefing: TRANSLATIONS[d.id] ?? d.context,
+    option_notes: d.options.map((o) => ({
+      option: o.key,
+      pros: o.description ? [o.description] : [],
+      cons: [],
+      consequence: consequenceOf(d, o.key),
+    })),
     problem: TRANSLATIONS[d.id] ? "options_unusable" : "fine",
     guess: guessFor(d, favored, p),
     conflicts,
     send_down: d.options.map((o) => ({ option: o.key, instruction: `Jordan chose "${o.label}". Proceed on that basis.` })),
   };
+}
+
+/** The fake model's consequence line: the option's hand-authored cost and how it undoes, if any. */
+function consequenceOf(d: Decision, key: string): string {
+  const b = d.bounds[key];
+  if (!b) return "";
+  const parts = [b.cost_usd ? `$${b.cost_usd}` : "", b.undo_cost ?? ""].filter(Boolean);
+  return parts.join("; ");
 }
 
 /** Turn a stated reason into proposed guidance, the way the fact prompt would, by keyword. */
@@ -160,4 +175,17 @@ export function fakeFact(d: Decision, reason: string, waiting: Decision[], facts
     confirm: `So the rule of thumb is: ${text}`,
     may_affect: waiting.filter(sharesTag).map((x) => x.id),
   };
+}
+
+/** Words in a question long enough to carry meaning, for the fake model's crude matching. Heuristic. */
+const MIN_ASK_WORD = 5;
+
+/** The fake model's answer to a clarifying question: answerable when the question shares a meaningful
+ *  word with the agent's context, and then the context is the answer. */
+export function fakeAsk(d: Decision, question: string): AskOutput {
+  const words = question.toLowerCase().match(/[a-z0-9]+/g)?.filter((w) => w.length >= MIN_ASK_WORD) ?? [];
+  const ctx = d.context.toLowerCase();
+  return words.some((w) => ctx.includes(w))
+    ? { answerable: true, answer: d.context }
+    : { answerable: false, answer: "The agent's notes don't say; it would need to find out." };
 }

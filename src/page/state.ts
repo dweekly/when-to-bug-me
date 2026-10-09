@@ -31,6 +31,10 @@ export interface Answer {
   pushback: string | null;
   send_down: string;
   marks: string[];
+  /** "Yes, but…": conditions the person attached to the option they chose. */
+  conditions?: string;
+  /** "Something else": the option the person wrote instead (final is then "other"). */
+  other?: string;
 }
 
 /** One entry in the record: every guess made before an answer, the answer, the basis and the marks. */
@@ -87,7 +91,15 @@ export interface Flow {
   id: string;
   choice: string | null;
   basis: string;
-  phase: "choose" | "busy" | "pushback" | "why" | "proposal" | "done" | "punting";
+  /** "pending": an option was clicked and the Undo window is open; nothing has been sent yet. */
+  phase: "choose" | "pending" | "busy" | "pushback" | "why" | "proposal" | "done" | "punting";
+  /** Which other way of answering is open on the card, if any. */
+  mode: "conditions" | "other" | "ask" | null;
+  /** "Something else": the option the person is writing. */
+  other: string;
+  /** "Ask a question": the question, and Claude's answer once it arrives. */
+  question: string;
+  askAnswer: { answerable: boolean; answer: string; source: Source } | null;
   /** While setting the decision aside: the kind chosen and the sentence so far. */
   puntKind: PuntKind | null;
   puntReason: string;
@@ -110,7 +122,7 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, basis: "", phase: "choose", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+  return { id, choice: null, basis: "", phase: "choose", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null, mode: null, other: "", question: "", askAnswer: null };
 }
 
 /** A follow-up still waiting on the person after they answered (or while a request is out). */
@@ -174,6 +186,8 @@ export function load(q: Queue): State {
         for (const [id, saved] of Object.entries(s.flows ?? {})) {
           const f = { ...newFlow(id), ...saved }; // fields added since this morning was saved get defaults
           if (f.phase === "punting") flows[id] = { ...f, phase: f.puntFrom ?? "choose" };
+          // An Undo window open when the page reloaded was never sent: the choice comes back unsent.
+          else if (f.phase === "pending") flows[id] = { ...f, phase: "choose", message: "The page reloaded before that answer was sent; choose again." };
           else if (f.phase !== "busy") flows[id] = f;
           else if (s.answered[id]) flows[id] = { ...f, phase: "done", message: "The page reloaded before this finished; your answer and reason are recorded." };
         }

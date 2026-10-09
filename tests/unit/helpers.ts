@@ -38,6 +38,8 @@ export function routeOutput(d: Decision, over: Partial<RouteOutput> = {}): Route
     why_here: "Because.",
     headline: d.question,
     in_your_terms: d.question,
+    briefing: d.context,
+    option_notes: d.options.map((o) => ({ option: o.key, pros: ["A plus."], cons: ["A minus."], consequence: "" })),
     problem: "fine",
     guess: d.options.map((o) => ({ option: o.key, p: o.key === d.recommended ? 0.7 : 0.3 / others.length })),
     conflicts: [],

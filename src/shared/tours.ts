@@ -39,8 +39,14 @@ export interface Tour {
   steps: TourStep[];
 }
 
-const pick = (key: string) => `#now .opt:nth-of-type(${key.charCodeAt(0) - 64})`;
-const DECIDE = "#now .actions .primary";
+const pick = (key: string) => `#now .opt[data-key="${key}"]`;
+/** After the deciding click: point at Undo, and move on when Bug Me answers (pushback, why, or done). */
+const UNDO_STEP: TourStep = {
+  target: "#now .undo-bar",
+  title: "A few seconds to undo",
+  text: "Clicking decides. Misclicked? Undo before the bar runs out.",
+  until: { appear: "#now .followup" },
+};
 
 export const TOURS: Tour[] = [
   {
@@ -57,14 +63,14 @@ export const TOURS: Tour[] = [
       { go: "#/", target: "#start-card", title: "Start here", text: "Bug Me sorted last night's questions into piles, one per project. Start with this one; it says why.", until: "next" },
       { target: "#agenda", title: "Then, in order", text: "Every waiting question in the order to work it. ● a real decision, ◐ a quick check.", until: "next" },
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have booked the cheap 6:05am itself. Code stopped it: $212 and only partly refundable.", until: "next" },
-      { target: "#now .viz", title: "See it, don't read it", text: "The briefing is a picture of the trade-off: the 6:05 lands before the 10:00 start.", until: "next" },
-      { target: pick("B"), title: "Say no", text: "Answer as Jordan would: take the 9:40.", until: { click: pick("B") } },
-      { target: DECIDE, title: "Decide", text: "Bug Me's guess stays sealed until you do.", until: { click: DECIDE } },
+      { target: "#now .viz", title: "See it, don't read it", text: "A picture of the trade-off: the 6:05 lands before the 10:00 start. Each option lists its pros, cons and cost.", until: "next" },
+      { target: pick("B"), title: "Say no", text: "Answer as Jordan would: take the 9:40. One click decides; Bug Me's guess stays sealed until you do.", until: { click: pick("B") } },
+      UNDO_STEP,
       { target: "#now .followup.push", optional: true, title: "Pushback, from your own rules", text: "Your travel rule says cheapest. Bug Me asks once. Say this one's an exception.", until: { click: "#now .followup.push .primary" } },
       { target: "#now .followup", title: "I'm curious: why?", text: "Your answer surprised it. Say why, or use Jordan's words.", until: { appear: "#fact-text" }, example: { textarea: "#why", decision: "onsite-flight" } },
       { target: "#now .followup", title: "A reason becomes guidance", text: "Keep it (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The 7:30am Berlin invite was checked again under your new guidance.", until: { click: "#now .rerouted button" } },
-      { target: "#now .actions .ghost", title: "Not now", text: "Not sure yet? Set it aside, and say what you'd need.", until: { click: "#now .actions .ghost" } },
+      { target: "#now .not-now", title: "Not now", text: "Not ready to decide? Set it aside, and say what you'd need.", until: { click: "#now .not-now" } },
       { target: "#now .punt", title: "What would you need?", text: "Pick one and say it in a sentence. The agent is told exactly that.", until: { event: "bugme:set-aside" }, example: { textarea: "#punt-reason", text: "Ask the Berlin team whether 9:30am Pacific works; that's still 18:30 for them." } },
       { go: "#/", target: "#aside", title: "Set aside, not lost", text: "Back on the overview, it waits here with your reason until you resume it.", until: "next" },
     ],
@@ -78,8 +84,8 @@ export const TOURS: Tour[] = [
     path: [{ decision: "onsite-flight", choice: "B", reason: "example", keep: true }],
     steps: [
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have settled this; code brought it to you: it costs $212 and is only partly refundable.", until: "next" },
-      { target: pick("B"), title: "Say no", text: "Take the 9:40.", until: { click: pick("B") } },
-      { target: DECIDE, title: "Decide", text: "Bug Me has a guess, sealed until you answer.", until: { click: DECIDE } },
+      { target: pick("B"), title: "Say no", text: "Take the 9:40. One click decides; Bug Me's guess stays sealed until you do.", until: { click: pick("B") } },
+      UNDO_STEP,
       { target: "#now .followup.push", optional: true, title: "Pushback, from your own rules", text: "Your travel rule says cheapest. Bug Me asks once. Say this one's an exception.", until: { click: "#now .followup.push .primary" } },
       { target: "#now .followup", title: "I'm curious: why?", text: "Say why, or use Jordan's words.", until: { appear: "#fact-text" }, example: { textarea: "#why", decision: "onsite-flight" } },
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
@@ -96,8 +102,9 @@ export const TOURS: Tour[] = [
     steps: [
       { go: "#/d/api-rename", target: "#now .why", title: "Why it's yours", text: "Your written rule says public API changes are yours.", until: "next" },
       { target: "#now .viz", title: "The real payload", text: "What changes, and who parses it.", until: "next" },
-      { target: pick("B"), title: "Keep user_id", text: "Choose the stable name.", until: { click: pick("B") } },
-      { target: "#basis", side: "top", title: "Say why", text: "Speak or type; it becomes guidance. Or use Jordan's words.", until: { click: DECIDE }, example: { textarea: "#basis", decision: "api-rename" } },
+      { target: "#now .why-panel", title: "Say why, if you like", text: "Optional. Speak or type, or use Jordan's words; a reason becomes guidance.", until: "next", example: { textarea: "#basis", decision: "api-rename" } },
+      { target: pick("B"), title: "Keep user_id", text: "Choose the stable name. One click decides.", until: { click: pick("B") } },
+      UNDO_STEP,
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The webhook rename is now framed by your reason.", until: "next" },
     ],
@@ -110,8 +117,8 @@ export const TOURS: Tour[] = [
     mood: "attentive",
     path: [{ decision: "sdk-dependency", choice: "B" }],
     steps: [
-      { go: "#/d/sdk-dependency", target: pick("A"), title: "Take the agent's pick", text: "Add the library.", until: { click: pick("A") } },
-      { target: DECIDE, title: "Decide", text: "Bug Me checks your record first.", until: { click: DECIDE } },
+      { go: "#/d/sdk-dependency", target: pick("A"), title: "Take the agent's pick", text: "Add the library. Bug Me checks your record before it goes out.", until: { click: pick("A") } },
+      UNDO_STEP,
       { target: "#now .followup.push", title: "Your own words", text: "It quotes what you told it last week. Change your answer.", until: { click: "#now .followup.push .ghost" } },
       { target: "#now .followup", title: "Pushback, rationed", text: "At most twice a session, and only with your own record.", until: "next" },
     ],
@@ -125,8 +132,9 @@ export const TOURS: Tour[] = [
     path: [{ decision: "settings-redesign", choice: "B", reason: "example", keep: true }],
     steps: [
       { go: "#/d/settings-redesign", target: "#now .variants", title: "Both built", text: "Click around in each. They're real prototypes, not screenshots.", until: "next" },
-      { target: pick("B"), title: "Pick one", text: "One page.", until: { click: pick("B") } },
-      { target: "#basis", side: "top", title: "Teach it back", text: "In a sentence: what happens next if you choose it? Or use Jordan's words.", until: { click: DECIDE }, example: { textarea: "#basis", decision: "settings-redesign" } },
+      { target: "#now .why-panel", title: "Teach it back", text: "In a sentence: what happens next if you choose one page? Or use Jordan's words.", until: "next", example: { textarea: "#basis", decision: "settings-redesign" } },
+      { target: pick("B"), title: "Pick one", text: "One page. One click decides.", until: { click: pick("B") } },
+      UNDO_STEP,
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
     ],
   },
@@ -140,8 +148,9 @@ export const TOURS: Tour[] = [
     steps: [
       { go: "#/d/reconciliation-path", target: "#now-q", title: "In your terms", text: "What the decision actually means for customers.", until: "next" },
       { target: "#now details.more", title: "What the agent asked", text: "Open it: “v2 reconciliation path or the T-19 mapping?”", until: { click: "#now details.more summary" } },
-      { target: pick("B"), title: "Decide", text: "Leave past invoices alone.", until: { click: pick("B") } },
-      { target: "#basis", side: "top", title: "Say why", text: "Or use Jordan's words.", until: { click: DECIDE }, example: { textarea: "#basis", decision: "reconciliation-path" } },
+      { target: "#now .why-panel", title: "Say why, if you like", text: "Or use Jordan's words.", until: "next", example: { textarea: "#basis", decision: "reconciliation-path" } },
+      { target: pick("B"), title: "Decide", text: "Leave past invoices alone. One click decides.", until: { click: pick("B") } },
+      UNDO_STEP,
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
     ],
   },

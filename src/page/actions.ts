@@ -4,7 +4,7 @@
 // redraws through views.ts / card.ts.
 
 import { nextInSession } from "../shared/agenda";
-import { MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, REROUTE_CONCURRENCY } from "../shared/constants";
+import { MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, REROUTE_CONCURRENCY, UNDO_WINDOW_MS } from "../shared/constants";
 import { type Punt, puntInstruction, puntProblem } from "../shared/punt";
 import {
   type GlowEvent,
@@ -19,7 +19,7 @@ import {
   shouldPushBack,
   substantiveBasis,
 } from "../shared/lifecycle";
-import type { Card, Decision, FactOutput, RouteKind, Source } from "../shared/types";
+import type { AskOutput, Card, Decision, FactOutput, RouteKind, Source } from "../shared/types";
 import { api } from "./api";
 import { renderNow } from "./card";
 import { ROUTE_LABEL, agenda, routeOf, waitingIds } from "./derive";
@@ -50,6 +50,145 @@ export function showing(flow: Flow): boolean {
  */
 export function alive(s0: State, flow?: Flow): boolean {
   return S === s0 && (!flow || S.flows[flow.id] === flow);
+}
+
+/**
+ * The Undo window, in ms. Tests shorten it through localStorage ("bugme.undoMs") so the suite does
+ * not wait seconds per answer; the product always uses UNDO_WINDOW_MS.
+ */
+export function undoWindowMs(): number {
+  try {
+    const v = Number(localStorage.getItem("bugme.undoMs"));
+    return Number.isFinite(v) && localStorage.getItem("bugme.undoMs") !== null && v >= 0 ? v : UNDO_WINDOW_MS;
+  } catch {
+    return UNDO_WINDOW_MS;
+  }
+}
+
+/** The one open Undo window, if any: which flow it belongs to and the timer that will send it. */
+let pendingAnswer: { flow: Flow; timer: ReturnType<typeof setTimeout> } | null = null;
+
+/**
+ * Clicking an option decides. Nothing is sent yet: the flow enters "pending" bound to this card and
+ * its sealed guess, the Undo bar shows, and the answer goes out when the window closes, unless the
+ * person undoes it, leaves the card, or the card is re-routed in the meantime.
+ */
+export function choose(flow: Flow, d: Decision, route: RouteKind, key: string): void {
+  if (flow.phase !== "choose") return;
+  cancelPending();
+  const s0 = S;
+  const card = S.cards[d.id] as Card;
+  flow.choice = key;
+  flow.card = card;
+  flow.phase = "pending";
+  flow.message = "";
+  renderNow();
+  pendingAnswer = {
+    flow,
+    timer: setTimeout(() => {
+      pendingAnswer = null;
+      if (!alive(s0, flow) || flow.phase !== "pending") return;
+      if (!showing(flow)) {
+        flow.phase = "choose";
+        flow.message = "Not sent: you left the card before the answer went out.";
+        return;
+      }
+      if (S.cards[d.id] !== card) {
+        flow.phase = "choose";
+        flow.message = "Not sent: this question was re-checked while you were deciding. Have another look.";
+        renderNow();
+        return;
+      }
+      flow.phase = "choose"; // answer() starts from a chosen, unsent card
+      void answer(d, route);
+    }, undoWindowMs()),
+  };
+}
+
+/** Undo: the choice is withdrawn before anything was sent; the reason typed so far is kept. */
+export function undoChoice(flow: Flow): void {
+  if (flow.phase !== "pending") return;
+  cancelPending();
+  flow.phase = "choose";
+  flow.choice = null;
+  announce("Undone. Nothing was sent.");
+  renderNow();
+}
+
+/** Close any open Undo window without sending (used when the card in front of the person changes). */
+export function cancelPending(): void {
+  if (!pendingAnswer) return;
+  clearTimeout(pendingAnswer.timer);
+  const f = pendingAnswer.flow;
+  pendingAnswer = null;
+  if (f.phase === "pending") {
+    f.phase = "choose";
+    f.message = "Not sent: you left the card before the answer went out.";
+  }
+}
+
+/**
+ * "Something else": the person writes their own option. It is recorded as the answer and is what the
+ * agent is told (simulated). Bug Me's sealed guess stays sealed: it only ever guessed among A and B.
+ */
+export function chooseOther(flow: Flow, d: Decision, route: RouteKind): void {
+  const text = flow.other.trim().replace(/\s+/g, " ");
+  if (text.length < 4) {
+    flow.error = "Say what you'd like the agent to do instead.";
+    renderNow();
+    return;
+  }
+  if (text.length > MAX_REASON_CHARS) {
+    flow.error = `Please keep it under ${MAX_REASON_CHARS} characters.`;
+    renderNow();
+    return;
+  }
+  cancelPending();
+  flow.error = "";
+  const basis = flow.basis.trim();
+  const send_down = `${Q.persona.first_name} chose neither option. Instead: ${text}`;
+  S.answered[d.id] = { initial: "other", final: "other", other: text, basis, guess: [], route, pushback: null, send_down, marks: [] };
+  log("answer", { id: d.id, route, initial: "other", final: "other", other: text, basis, guess_before_answer: null, source: S.cards[d.id] && "source" in S.cards[d.id]! ? (S.cards[d.id] as Card).source : null });
+  glowEvent({ kind: "answered", route, basis: substantiveBasis(basis || text), againstRecommendation: true });
+  flow.choice = "other";
+  flow.send_down = send_down;
+  done(flow, "");
+}
+
+/** "Ask a question": Claude answers from what the agent provided, or says what is missing. */
+export async function askQuestion(flow: Flow, d: Decision): Promise<void> {
+  const q = flow.question.trim();
+  if (q.length < 4) {
+    flow.error = "Type or say your question first.";
+    renderNow();
+    return;
+  }
+  const s0 = S;
+  flow.error = "";
+  flow.askAnswer = null;
+  flow.message = "Looking at what the agent provided…";
+  renderNow();
+  try {
+    const r = await api<AskOutput & { source: Source }>("/api/ask", { id: d.id, question: q });
+    if (!alive(s0, flow)) return;
+    flow.askAnswer = r;
+    flow.message = "";
+    log("question", { id: d.id, question: q, answerable: r.answerable, answer: r.answer, source: r.source });
+  } catch (e) {
+    if (!alive(s0, flow)) return;
+    flow.askAnswer = { answerable: false, answer: `Couldn't reach Claude for that (${(e as Error).message}).`, source: "code" };
+    flow.message = "";
+  }
+  save();
+  if (showing(flow)) renderNow();
+}
+
+/** An unanswered question goes back to the asking agent, and the decision waits for the answer. */
+export function sendQuestionToAgent(flow: Flow, d: Decision): void {
+  flow.puntKind = "info";
+  flow.puntReason = flow.question;
+  flow.puntFrom = "choose";
+  setAside(flow, d);
 }
 
 export async function answer(d: Decision, route: RouteKind): Promise<void> {
@@ -102,9 +241,12 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
   }
   if (!alive(s0, flow)) return;
   flow.guess = r.guess;
-  flow.send_down = r.send_down;
   const basis = flow.basis.trim();
-  S.answered[d.id] = { initial: flow.initial ?? choice, final: choice, basis, guess: r.guess, route, pushback: flow.pushback, send_down: r.send_down, marks: [] };
+  // "Yes, but…": the conditions travel with the answer to the agent, and count as its reason.
+  const conditions = flow.mode === "conditions" && basis ? basis : "";
+  const send_down = conditions ? `${r.send_down} Conditions from ${Q.persona.first_name}: ${conditions}` : r.send_down;
+  flow.send_down = send_down;
+  S.answered[d.id] = { initial: flow.initial ?? choice, final: choice, basis, guess: r.guess, route, pushback: flow.pushback, send_down, marks: [], ...(conditions ? { conditions } : {}) };
   log("answer", {
     id: d.id,
     route,
@@ -114,6 +256,7 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     guess_before_answer: r.guess,
     pushback: flow.pushback,
     pushback_outcome: pushbackOutcome,
+    conditions: conditions || undefined,
     source: c.source,
   });
   glowEvent({ kind: "answered", route, basis: substantiveBasis(basis), againstRecommendation: choice !== d.recommended });

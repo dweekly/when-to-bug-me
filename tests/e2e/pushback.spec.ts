@@ -9,9 +9,8 @@ test.beforeEach(async ({ page }) => {
 
 test("adding the schema library is pushed back on with F1, and 'Change to' records the other option", async ({ page }) => {
   await openFromAgenda(page, "schema-validation library");
+  await page.locator("#basis").fill("Generated validators stay in sync with the OpenAPI spec for free.");
   await option(page, "Add the library").click();
-  await page.getByLabel("Why? Say it or type it.").fill("Generated validators stay in sync with the OpenAPI spec for free.");
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
 
   const push = page.locator("#now .followup.push");
   await expect(push).toBeVisible();

@@ -59,3 +59,10 @@ export const MAX_REROUTES_PER_FACT = 6;
 
 /** Concurrent model calls when re-routing several decisions at once. */
 export const REROUTE_CONCURRENCY = 4;
+
+/** Most pros, and most cons, shown under one option: enough to see the trade-off at a glance. Heuristic. */
+export const MAX_OPTION_NOTES = 2;
+
+/** How long the Undo bar stays after clicking an option, before the answer is sent. Long enough to
+ *  catch a misclick, short enough that the next card isn't kept waiting. Heuristic. */
+export const UNDO_WINDOW_MS = 4000;

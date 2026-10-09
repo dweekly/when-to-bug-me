@@ -11,7 +11,6 @@ test.beforeEach(async ({ page }) => {
 async function flightNo(page: import("@playwright/test").Page): Promise<void> {
   await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
 }
 
@@ -25,17 +24,14 @@ test("an answer in flight stays with its own card when another card is opened", 
   });
   await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
-  // While the flight's check is held, open another decision and pick an option there.
+  // While the flight's check is held, open another decision and answer it too (clicking decides).
   await openFromAgenda(page, "File the five action items");
   await option(page, "File all five as drafted").click();
   release();
   await expect.poll(async () => (await stored(page))?.answered["onsite-flight"]?.final).toBe("B");
-  const s = await stored(page);
-  expect(s?.answered["incident-action-items"]).toBeUndefined();
-  // The card in front of the person is still the one they opened, with their selection intact.
+  // Each answer stays with its own card: the held flight answer never lands on the other decision.
+  await expect.poll(async () => (await stored(page))?.answered["incident-action-items"]?.final).toBe("A");
   await expect(page.locator("#now-q")).toContainText("File the five action items");
-  await expect(option(page, "File all five as drafted")).toHaveAttribute("aria-pressed", "true");
 });
 
 test("a why draft survives leaving the card to mark a settled decision", async ({ page }) => {
@@ -85,9 +81,8 @@ test("a re-routed card whose route did not change survives a reload", async ({ p
   // The API rename is first on the agenda, so Start opens it.
   await page.locator("#start").click();
   await expect(page.locator("#now-q")).toContainText("user_id");
-  await option(page, "Keep user_id").click();
   await page.locator("#basis").fill("Renames break every integrator; keep existing field names in anything public.");
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
+  await option(page, "Keep user_id").click();
   await page.getByRole("button", { name: "Keep it" }).click();
   const quoted = async () =>
     (JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string).cards["webhook-rename"].fact_quoted as string);

@@ -6,7 +6,7 @@ import { EXAMPLES } from "../shared/examples";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { answer, done, finalize, glowEvent, keepFact, next, propose, resume, setAside } from "./actions";
+import { askQuestion, choose, chooseOther, done, finalize, glowEvent, keepFact, next, propose, resume, sendQuestionToAgent, setAside, undoChoice, undoWindowMs } from "./actions";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
 import { go } from "./router";
 import { tourAfterRender } from "./tour";
@@ -60,27 +60,33 @@ function drawNow(): void {
   const project = Q.persona.projects.find((p) => p.id === d.project)!;
   const locked = F!.phase !== "choose";
 
+  const notes = new Map((c.option_notes ?? []).map((n) => [n.option, n]));
   const opts = h(
     "div",
-    { class: "options", role: "group", "aria-label": "Options" },
-    ...d.options.map((o) =>
-      h(
+    { class: "options", role: "group", "aria-label": "Options: choosing one decides" },
+    ...d.options.map((o) => {
+      const n = notes.get(o.key);
+      return h(
         "button",
         {
           type: "button",
           class: "opt",
+          "data-key": o.key,
           "aria-pressed": String(flow.choice === o.key),
           disabled: locked,
-          onclick: () => {
-            flow.choice = o.key;
-            renderNow();
-          },
+          onclick: () => choose(flow, d, route, o.key),
         },
-        h("b", {}, `${o.key}. ${o.label}`),
-        o.description ? h("span", {}, o.description) : null,
+        h("span", { class: "key", "aria-hidden": "true" }, o.key),
+        h("b", { class: "opt-label" }, o.label),
+        n && (n.pros.length || n.cons.length)
+          ? h("ul", { class: "procon" }, ...n.pros.map((t) => h("li", { class: "pro" }, h("span", { class: "sr-only" }, "For: "), t)), ...n.cons.map((t) => h("li", { class: "con" }, h("span", { class: "sr-only" }, "Against: "), t)))
+          : o.description
+            ? h("span", { class: "opt-desc" }, o.description)
+            : null,
+        n?.consequence ? h("span", { class: "consequence" }, n.consequence) : null,
         o.key === d.recommended ? h("i", { class: "agent-pick" }, "the agent's pick") : null,
-      ),
-    ),
+      );
+    }),
   );
 
   const variants =
@@ -99,53 +105,48 @@ function drawNow(): void {
         )
       : null;
 
-  const chosen = d.options.find((o) => o.key === flow.choice);
-  const basisLabel =
-    d.explore && chosen
-      ? `In a sentence: what happens next if you choose ${chosen.label}?`
-      : route === "decide"
-        ? "Why? Say it or type it."
-        : "Why? (optional for a quick check)";
-  const ta = h("textarea", { id: "basis", rows: 2, placeholder: "Talk it through. Your reason becomes guidance every agent follows.", disabled: locked }) as HTMLTextAreaElement;
+  // The Why panel: optional, to the side. In "Yes, but…" mode it holds the conditions instead.
+  const conditionsMode = flow.mode === "conditions";
+  const whyLabel = conditionsMode ? "Your conditions, then choose the option they go with" : d.explore ? "Why? (optional) In a sentence, what happens next?" : "Why? (optional)";
+  const ta = h("textarea", { id: "basis", rows: 4, placeholder: conditionsMode ? "Yes, as long as…" : "Say it or type it. A reason becomes guidance every agent follows.", disabled: !["choose", "pending"].includes(flow.phase) }) as HTMLTextAreaElement;
   ta.value = flow.basis;
-  ta.addEventListener("input", () => {
-    flow.basis = ta.value;
-    submit.toggleAttribute("disabled", !canSubmit());
-  });
-  const mic = micButton(ta, locked, flow, (t) => (flow.basis = t));
-  // Substantive decisions and explored options (the teach-back) ask for a basis up front.
-  const asksBasis = route === "decide" || Boolean(d.explore);
-  // A substantive decision asks for its basis up front. A quick check-in is answered in one click;
-  // if the answer surprises Bug Me, it asks "I'm curious: why?" before revealing its guess.
-  const basis =
-    asksBasis
-      ? h("div", { class: "basis" }, h("label", { for: "basis" }, basisLabel), h("div", { class: "basis-row" }, ta, mic), locked ? null : exampleButton(d, ta))
-      : null;
+  ta.addEventListener("input", () => (flow.basis = ta.value));
+  const mic = micButton(ta, !["choose", "pending"].includes(flow.phase), flow, (t) => (flow.basis = t));
+  const whyPanel = h(
+    "aside",
+    { class: `why-panel${conditionsMode ? " conditions" : ""}` },
+    h("label", { for: "basis" }, whyLabel),
+    h("div", { class: "basis-row" }, ta, mic),
+    flow.phase === "choose" ? exampleButton(d, ta) : null,
+  );
 
-  const canSubmit = () => Boolean(flow.choice) && (!asksBasis || hasBasis(flow.basis) || skipBasis);
-  let skipBasis = false;
-  const submit = h("button", { type: "button", class: "primary", disabled: !canSubmit() || locked, onclick: () => void answer(d, route) }, "Decide") as HTMLButtonElement;
-  const skip =
-    asksBasis && !locked
+  const chosenLabel = d.options.find((o) => o.key === flow.choice)?.label ?? "";
+  const pendingBar =
+    flow.phase === "pending"
       ? h(
-          "button",
-          {
-            type: "button",
-            class: "linkish",
-            onclick: () => {
-              skipBasis = true;
-              submit.disabled = !canSubmit();
-              announce("You can decide without a reason. It won't teach the fleet anything.");
-            },
-          },
-          "decide without a reason",
+          "div",
+          { class: "undo-bar", role: "status" },
+          h("span", {}, `Decided: ${chosenLabel}${conditionsMode && flow.basis.trim() ? ", with your conditions" : ""}`),
+          h("button", { type: "button", class: "linkish undo", onclick: () => undoChoice(flow) }, "Undo"),
+          h("span", { class: "drain", "aria-hidden": "true", style: `--undo-ms: ${undoWindowMs()}ms` }),
         )
       : null;
 
-  const notNow =
-    !locked || flow.phase === "pushback"
-      ? h("button", { type: "button", class: "ghost", onclick: () => startPunt(flow) }, "Not now")
-      : null;
+  const otherWays =
+    flow.phase === "choose"
+      ? h(
+          "div",
+          { class: "other-ways", role: "group", "aria-label": "Other ways to answer" },
+          h("button", { type: "button", class: "way", "aria-pressed": String(conditionsMode), onclick: () => toggleMode(flow, "conditions") }, "Yes, but…"),
+          h("button", { type: "button", class: "way", "aria-pressed": String(flow.mode === "other"), onclick: () => toggleMode(flow, "other") }, "Something else"),
+          h("button", { type: "button", class: "way", "aria-pressed": String(flow.mode === "ask"), onclick: () => toggleMode(flow, "ask") }, "Ask a question"),
+          h("button", { type: "button", class: "linkish not-now", onclick: () => startPunt(flow) }, "Not now"),
+        )
+      : flow.phase === "pushback"
+        ? h("div", { class: "other-ways" }, h("button", { type: "button", class: "linkish not-now", onclick: () => startPunt(flow) }, "Not now"))
+        : null;
+  const modePanel = flow.phase === "choose" ? (flow.mode === "other" ? otherPanel(flow, d, route) : flow.mode === "ask" ? askPanel(flow, d) : null) : null;
+
   const lastPunt = !S.answered[id] ? S.puntHistory[id]?.[S.puntHistory[id].length - 1] : undefined;
   const why = c.adjusted
     ? h("p", { class: "why" }, h("span", { class: "why-mark", "aria-hidden": "true" }, "⌁"), "Code adjusted this route. ", c.adjusted)
@@ -161,32 +162,88 @@ function drawNow(): void {
       h("span", { class: "route-label" }, ROUTE_LABEL[route]),
       h("span", { class: "chain" }, d.agent.join(" › ")),
     ),
+    // Brief first, then why it is the person's, then the question.
+    h("p", { class: "briefing" }, c.briefing || c.in_your_terms),
+    why,
     h("h3", { id: "now-q" }, c.headline || d.question),
     lastPunt
       ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
       : null,
-    d.visual ? drawnOnce(id, renderVisual(d.visual, d, flow.choice)) : null,
-    variants,
-    opts,
-    why,
     S.changes[id] ? h("p", { class: "change-note" }, S.changes[id]) : null,
+    flow.message && ["choose", "pending"].includes(flow.phase) ? h("p", { class: "adjusted", role: "status" }, flow.message) : null,
+    h(
+      "div",
+      { class: "decide-grid" },
+      h("div", { class: "decide-main" }, opts, d.visual ? drawnOnce(id, renderVisual(d.visual, d, flow.choice)) : null, variants),
+      flow.phase === "punting" ? null : whyPanel,
+    ),
+    pendingBar,
+    flow.phase === "punting" ? puntPanel(flow, d) : otherWays,
+    modePanel,
     h(
       "details",
       { class: "more" },
       h("summary", {}, "More context"),
-      c.in_your_terms ? h("p", { class: "briefing-text" }, c.in_your_terms) : null,
+      c.briefing && c.in_your_terms ? h("p", { class: "briefing-text" }, c.in_your_terms) : null,
       c.headline !== d.question ? h("p", { class: "original" }, h("span", { class: "quiet" }, "The agent asked: "), h("q", {}, d.question)) : null,
-      h("p", { class: "context" }, d.context),
+      h("p", { class: "context" }, h("span", { class: "quiet" }, "From the agent: "), d.context),
       c.adjusted ? h("p", { class: "quiet" }, "Claude's own reasoning: ", c.why_here) : null,
-      h("p", { class: "quiet" }, `Routing: ${SOURCE_LABEL[c.source]}.`),
+      h("p", { class: "quiet" }, `Routing, briefing and notes: ${SOURCE_LABEL[c.source]}.`),
     ),
-    flow.phase === "punting" ? null : basis,
-    flow.phase === "punting" ? puntPanel(flow, d) : locked ? null : h("div", { class: "actions" }, submit, skip, notNow),
     flow.phase === "punting" ? null : followup(d, route),
   );
   arrived.add(id);
   root.append(card);
   tourAfterRender();
+}
+
+/** Open or close one of the other ways to answer; only one is open at a time. */
+function toggleMode(flow: Flow, mode: NonNullable<Flow["mode"]>): void {
+  flow.mode = flow.mode === mode ? null : mode;
+  flow.error = "";
+  renderNow();
+  const focus = { conditions: "basis", other: "other", ask: "question" }[mode];
+  if (flow.mode) (document.getElementById(focus) as HTMLTextAreaElement | null)?.focus();
+}
+
+/** "Something else": write the option you want instead. */
+function otherPanel(flow: Flow, d: Decision, route: RouteKind): HTMLElement {
+  const ta = h("textarea", { id: "other", rows: 2, placeholder: "What should the agent do instead?" }) as HTMLTextAreaElement;
+  ta.value = flow.other;
+  ta.addEventListener("input", () => (flow.other = ta.value));
+  return h(
+    "div",
+    { class: "mode-panel" },
+    h("label", { for: "other" }, "Something else"),
+    ta,
+    flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
+    h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => chooseOther(flow, d, route) }, "Send this instead")),
+  );
+}
+
+/** "Ask a question": Claude answers from what the agent provided, or says what is missing. */
+function askPanel(flow: Flow, d: Decision): HTMLElement {
+  const ta = h("textarea", { id: "question", rows: 2, placeholder: "What would you need to know?" }) as HTMLTextAreaElement;
+  ta.value = flow.question;
+  ta.addEventListener("input", () => (flow.question = ta.value));
+  const a = flow.askAnswer;
+  return h(
+    "div",
+    { class: "mode-panel" },
+    h("label", { for: "question" }, "Ask a question"),
+    ta,
+    flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
+    h("div", { class: "row" }, h("button", { type: "button", class: "ghost", onclick: () => void askQuestion(flow, d) }, "Ask"), flow.message ? h("span", { class: "quiet" }, flow.message) : null),
+    a
+      ? h(
+          "div",
+          { class: `ask-answer${a.answerable ? "" : " missing"}`, role: "status" },
+          h("p", {}, a.answer),
+          h("p", { class: "quiet" }, a.answerable ? `${SOURCE_LABEL[a.source]}. Choose an option above when you're ready.` : SOURCE_LABEL[a.source]),
+          a.answerable ? null : h("button", { type: "button", class: "ghost", onclick: () => sendQuestionToAgent(flow, d) }, "Ask the agent, and set this aside"),
+        )
+      : null,
+  );
 }
 
 /** A read-only card for a decision that is answered, or set aside and waiting for Resume. */
@@ -197,7 +254,10 @@ function renderClosed(root: HTMLElement, d: Decision, why: "answered" | "aside")
   if (why === "answered") {
     const a = S.answered[d.id];
     const chosen = d.options.find((o) => o.key === a.final);
-    body.push(h("p", {}, h("span", { class: "quiet" }, "You decided: "), chosen?.label ?? a.final), a.basis ? h("p", { class: "quiet" }, "“", a.basis, "”") : null);
+    body.push(
+      h("p", {}, h("span", { class: "quiet" }, a.other ? "You chose something else: " : "You decided: "), a.other ?? chosen?.label ?? a.final),
+      a.conditions ? h("p", { class: "quiet" }, "With conditions: “", a.conditions, "”") : a.basis ? h("p", { class: "quiet" }, "“", a.basis, "”") : null,
+    );
   } else {
     const p = S.punts[d.id];
     body.push(
@@ -372,7 +432,8 @@ export interface SpeechEvent {
  * the visitor picked the example's option. It is labeled; it never replaces the visitor's own words.
  */
 export function exampleButton(d: Decision, ta: HTMLTextAreaElement): Child {
-  const ex = EXAMPLES.find((e) => e.id === d.id && e.choice === F?.choice);
+  // Offered before the click (clicking decides), for the option the recorded reason goes with.
+  const ex = EXAMPLES.find((e) => e.id === d.id && (!F?.choice || e.choice === F.choice));
   if (!ex || Q.mode === "live") return null;
   return h(
     "p",
@@ -389,7 +450,7 @@ export function exampleButton(d: Decision, ta: HTMLTextAreaElement): Child {
           if (F) F.basis = ex.reason;
         },
       },
-      "Use the recorded example reason",
+      `Use Jordan's recorded reason for “${d.options.find((o) => o.key === ex.choice)?.label ?? ex.choice}”`,
     ),
   );
 }

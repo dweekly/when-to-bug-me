@@ -14,7 +14,7 @@ import { EFFORT, MAX_TOKENS, MODEL, PRICE_PER_MTOK } from "../src/shared/constan
 import { EXAMPLES } from "../src/shared/examples";
 import { parseFactOutput } from "../src/shared/fact";
 import { keptFact, topGuess, withFact } from "../src/shared/lifecycle";
-import { FACT_SCHEMA, ROUTE_SCHEMA, factPrompt, routePrompt } from "../src/shared/prompts";
+import { FACT_SCHEMA, routeSchema, factPrompt, routePrompt } from "../src/shared/prompts";
 import { enforceSettleInvariant, parseRouteOutput, verifiedQuotes } from "../src/shared/route";
 import type { Decision, Fact, Persona, RouteOutput, Rule } from "../src/shared/types";
 
@@ -61,7 +61,7 @@ interface Check {
 
 async function route(id: string, f: Fact[]): Promise<{ out: RouteOutput; route: string }> {
   const d = byId.get(id)!;
-  const out = parseRouteOutput(await call(`route ${id}`, routePrompt(persona, rules, f, d), ROUTE_SCHEMA), d);
+  const out = parseRouteOutput(await call(`route ${id}`, routePrompt(persona, rules, f, d), routeSchema(d.options.map((o) => o.key))), d);
   return { out, route: enforceSettleInvariant(out, d, rules, f).route };
 }
 
