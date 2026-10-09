@@ -13,13 +13,12 @@ import { puntInstruction } from "../../src/shared/punt";
 import {
   agendaItem,
   editRule,
-  expandProject,
   freshPage,
   goHome,
   goSettled,
   openDecision,
   option,
-  projectRow,
+  projectGroup,
   stored,
   waitForHome,
   waitForLoad,
@@ -62,32 +61,41 @@ test.describe("views", () => {
     await expect(page.locator("#now")).toHaveCount(0);
     await expect(page.locator("article.card")).toHaveCount(0);
     await expect(page.locator("#start")).toBeVisible();
-    await expect(page.locator("#agenda .project-row")).toHaveCount(3);
-    // Rows are collapsed until asked; expanding one lists its decisions as links into focus.
-    await expect(page.locator("#agenda a.item")).toHaveCount(0);
-    await expandProject(page, "Platform");
-    await expect(page.locator("#agenda a.item")).toHaveCount(PLATFORM.length);
-    for (const id of PLATFORM) await expect(page.locator(`#agenda a.item[href="#/d/${id}"]`)).toHaveCount(1);
+    // The whole queue is on screen, numbered in order, grouped by project; nothing to expand.
+    await expect(page.locator("#agenda .project")).toHaveCount(3);
+    const items = page.locator("#agenda a.item");
+    const n = await items.count();
+    expect(n).toBeGreaterThan(0);
+    expect(await page.locator("#agenda .num").allInnerTexts()).toEqual(Array.from({ length: n }, (_, i) => String(i + 1)));
+    for (const id of PLATFORM) await expect(projectGroup(page, "Platform").locator(`a.item[href="#/d/${id}"]`)).toHaveCount(1);
 
-    await agendaItem(page, "6:05am flight").click();
+    await agendaItem(page, "Denver customer onsite").click();
     await expect(page).toHaveURL(/#\/d\/onsite-flight$/);
     await expect(page.locator("#now")).toHaveCount(1);
     await expect(page.locator("article.card")).toHaveCount(1);
-    await expect(page.locator("#now article.card #now-q")).toContainText("6:05am flight");
     await expect(page.locator("#agenda")).toHaveCount(0);
     await expect(page.locator(".focus-bar")).toContainText("Platform");
   });
 
-  test("Start opens the first decision on the agenda", async ({ page }) => {
-    const firstProject = (await page.locator("#agenda .project-row .pname").first().innerText()).trim();
-    await expandProject(page, firstProject);
+  test("one pile is recommended, and its Start opens the first item in the queue", async ({ page }) => {
+    await expect(page.locator(".pile.rec")).toHaveCount(1);
     const first = page.locator("#agenda a.item").first();
     const href = (await first.getAttribute("href"))!;
     const text = (await first.locator(".q").innerText()).trim();
+    const firstProject = (await page.locator("#agenda .pname").first().innerText()).trim();
+    await expect(page.locator("#start-card .eyebrow")).toHaveText(new RegExp(`Start with ${firstProject}`, "i"));
+    await expect(page.locator("#start-card .peek li").first()).toHaveText(text);
     await page.locator("#start").click();
     await expect(page).toHaveURL(new RegExp(`${href.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`));
     await expect(page.locator("#now-q")).toHaveText(text);
-    await expect(page.locator(".focus-bar")).toContainText(firstProject);
+    await expect(page.locator(".focus-bar")).toContainText(new RegExp(firstProject, "i"));
+  });
+
+  test("each other pile's Start opens that pile's first item", async ({ page }) => {
+    const pile = page.locator('.pile[data-project="platform"]');
+    const firstHref = (await projectGroup(page, "Platform").locator("a.item").first().getAttribute("href"))!;
+    await pile.getByRole("button", { name: "Start Platform" }).click();
+    await expect(page).toHaveURL(new RegExp(`${firstHref.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`));
   });
 
   test("the bar's nav reaches every view, and Decided for you shows its count", async ({ page }) => {
@@ -137,7 +145,6 @@ test.describe("navigation", () => {
   });
 
   test("Back and Forward move between home and focus", async ({ page }) => {
-    await expandProject(page, "Platform");
     await agendaItem(page, "6:05am flight").click();
     await expect(page.locator("#now-q")).toContainText("6:05am flight");
     await page.goBack();
@@ -151,8 +158,7 @@ test.describe("navigation", () => {
 
 test.describe("Next", () => {
   test("Next stays within the project, then pauses between projects when it is done", async ({ page }) => {
-    await expandProject(page, "Platform");
-    await page.locator("#agenda a.item").first().click();
+    await projectGroup(page, "Platform").locator("a.item").first().click();
     const seen: string[] = [];
     for (let i = 0; i < PLATFORM.length; i++) {
       await expect(page.locator("#now-q")).toBeVisible();
@@ -180,7 +186,7 @@ test.describe("Next", () => {
     const s = (await stored(page))!;
     for (const id of PLATFORM) expect(s.answered[id]?.final, id).toBe("A");
     await goHome(page);
-    await expect(projectRow(page, "Platform")).toHaveCount(0);
+    await expect(projectGroup(page, "Platform")).toHaveCount(0);
   });
 
   test("a set-aside decision does not block a project's end: its active queue is clear", async ({ page }) => {
@@ -251,7 +257,6 @@ test.describe("Not now", () => {
 
     // Home: gone from the agenda, listed under Set aside with the reason.
     await goHome(page);
-    await expandProject(page, "Platform");
     await expect(page.locator('#agenda a.item[href="#/d/onsite-flight"]')).toHaveCount(0);
     const aside = page.locator("#aside");
     await expect(aside.getByRole("heading", { name: "Set aside" })).toBeVisible();
@@ -301,7 +306,6 @@ test.describe("Not now", () => {
 
     await goHome(page);
     await expect(page.locator("#aside")).toHaveCount(0);
-    await expandProject(page, "Platform");
     await expect(page.locator('#agenda a.item[href="#/d/onsite-flight"]')).toHaveCount(1);
 
     // The history stays with the decision after it is answered.
@@ -370,7 +374,6 @@ test.describe("Not now", () => {
     await expect(page.locator("#bar nav").getByRole("link", { name: "Decided for you · 4" })).toBeVisible();
     await goHome(page);
     await expect(page.locator("#aside .aside-item").filter({ hasText: "SDK comparison" })).toHaveCount(1);
-    await expandProject(page, "Billing");
     await expect(page.locator(`#agenda a.item[href="#/d/${id}"]`)).toHaveCount(0);
     // A direct link still opens it (as set aside), never redirecting to Decided for you.
     await openDecision(page, id);
@@ -386,9 +389,6 @@ test.describe("narrow layout", () => {
 
   test("no horizontal scroll on home or in focus @narrow", async ({ page }) => {
     await noHScroll(page, "home");
-    await expandProject(page, "Launch");
-    await expandProject(page, "Billing");
-    await expandProject(page, "Platform");
     await noHScroll(page, "home, agenda expanded");
     for (const id of ["onsite-flight", "berlin-sync", "settings-redesign", "api-rename", "outage-chart", "ci-runners"]) {
       await openDecision(page, id);

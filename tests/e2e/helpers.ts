@@ -82,25 +82,12 @@ export async function openDecision(page: Page, id: string): Promise<void> {
   await expect(page.locator("#now #now-q")).toBeVisible();
 }
 
-/** A project's row on home's agenda, by project name. */
-export function projectRow(page: Page, name: string) {
-  return page.locator("#agenda .project-row").filter({ has: page.locator(".pname", { hasText: new RegExp(`^${escape(name)}$`) }) });
+/** A project's group on home's queue (its heading and numbered items), by project name. */
+export function projectGroup(page: Page, name: string) {
+  return page.locator("#agenda .project").filter({ has: page.locator(".pname", { hasText: new RegExp(`^${escape(name)}$`) }) });
 }
 
-/** Expand one project's row on home (a no-op if it is already open). */
-export async function expandProject(page: Page, name: string): Promise<void> {
-  const row = projectRow(page, name);
-  if ((await row.getAttribute("aria-expanded")) !== "true") await row.click();
-  await expect(projectRow(page, name)).toHaveAttribute("aria-expanded", "true");
-}
-
-/** Expand every project row on home, so every waiting decision's link is on screen. */
-export async function expandAll(page: Page): Promise<void> {
-  const names = await page.locator("#agenda .project-row .pname").allInnerTexts();
-  for (const n of names) await expandProject(page, n);
-}
-
-/** A waiting decision's link on home's (expanded) agenda, by a piece of its headline. */
+/** A waiting decision's link on home's queue, by a piece of its headline. */
 export function agendaItem(page: Page, text: string) {
   return page.locator("#agenda a.item").filter({ hasText: text });
 }
@@ -108,7 +95,6 @@ export function agendaItem(page: Page, text: string) {
 /** From anywhere, go home, find a waiting decision on the agenda by its text, and open it. */
 export async function openFromAgenda(page: Page, text: string): Promise<void> {
   if (!(await page.locator("#agenda").count())) await goHome(page);
-  await expandAll(page);
   await agendaItem(page, text).first().click();
   await expect(page.locator("#now h3#now-q")).toContainText(text);
 }

@@ -4,7 +4,7 @@
 // unrelated settled decision stays put. Accepting a meeting is only partly reversible, so code never
 // lets Bug Me settle the Berlin invite alone: it starts as a quick check-in.
 import { expect, test } from "@playwright/test";
-import { expandProject, freshPage, goHome, goRules, goSettled, openDecision, option, stored } from "./helpers";
+import { freshPage, goHome, goRules, goSettled, openDecision, option, stored } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -18,7 +18,6 @@ test("flight -> why -> kept fact -> Berlin sync re-checked and reframed, formatt
   // Berlin is never settled alone: it is a quick check-in on the Billing agenda.
   await expect(page.locator("#settled li").filter({ hasText: "Berlin team" })).toHaveCount(0);
   await goHome(page);
-  await expandProject(page, "Billing");
   const berlin = page.locator("#agenda a.item").filter({ hasText: "Berlin team" });
   await expect(berlin).toBeVisible();
   await expect(berlin.locator(".glyph")).toHaveAttribute("aria-label", "Quick check-in");
@@ -49,7 +48,6 @@ test("flight -> why -> kept fact -> Berlin sync re-checked and reframed, formatt
   await expect(page.locator("#facts")).toContainText("No commitments before 8:30am");
 
   await goHome(page);
-  await expandProject(page, "Billing");
   await expect(berlin).toBeVisible();
   const note = berlin.locator(".change-note");
   await expect(note).toContainText("Now framed by what you said");

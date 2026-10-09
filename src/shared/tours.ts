@@ -46,7 +46,7 @@ export const TOURS: Tour[] = [
   {
     id: "start-here",
     title: "Start here",
-    blurb: "The overview, one decision where you say no and why, and one you set aside.",
+    blurb: "Your queue in order, one decision where you say no and why, and one you set aside.",
     minutes: 2,
     mood: "attentive",
     path: [
@@ -54,8 +54,8 @@ export const TOURS: Tour[] = [
       { decision: "berlin-sync", setAside: true },
     ],
     steps: [
-      { go: "#/", target: ".sky", title: "Your night", text: "Every star is a question your agents raised overnight. Lit ones are already handled; dim ones wait on you.", until: "next" },
-      { target: "#overnight", title: "Sorted three ways", text: "○ settled for you, ◐ a quick check, ● a real decision.", until: "next" },
+      { go: "#/", target: "#start-card", title: "Start here", text: "Bug Me sorted last night's questions into piles, one per project. Start with this one; it says why.", until: "next" },
+      { target: "#agenda", title: "Then, in order", text: "Every waiting question in the order to work it. ● a real decision, ◐ a quick check.", until: "next" },
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have booked the cheap 6:05am itself. Code stopped it: $212 and only partly refundable.", until: "next" },
       { target: "#now .viz", title: "See it, don't read it", text: "The briefing is a picture of the trade-off: the 6:05 lands before the 10:00 start.", until: "next" },
       { target: pick("B"), title: "Say no", text: "Answer as Jordan would: take the 9:40.", until: { click: pick("B") } },

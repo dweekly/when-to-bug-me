@@ -1,7 +1,7 @@
 // Decisions made for you (build plan, item 4): undo reopens a settled decision as a quick check-in on
 // home's agenda, and the two marks are stored separately.
 import { expect, test } from "@playwright/test";
-import { agendaItem, expandProject, freshPage, goHome, goSettled, stored } from "./helpers";
+import { agendaItem, freshPage, goHome, goSettled, stored } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -14,7 +14,6 @@ test("Undo on branch cleanup brings it back as a quick check-in", async ({ page 
 
   await expect(settled).toHaveCount(0);
   await goHome(page);
-  await expandProject(page, "Platform");
   const item = agendaItem(page, "Delete 41 feature branches");
   await expect(item).toBeVisible();
   await expect(item.locator(".glyph")).toHaveAttribute("aria-label", "Quick check-in");
