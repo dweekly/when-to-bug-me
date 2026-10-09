@@ -51,11 +51,11 @@ When live calls are off (no key, or the daily budget is spent), only recorded an
 
 ## Does a captured reason actually move the routing?
 
-`npm run eval` asks live Claude, three fresh times per condition (no cache, no recorded answers), whether a reason the person gave changes how the decisions it should touch are routed, and leaves the others alone. Expected outcomes were written before running. Latest run, 2026-10-09 (`results/captures/eval-2026-10-09T19-34-07-594Z.json`, $0.76):
+`npm run eval` asks live Claude, three fresh times per condition (no cache, no recorded answers), whether a reason the person gave changes how the decisions it should touch are routed, and leaves the others alone. Expected outcomes were written before running. Latest run, 2026-10-09, on the current prompt (`results/captures/eval-2026-10-09T19-48-52-308Z.json`, $0.77):
 
 | Condition | Expected | Passed |
 | --- | --- | --- |
-| Berlin sync, default facts | settled for Jordan | 3/3 |
+| Berlin sync, default facts | settled for Jordan | **1/3** |
 | Berlin sync, after the flight reason | not settled; guess favors declining; quotes the newly kept fact | 3/3 |
 | Berlin sync, after a *paraphrased* flight reason (whole loop) | fact proposed; not settled; guess favors declining | 3/3 |
 | Formatter run (control), after the flight reason | still settled | 3/3 |
@@ -63,7 +63,7 @@ When live calls are off (no key, or the daily budget is spent), only recorded an
 | Webhook rename, after the API rename reason | guess favors keeping the name at 0.6 or more; quotes the newly kept fact | 3/3 |
 | Free tier (control), after the API rename reason | unchanged; does not quote the new fact | 3/3 |
 
-These are designed demonstration checks on fixtures written for the demo, not an accuracy estimate.
+These are designed demonstration checks on fixtures written for the demo, not an accuracy estimate. The one miss is real and open: since the prompt began stating each fact's scope, Claude sometimes brings the 7:30am Berlin invite as a quick check-in instead of accepting it, citing Jordan's standing preference for "a short written summary to a meeting when either would do". The recorded run the demo serves has it settled; whether to accept that reading or reword the fact is an open decision. The previous prompt version passed all 21 trials (`results/captures/eval-2026-10-09T19-34-07-594Z.json`).
 
 ## Run it
 

@@ -1,0 +1,1212 @@
+{
+  "model": "claude-opus-5-5",
+  "effort": "low",
+  "trials": 3,
+  "spent_usd": 0.7646,
+  "summary": [
+    {
+      "name": "berlin-sync, default facts",
+      "expect": "settled (route settle after the code invariant)",
+      "passed": 1,
+      "trials": 3,
+      "details": [
+        "FAIL: check_in guess A@0.60 fact=\"Prefers a short written summary to a meeting when \"",
+        "pass: settle guess A@0.70 fact=\"\"",
+        "FAIL: check_in guess A@0.60 fact=\"Prefers a short written summary to a meeting when \""
+      ]
+    },
+    {
+      "name": "berlin-sync, after the flight reason (recorded wording)",
+      "expect": "not settled; guess favors declining (B); quotes the newly kept fact",
+      "passed": 3,
+      "trials": 3,
+      "details": [
+        "pass: check_in guess B@0.88 fact=\"Jordan does school drop-off on weekday mornings be\"",
+        "pass: check_in guess B@0.90 fact=\"Jordan's mornings before 8:30 are school drop-off,\"",
+        "pass: check_in guess B@0.90 fact=\"Jordan is unavailable before 8:30am on weekday mor\""
+      ]
+    },
+    {
+      "name": "berlin-sync, after a paraphrased flight reason (whole loop)",
+      "expect": "fact proposed; berlin-sync not settled; guess favors B",
+      "passed": 3,
+      "trials": 3,
+      "details": [
+        "pass: check_in guess B@0.92 fact=\"Jordan is on the school run until 8:30am on weekda\"",
+        "pass: check_in guess B@0.95 fact=\"Jordan is on the school run until 8:30am on weekda\"",
+        "pass: check_in guess B@0.92 fact=\"Jordan is on the school run until 8:30am, so they \""
+      ]
+    },
+    {
+      "name": "formatter-run (control), after the flight reason",
+      "expect": "still settled",
+      "passed": 3,
+      "trials": 3,
+      "details": [
+        "pass: settle guess A@0.90 fact=\"\"",
+        "pass: settle guess A@0.90 fact=\"\"",
+        "pass: settle guess A@0.90 fact=\"\""
+      ]
+    },
+    {
+      "name": "webhook-rename, default facts",
+      "expect": "a decision for Jordan (public API rule)",
+      "passed": 3,
+      "trials": 3,
+      "details": [
+        "pass: decide guess A@0.55 fact=\"\"",
+        "pass: decide guess A@0.60 fact=\"\"",
+        "pass: decide guess A@0.55 fact=\"\""
+      ]
+    },
+    {
+      "name": "webhook-rename, after the API rename reason",
+      "expect": "a decision; guess favors keeping the name (B) at >= 0.6; quotes the newly kept fact",
+      "passed": 3,
+      "trials": 3,
+      "details": [
+        "pass: decide guess B@0.88 fact=\"In anything public, Jordan keeps existing field na\"",
+        "pass: decide guess B@0.88 fact=\"In anything public, Jordan keeps existing field na\"",
+        "pass: decide guess B@0.88 fact=\"In anything public, Jordan keeps existing field na\""
+      ]
+    },
+    {
+      "name": "free-tier (control), after the API rename reason",
+      "expect": "still a decision; does not quote the new fact",
+      "passed": 3,
+      "trials": 3,
+      "details": [
+        "pass: decide guess A@0.60 fact=\"\"",
+        "pass: decide guess A@0.65 fact=\"\"",
+        "pass: decide guess A@0.65 fact=\"\""
+      ]
+    }
+  ],
+  "raw": [
+    {
+      "label": "route berlin-sync",
+      "ms": 8983,
+      "cost": 0.029292,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Prefers a short written summary to a meeting when either would do.",
+        "why_here": "Your rule says \"Accept routine internal meeting invites; just do it,\" but this is a standing weekly commitment at 7:30am, and you've said you prefer \"a short written summary to a meeting when either would do,\" so it's worth a quick check.",
+        "headline": "Join the Berlin team's weekly billing-migration sync at 7:30am Pacific on Tuesdays?",
+        "in_your_terms": "The Berlin team wants a 30-minute weekly check-in on the billing migration, starting next week. Accepting gives them a regular slot with you at a time that works for their afternoon, but it puts a recurring 7:30am meeting on your Tuesdays. Proposing a slot after 8:30am is easier for your morning, but it pushes the meeting into their late afternoon, which may be harder for them to attend. Either way the meeting is internal and can be changed later.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.6
+          },
+          {
+            "option": "B",
+            "p": 0.4
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync from the Berlin team."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am Pacific slot and propose a Tuesday time after 8:30am Pacific, with a short note that Jordan is glad to join at a later time."
+          }
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 8706,
+      "cost": 0.029012,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Accept routine internal meeting invites; just do it.",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "",
+        "why_here": "This is being settled without you because your rule says \"Accept routine internal meeting invites; just do it,\" and a weekly internal sync can be declined or moved later at no cost.",
+        "headline": "Join the Berlin team's weekly billing-migration sync, Tuesdays at 7:30am Pacific?",
+        "in_your_terms": "The Berlin team wants a 30-minute weekly check-in on the billing migration starting next week. Accepting keeps you in their regular loop and fits a reasonable hour for them, but it costs you an early Tuesday start every week. Proposing a slot after 8:30am Pacific suits your morning better but pushes the call into their late afternoon and may delay the first meeting.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.7
+          },
+          {
+            "option": "B",
+            "p": 0.3
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite from the Berlin team and confirm it is on Jordan's calendar."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am slot and automatically propose a recurring Tuesday time after 8:30am Pacific to the Berlin organizer, then report back the agreed time."
+          }
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 8106,
+      "cost": 0.028992,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Prefers a short written summary to a meeting when either would do.",
+        "why_here": "Your rule says \"Accept routine internal meeting invites; just do it,\" but this is a new weekly commitment at 7:30am your time, which may not count as routine, so it's a quick check.",
+        "headline": "Join the Berlin team's weekly billing-migration call at 7:30am Pacific on Tuesdays?",
+        "in_your_terms": "Accepting adds a 30-minute weekly Tuesday call at 7:30am your time with the Berlin team about the billing migration, starting next week. Declining and suggesting a later slot keeps your mornings free, but anything after 8:30am Pacific lands in Berlin's late afternoon, which is a cost to them. Either way, it can be changed later at no real cost.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.6
+          },
+          {
+            "option": "B",
+            "p": 0.4
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync with the Berlin team, starting next week."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am slot and propose a later time after 8:30am Pacific to the Berlin team, noting it falls in their late afternoon."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 2703,
+      "cost": 0.015376,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan does school drop-off on weekday mornings before 8:30 and does not take 6am flights, even to save money.",
+        "scope": "all",
+        "confirm": "So mornings before 8:30 are school drop-off, and you won't take 6am flights even when they're cheaper.",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 9467,
+      "cost": 0.027576,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Jordan does school drop-off on weekday mornings before 8:30 and does not take 6am flights, even to save money.",
+        "why_here": "Your rule says to accept routine internal invites, but this one lands at 7:30am on Tuesdays, during the school drop-off you've said you do 'on weekday mornings before 8:30', so it needs a quick yes or no from you.",
+        "headline": "Berlin wants a weekly Tuesday 7:30am billing sync. Accept it, or ask for a slot after 8:30?",
+        "in_your_terms": "The Berlin team wants a 30-minute weekly sync on the billing migration, starting next week. Accepting gets you into their existing slot right away, but it falls during your weekday school drop-off. Proposing a slot after 8:30am keeps your mornings clear, but it pushes the call into late afternoon in Berlin and may delay when the sync starts. If they don't take the new time, a short written update could stand in for the call.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.12
+          },
+          {
+            "option": "B",
+            "p": 0.88
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Jordan does school drop-off on weekday mornings before 8:30 and does not take 6am flights, even to save money."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite as sent."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am Pacific slot and propose a time after 8:30am Pacific on Tuesdays. If Berlin can't move it, offer to have Jordan send a short written update instead."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 2167,
+      "cost": 0.015656,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan's mornings before 8:30 are school drop-off, so they don't take 6am flights or other early-morning commitments in that window, even to save money.",
+        "scope": "all",
+        "confirm": "So mornings before 8:30 are school drop-off: no 6am flights or early commitments in that window, even when it costs more.",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 5543,
+      "cost": 0.02526,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Jordan's mornings before 8:30 are school drop-off, so they don't take 6am flights or other early-morning commitments in that window, even to save money.",
+        "why_here": "Your rule says to accept routine internal invites, but this one recurs weekly at 7:30am, inside the school drop-off window you keep clear before 8:30, so it's a quick check rather than an automatic accept.",
+        "headline": "Accept a weekly 7:30am Tuesday billing sync with Berlin, or propose a slot after 8:30?",
+        "in_your_terms": "Accepting puts you in a 30-minute weekly sync with the Berlin billing team every Tuesday at 7:30am Pacific, which overlaps school drop-off. Declining and proposing a time after 8:30am keeps your mornings clear, but the call would land in Berlin's late afternoon, which is less convenient for them. Either choice is easy to change later.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.1
+          },
+          {
+            "option": "B",
+            "p": 0.9
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Jordan's mornings before 8:30 are school drop-off, so they don't take 6am flights or other early-morning commitments in that window, even to save money."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific invite from the Berlin team."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am invite and propose a slot at or after 8:30am Pacific on Tuesdays, noting that Jordan's mornings before 8:30 are unavailable."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 2073,
+      "cost": 0.015636,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan is unavailable before 8:30am on weekday mornings because of school drop-off, and does not take flights departing around 6am even when they are cheaper.",
+        "scope": "all",
+        "confirm": "So weekday mornings before 8:30 are school drop-off, and early flights like 6am are out even when they save money.",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 6765,
+      "cost": 0.026228,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Jordan is unavailable before 8:30am on weekday mornings because of school drop-off, and does not take flights departing around 6am even when they are cheaper.",
+        "why_here": "Your rule says to accept routine internal invites, but this one is at 7:30am Pacific on Tuesdays, and you've said you're unavailable before 8:30am on weekdays because of school drop-off, so it needs a quick check.",
+        "headline": "Berlin wants a weekly Tuesday 7:30am billing-migration sync. Accept, or ask for a later time?",
+        "in_your_terms": "Accepting puts a 30-minute weekly sync on your calendar at 7:30am Pacific on Tuesdays. That gives the Berlin team a slot in their working afternoon, but it clashes with school drop-off. Proposing a slot after 8:30am Pacific fits your mornings, but it lands late in the Berlin team's afternoon and could delay or complicate getting the sync going. A short written update could also work instead of a meeting.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.1
+          },
+          {
+            "option": "B",
+            "p": 0.9
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Jordan is unavailable before 8:30am on weekday mornings because of school drop-off, and does not take flights departing around 6am even when they are cheaper."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite as sent."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am slot and propose the earliest Tuesday time after 8:30am Pacific. Mention that Jordan is also happy to receive a short written summary instead if that's easier for Berlin."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 4418,
+      "cost": 0.015476,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan is on the school run until 8:30am on weekdays, so they can't take early-morning flights or commitments before then.",
+        "scope": "all",
+        "confirm": "So you're on the school run until 8:30am, and I should keep flights and early commitments clear of that, even when the early option is cheaper.",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 5852,
+      "cost": 0.02524,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Jordan is on the school run until 8:30am on weekdays, so they can't take early-morning flights or commitments before then.",
+        "why_here": "Your rule says to accept routine internal invites, but this one is at 7:30am and you've said you're \"on the school run until 8:30am on weekdays,\" so it's a quick check instead of an automatic accept.",
+        "headline": "Berlin wants a weekly Tuesday 7:30am billing sync, during your school run. Accept or ask for later?",
+        "in_your_terms": "Accepting puts a 30-minute billing-migration sync with the Berlin team on your calendar every Tuesday at 7:30am Pacific. That time falls during your school run, so you'd likely miss it or join distracted. Declining and proposing a slot after 8:30am Pacific fits your mornings, but it lands in Berlin's late afternoon. A short written update could also stand in for some of these syncs.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.08
+          },
+          {
+            "option": "B",
+            "p": 0.92
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Jordan is on the school run until 8:30am on weekdays, so they can't take early-morning flights or commitments before then."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync as invited."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am invite and automatically propose a recurring Tuesday slot after 8:30am Pacific. Note that Jordan is happy to get a short written update in place of the meeting when that works."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 4239,
+      "cost": 0.015336,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan is on the school run until 8:30am on weekdays and is not available for anything before then, including early-morning flights.",
+        "scope": "all",
+        "confirm": "So you're on the school run until 8:30am, and nothing should be booked or scheduled for you before then, flights included?",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 6303,
+      "cost": 0.025756,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Jordan is on the school run until 8:30am on weekdays and is not available for anything before then, including early-morning flights.",
+        "why_here": "Your rule says to accept routine internal invites, but this one is at 7:30am and you've said \"Jordan is on the school run until 8:30am on weekdays and is not available for anything before then,\" so it's a quick check rather than an automatic accept.",
+        "headline": "Berlin wants a weekly 7:30am Tuesday billing sync; accept, or ask for a slot after 8:30?",
+        "in_your_terms": "Accepting puts you in a weekly 30-minute billing-migration meeting with the Berlin team on Tuesdays at 7:30am Pacific, which lands during your school run. Declining and proposing a later time keeps your mornings clear, but anything after 8:30am Pacific is late afternoon in Berlin, so it costs them some of their day. You also tend to prefer a short written summary over a meeting, so a written update may be another possibility.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.05
+          },
+          {
+            "option": "B",
+            "p": 0.95
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Jordan is on the school run until 8:30am on weekdays and is not available for anything before then, including early-morning flights."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync as invited."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am Pacific invite and propose a slot after 8:30am Pacific on Tuesdays, noting the school-run conflict. Ask whether a short written summary could replace some of the syncs."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 4271,
+      "cost": 0.015056,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan is on the school run until 8:30am, so they can't take early-morning flights or commitments before then.",
+        "scope": "all",
+        "confirm": "So nothing before 8:30am for you, including dawn flights, because of the school run?",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route berlin-sync",
+      "ms": 5688,
+      "cost": 0.02516,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Jordan is on the school run until 8:30am, so they can't take early-morning flights or commitments before then.",
+        "why_here": "Routine internal invites are normally just accepted, but this one is at 7:30am Pacific and you've said \"Jordan is on the school run until 8:30am, so they can't take early-morning flights or commitments before then.\"",
+        "headline": "Berlin wants a weekly Tuesday 7:30am billing sync, during your school run. Accept or ask for later?",
+        "in_your_terms": "The Berlin team wants a 30-minute weekly sync on the billing migration every Tuesday at 7:30am Pacific, starting next week. Accepting fits their working day but clashes with your school run every week. Asking for a slot after 8:30am Pacific works for you, but that lands late afternoon in Berlin and may be less convenient for them. You could also suggest a short written update instead of a meeting.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.08
+          },
+          {
+            "option": "B",
+            "p": 0.92
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Jordan is on the school run until 8:30am, so they can't take early-morning flights or commitments before then."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync as invited."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am Pacific slot and propose the earliest time after 8:30am Pacific on Tuesdays, noting Jordan is unavailable before then. You may mention a written weekly summary as an alternative."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 2677,
+      "cost": 0.015896,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan has school drop-off before 8:30am on weekdays, so they don't take early-morning (6am) flights or commitments before 8:30, even to save money.",
+        "scope": "all",
+        "confirm": "So mornings before 8:30 are blocked for school drop-off: no 6am flights even when cheaper, and I'll treat early commitments the same way.",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route formatter-run",
+      "ms": 5650,
+      "cost": 0.023872,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "This is being settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and a formatting-only commit on a branch is easy to revert.",
+        "headline": "Apply the agreed code formatter to older files in the SDK repo?",
+        "in_your_terms": "Running it changes only whitespace and import order in 412 older files, so users and SDK behaviour are unaffected and the codebase becomes consistent with the style agreed last month. The cost is a large one-time change that can make file history and any open work a bit noisier to merge. Skipping keeps history clean but leaves older files out of step with the agreed style.",
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Run the formatter on a new branch, open it with a preview, and merge once CI passes; never push directly to main. Keep it as a single commit so it can be reverted cleanly."
+          },
+          {
+            "option": "B",
+            "instruction": "Do not run the formatter across the SDK repo; close out the task and unblock the waiting agent."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 2480,
+      "cost": 0.015936,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan has school drop-off on weekday mornings before 8:30 and does not take 6am flights, even when they are cheaper.",
+        "scope": "all",
+        "confirm": "So mornings before 8:30 are blocked for school drop-off, and you won't take early-morning flights even to save money. I'll treat that as a limit on 'cheapest reasonable'.",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route formatter-run",
+      "ms": 6792,
+      "cost": 0.023992,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and this is a whitespace-and-import-order pass that one commit can revert.",
+        "headline": "Apply the agreed code formatting to older files in the SDK repo?",
+        "in_your_terms": "Applying the format changes how 412 older files look but not how the SDKs behave, so users and customers see nothing different and the code ends up consistent with the style agreed last month. Skipping it leaves the older files in the old style, which avoids a large one-time change that can make the line-by-line history of those files harder to follow, but the mixed style stays in place.",
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Run the formatter on a branch with a preview, as a single commit, and merge once CI passes. Do not push to main directly. Formatting is housekeeping, so you don't need to ask about it next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Don't run the formatter across the SDK repo. Close the task and unblock the waiting agent."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact onsite-flight",
+      "ms": 1979,
+      "cost": 0.015376,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan does not take flights or commitments before 8:30am on weekdays because of school drop-off, even to save money.",
+        "scope": "all",
+        "confirm": "So nothing before 8:30am on weekday mornings because of school drop-off, including early flights, even when it would save money?",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      }
+    },
+    {
+      "label": "route formatter-run",
+      "ms": 6331,
+      "cost": 0.023332,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "This is being settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and a whitespace-only formatting commit can be reverted in one step.",
+        "headline": "Apply the agreed code formatter across the whole SDK repository?",
+        "in_your_terms": "Applying it brings older files in line with the formatting style agreed last month. Users and customers see no change, because only spacing and import order move. The cost is one large change that can make recent edit history harder to trace and may clash with open work in progress. Skipping leaves the older files out of step with the agreed style.",
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Run the formatter on a branch with a preview, open a PR, and merge once CI passes. Do not push to main. Keep it as a single revertable commit."
+          },
+          {
+            "option": "B",
+            "instruction": "Don't run the repo-wide format. Leave the files as they are and unblock the dependent agent."
+          }
+        ]
+      }
+    },
+    {
+      "label": "route webhook-rename",
+      "ms": 8737,
+      "cost": 0.023756,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "",
+        "why_here": "Webhook payload field names are part of the public API, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\" About 300 customer endpoints would be affected.",
+        "headline": "Should webhook payloads rename the 'created' timestamp to 'created_at' to match the rest of v2?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming makes webhooks match every other v2 timestamp, so new integrators see one consistent naming pattern. But any existing customer code that reads 'created' would break or silently miss the timestamp unless it is migrated or both fields are sent for a while. Keeping 'created' means no customer has to change anything, but webhooks stay the one inconsistent spot in v2, and the docs have to explain the exception.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.55
+          },
+          {
+            "option": "B",
+            "p": 0.45
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename the webhook field to created_at on a branch with a preview, and flag to the docs agent that the changelog and migration note must go to Jordan before publishing. Propose how existing consumers are handled, for example sending both fields during a transition."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep the field as created in v2 webhook payloads, and tell the docs agent to document it clearly as the exception to the created_at convention. Unblock the waiting agents."
+          }
+        ]
+      }
+    },
+    {
+      "label": "route webhook-rename",
+      "ms": 7498,
+      "cost": 0.023776,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "",
+        "why_here": "Webhook payloads are part of the public API, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\" About 300 customer endpoints would be affected.",
+        "headline": "Should webhook payloads rename the 'created' timestamp to 'created_at' to match the rest of v2?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming the field makes webhooks match every other timestamp in v2, so new integrators see one consistent naming pattern. However, any existing consumer that reads the old field name could break or silently miss the timestamp unless the change is versioned or announced. Keeping the old name avoids that risk for current customers, but webhooks become the one inconsistent spot in v2 that docs and SDKs have to explain.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.6
+          },
+          {
+            "option": "B",
+            "p": 0.4
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename created to created_at in v2 webhook payloads on a branch with a preview, and keep existing v1 consumers unaffected or send both fields during a transition. Draft the changelog and migration note for Jordan's review before anything goes out to customers."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep the created field in webhook payloads unchanged. Have the docs agent document it explicitly as the webhook timestamp field so the inconsistency is clear to integrators."
+          }
+        ]
+      }
+    },
+    {
+      "label": "route webhook-rename",
+      "ms": 8328,
+      "cost": 0.023016,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "",
+        "why_here": "Renaming a field in webhook payloads changes the public API that about 300 customer endpoints parse today, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Should webhook payloads rename the timestamp field to match the rest of the new API, or keep it?",
+        "in_your_terms": "Renaming makes webhooks match every other timestamp in the new API, so developers learn one convention and the docs read consistently. But about 300 customer endpoints receive these webhooks today, and any that read the old field name would break or silently miss the timestamp unless they update. Keeping the old name protects those customers at the cost of a lasting inconsistency in the v2 surface. Two other agents, including docs, are waiting on this.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.55
+          },
+          {
+            "option": "B",
+            "p": 0.45
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in v2 webhook payloads on a branch with a preview; flag the change for the docs agent and draft a customer-facing changelog/migration note for Jordan's review before anything ships."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads unchanged; tell the docs agent to document it as-is, noting the naming exception."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact api-rename",
+      "ms": 3954,
+      "cost": 0.015768,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it.",
+        "scope": "launch",
+        "confirm": "So in public APIs and payloads, existing names stay even when a rename would be tidier, since breaking customers isn't worth it.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      }
+    },
+    {
+      "label": "route webhook-rename",
+      "ms": 8404,
+      "cost": 0.025124,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it.",
+        "why_here": "Renaming a field in public webhook payloads is a public API change, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Should webhook payloads rename the \"created\" timestamp to \"created_at\" to match the rest of v2?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming the field makes webhooks match every other v2 timestamp, so new integrators see one consistent naming style. The cost is that existing consumers that read the old field would break or need to update unless both names are sent for a while. Keeping the old name means nothing breaks for current customers, but webhooks stay the one inconsistent spot in v2.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.12
+          },
+          {
+            "option": "B",
+            "p": 0.88
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in v2 webhook payloads on a branch with a preview, and flag the breaking change to the docs agent for a migration note that comes to Jordan before publishing."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads unchanged; tell the docs agent to document it as-is and unblock the waiting agents."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact api-rename",
+      "ms": 3611,
+      "cost": 0.015708,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators.",
+        "scope": "launch",
+        "confirm": "So in public APIs and payloads, existing field names stay put even when a rename would be tidier, since breaking integrators isn't worth it.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      }
+    },
+    {
+      "label": "route webhook-rename",
+      "ms": 6153,
+      "cost": 0.02488,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators.",
+        "why_here": "This changes a public webhook payload that about 300 customer endpoints parse today, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Should webhook payloads rename the \"created\" timestamp field to \"created_at\" for v2?",
+        "in_your_terms": "About 300 customer systems receive these webhooks today. Renaming the field makes webhooks match every other v2 timestamp, but any customer whose code reads the old name would stop getting that value until they update. Keeping the old name means existing integrations keep working unchanged, at the cost of one inconsistent field name in v2. The docs and webhook work are waiting on this choice.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.12
+          },
+          {
+            "option": "B",
+            "p": 0.88
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in v2 webhook payloads on a branch with a preview, add a migration note for existing consumers, and send the customer-facing docs and changelog text to Jordan for review before anything ships."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads unchanged and tell the docs agent to document it as-is so the blocked agents can proceed."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact api-rename",
+      "ms": 3533,
+      "cost": 0.015508,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators.",
+        "scope": "launch",
+        "confirm": "So in public surfaces you keep existing names, even in a new version, rather than break integrators for tidiness.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      }
+    },
+    {
+      "label": "route webhook-rename",
+      "ms": 6583,
+      "cost": 0.02542,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators.",
+        "why_here": "This changes a public webhook payload that about 300 customer endpoints consume, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Should webhook payloads rename the timestamp field from \"created\" to \"created_at\" in v2?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming makes webhooks match every other v2 timestamp, so new integrators see one consistent naming style. However, any existing consumer that reads the old field name would break unless they update their code or we send both names for a transition period. Keeping the old name means nothing breaks for current customers, but webhooks stay the one odd spot in v2's naming.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.12
+          },
+          {
+            "option": "B",
+            "p": 0.88
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in webhook payloads on a branch with a preview, and draft a changelog and migration note for the ~300 consumers for Jordan to review before anything ships. Unblock the docs agent to update the webhook reference on the same branch."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads unchanged and document it as-is in the v2 reference. Tell the docs agent to proceed using `created`."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact api-rename",
+      "ms": 3427,
+      "cost": 0.015768,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it.",
+        "scope": "launch",
+        "confirm": "So in public APIs and payloads, existing names stay even when a rename would be tidier, since breaking customers isn't worth it.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      }
+    },
+    {
+      "label": "route free-tier",
+      "ms": 6081,
+      "cost": 0.023828,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
+        "fact_quoted": "",
+        "why_here": "This is a public pricing choice customers will see, and one option adds about $600 a month in serving cost, and your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
+        "headline": "Should the new API's free tier stay at 1,000 requests a day or rise to 5,000?",
+        "in_your_terms": "Keeping 1,000 a day matches today's API, so existing free users see no change and serving costs stay predictable. However, sales says that limit makes it harder to compete. Raising it to 5,000 gives hobbyists and people trying the API five times the room, at roughly $600 a month more in serving cost at current signups, and finance hasn't weighed in yet. A free limit is also hard to lower once it's public without upsetting users.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.6
+          },
+          {
+            "option": "B",
+            "p": 0.4
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Set the v2 free tier at 1,000 requests/day to match v1 and unblock the dependent agent. Note the sales request in the pricing doc so it can be revisited later."
+          },
+          {
+            "option": "B",
+            "instruction": "Set the v2 free tier at 5,000 requests/day and record the roughly $600/month serving-cost estimate. Flag it to finance before launch, and route any customer-facing pricing copy to Jordan for review."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact api-rename",
+      "ms": 2627,
+      "cost": 0.015708,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because renames break integrators.",
+        "scope": "launch",
+        "confirm": "So in public APIs and payloads, existing names stay put even if a rename would be tidier, since breaking integrators isn't worth it.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      }
+    },
+    {
+      "label": "route free-tier",
+      "ms": 5656,
+      "cost": 0.023848,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
+        "fact_quoted": "",
+        "why_here": "This is yours under your rule \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\" The higher option adds about $600 a month, and the free-tier limit is something customers will see and plan around.",
+        "headline": "Should the new API's free tier stay at 1,000 requests a day or rise to 5,000?",
+        "in_your_terms": "At 1,000 a day, free users get the same allowance they have today, and serving costs stay predictable. Raising the limit later is easy, but lowering it after launch would upset users. At 5,000 a day, hobbyists and people evaluating the product get five times the room, which sales says would help us compete. That would cost about $600 a month more at current signups, more if signups grow, and finance has not weighed in yet.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.65
+          },
+          {
+            "option": "B",
+            "p": 0.35
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Set the v2 free tier at 1,000 requests/day to match v1, and unblock the dependent agent. Route any public docs or changelog text about limits to Jordan before it ships."
+          },
+          {
+            "option": "B",
+            "instruction": "Set the v2 free tier at 5,000 requests/day, record the roughly $600/month cost estimate for finance, and unblock the dependent agent. Route any public docs or announcement text about the limit to Jordan before it ships."
+          }
+        ]
+      }
+    },
+    {
+      "label": "fact api-rename",
+      "ms": 2355,
+      "cost": 0.015668,
+      "stop_reason": "end_turn",
+      "out": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because renames break integrators.",
+        "scope": "launch",
+        "confirm": "So in public APIs and payloads, keep existing names even when a rename would be tidier, since breaking customers isn't worth it.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      }
+    },
+    {
+      "label": "route free-tier",
+      "ms": 5534,
+      "cost": 0.023368,
+      "stop_reason": "end_turn",
+      "out": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
+        "fact_quoted": "",
+        "why_here": "This is a public pricing call that customers will see, and one option adds about $600 a month, and your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
+        "headline": "Keep the v2 free tier at 1,000 requests a day like v1, or raise it to 5,000?",
+        "in_your_terms": "At 1,000 a day, free users get the same allowance as today and serving costs stay predictable. Lowering it later is easy because it never went up. At 5,000 a day, hobbyists and people trying out the API get five times the room, which sales says helps against competitors. It costs about $600 a month more at current signups, and once it is public, cutting it back would upset users. Finance has not weighed in yet.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.65
+          },
+          {
+            "option": "B",
+            "p": 0.35
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Set the v2 free tier to 1,000 requests/day matching v1, unblock the dependent agent, and route any customer-facing pricing copy to Jordan before publishing."
+          },
+          {
+            "option": "B",
+            "instruction": "Set the v2 free tier to 5,000 requests/day, record the ~$600/month cost estimate for finance, and route any customer-facing pricing copy to Jordan before publishing."
+          }
+        ]
+      }
+    }
+  ]
+}
