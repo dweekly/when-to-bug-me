@@ -9,6 +9,7 @@ import {
   type Guess,
   hasBasis,
   moodAfter,
+  substantiveBasis,
   nextGlow,
   shouldAskWhy,
   shouldProposeGuidance,
@@ -32,12 +33,13 @@ const atThreshold: Guess = [
 const REASON = "I do school drop-off before 8:30, so no early flights.";
 
 describe("hasBasis and topGuess", () => {
-  it("treats a reason shorter than MIN_BASIS_CHARS, after trimming, as no basis", () => {
+  it("counts any non-blank reason as a basis; only the glow applies MIN_BASIS_CHARS", () => {
     expect(hasBasis(undefined)).toBe(false);
     expect(hasBasis("")).toBe(false);
-    expect(hasBasis("x".repeat(MIN_BASIS_CHARS - 1))).toBe(false);
-    expect(hasBasis(`   ${"x".repeat(MIN_BASIS_CHARS - 1)}   `)).toBe(false);
-    expect(hasBasis("x".repeat(MIN_BASIS_CHARS))).toBe(true);
+    expect(hasBasis("   ")).toBe(false);
+    expect(hasBasis("x".repeat(MIN_BASIS_CHARS - 1))).toBe(true);
+    expect(substantiveBasis(`   ${"x".repeat(MIN_BASIS_CHARS - 1)}   `)).toBe(false);
+    expect(substantiveBasis("x".repeat(MIN_BASIS_CHARS))).toBe(true);
   });
 
   it("picks the most likely option", () => {
@@ -88,8 +90,9 @@ describe("shouldAskWhy", () => {
     expect([first, second]).toEqual([true, false]);
   });
 
-  it("still asks when the basis is too short to count", () => {
-    expect(shouldAskWhy("B", confident, "because")).toBe(true);
+  it("does not ask again when a short reason was already given", () => {
+    expect(shouldAskWhy("B", confident, "because")).toBe(false);
+    expect(shouldAskWhy("B", confident, "  ")).toBe(true);
   });
 });
 
@@ -108,7 +111,7 @@ describe("shouldProposeGuidance", () => {
 
   it("never proposes without a basis", () => {
     expect(shouldProposeGuidance("B", "A", confident, "")).toBe(false);
-    expect(shouldProposeGuidance("B", "A", confident, "short")).toBe(false);
+    expect(shouldProposeGuidance("B", "A", confident, "   ")).toBe(false);
   });
 });
 
