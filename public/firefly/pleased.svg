@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" class="bug-me bm-pleased" role="img" aria-labelledby="pleased-title pleased-desc" data-state="pleased">
+  <title id="pleased-title">Bug Me: pleased</title>
+  <desc id="pleased-desc">A bigger smile and a brightening yellow light.</desc>
+  <defs>
+    <radialGradient id="pleased-tail-light-gradient" gradientUnits="userSpaceOnUse" cx="127.796" cy="191.081" r="31.03">
+      <stop offset="0" stop-color="#FFFBD0" />
+      <stop offset="0.32" stop-color="#FFF8B0" />
+      <stop offset="0.72" stop-color="#FFF06B" />
+      <stop offset="1" stop-color="#FFE34A" />
+    </radialGradient>
+    <radialGradient id="pleased-tail-halo-gradient" gradientUnits="userSpaceOnUse" cx="127.796" cy="191.081" r="37.563">
+      <stop offset="0" stop-color="#FFE34A" stop-opacity="0.55" />
+      <stop offset="0.78" stop-color="#FFE34A" stop-opacity="0.55" />
+      <stop offset="0.86" stop-color="#FFE34A" stop-opacity="0.38" />
+      <stop offset="0.93" stop-color="#FFE34A" stop-opacity="0.14" />
+      <stop offset="1" stop-color="#FFE34A" stop-opacity="0" />
+    </radialGradient>
+    <clipPath id="pleased-head-clip" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="256" height="138" />
+    </clipPath>
+    <clipPath id="pleased-abdomen-clip" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="136" width="256" height="120" />
+    </clipPath>
+    <clipPath id="pleased-neck-clip" clipPathUnits="userSpaceOnUse">
+      <rect x="0" y="130" width="256" height="14" />
+    </clipPath>
+  </defs>
+  <style>
+    .bm-pleased .abdomen-motion { transform-box:view-box; transform-origin:127.8px 136px; animation:bm-pleased-breath 5s ease-in-out infinite; }
+    .bm-pleased .head-motion { transform-box:view-box; transform-origin:127.8px 136px; animation:bm-pleased-nod 7s ease-in-out infinite; }
+    .bm-pleased .antenna-left-flex { transform-box:view-box; transform-origin:112.689px 74.514px; animation:bm-pleased-left-feeler 7s ease-in-out -1.2s infinite; }
+    .bm-pleased .antenna-right-flex { transform-box:view-box; transform-origin:142.903px 74.514px; animation:bm-pleased-right-feeler 7.91s ease-in-out -2.7s infinite; }
+    .bm-pleased .wing-left-flex { transform-box:view-box; transform-origin:108.612px 136.166px; animation:bm-pleased-left-wing 5s ease-in-out infinite; }
+    .bm-pleased .wing-right-flex { transform-box:view-box; transform-origin:146.986px 136.166px; animation:bm-pleased-right-wing 5s ease-in-out -.5s infinite; }
+    .bm-pleased .light-pulse, .bm-pleased .halo-pulse { animation:bm-pleased-light 5s ease-in-out infinite; }
+    .bm-pleased .eye-left, .bm-pleased .eye-right { transform-box:fill-box; transform-origin:center; animation:bm-pleased-blink 14s linear infinite; }
+    @keyframes bm-pleased-breath { 0%,100% { transform:scale(1,1); } 50% { transform:scale(1.025,1.045); } }
+    @keyframes bm-pleased-nod {
+      0%,100% { transform:rotate(0deg); } 25% { transform:rotate(-1.17deg); }
+      60% { transform:rotate(1.8deg); } 85% { transform:rotate(-0.45deg); }
+    }
+    @keyframes bm-pleased-left-feeler {
+      0%,22%,65%,100% { transform:rotate(0deg) skewX(0deg); }
+      32% { transform:rotate(-5deg) skewX(-1.25deg); }
+      43% { transform:rotate(2.75deg) skewX(0.7deg); }
+      54% { transform:rotate(-1deg) skewX(-0.25deg); }
+    }
+    @keyframes bm-pleased-right-feeler {
+      0%,38%,85%,100% { transform:rotate(0deg) skewX(0deg); }
+      50% { transform:rotate(4deg) skewX(1deg); }
+      61% { transform:rotate(-2.5deg) skewX(-0.625deg); }
+      73% { transform:rotate(1deg) skewX(0.25deg); }
+    }
+    @keyframes bm-pleased-left-wing { 0%,100% { transform:rotate(0deg); } 50% { transform:rotate(3.2deg); } }
+    @keyframes bm-pleased-right-wing { 0%,100% { transform:rotate(0deg); } 50% { transform:rotate(-3.2deg); } }
+    @keyframes bm-pleased-light { 0%,100% { opacity:.82; } 50% { opacity:1; } }
+    @keyframes bm-pleased-blink { 0%,41.4%,43.4%,100% { transform:scaleY(1); } 42.4% { transform:scaleY(.08); } }
+    .bm-pleased.glow-only .firefly { display:none; }
+    .bm-pleased.glow-only .art-motion { animation:none !important; transform:none; }
+    .bm-pleased .light-pulse, .bm-pleased .halo-pulse { animation:bm-pleased-brighten 1.6s ease-out 1, bm-pleased-light 5s ease-in-out 1.6s infinite; }
+        @keyframes bm-pleased-brighten { from { opacity:.70; } to { opacity:1; } }
+@media (prefers-reduced-motion: reduce) {
+.bm-pleased .art-motion,
+.bm-pleased .abdomen-motion,
+.bm-pleased .head-motion,
+.bm-pleased .antenna-left-flex,
+.bm-pleased .antenna-right-flex,
+.bm-pleased .wing-left-flex,
+.bm-pleased .wing-right-flex,
+.bm-pleased .light-pulse,
+.bm-pleased .halo-pulse,
+.bm-pleased .eye-left,
+.bm-pleased .eye-right { animation:none !important; }
+}
+</style>
+  <g id="artwork-frame" transform="translate(-19.169 -20.1) scale(1.15)">
+    <g id="mascot" class="art-motion" stroke-linecap="round" stroke-linejoin="round">
+      <g id="glow" class="glow" data-level="0.86">
+        <g id="glow-halo" class="halo-level" opacity="0.74">
+          <g class="halo-pulse">
+            <circle cx="127.796" cy="191.081" r="37.563" fill="url(#pleased-tail-halo-gradient)" />
+          </g>
+        </g>
+        <circle id="tail-base" cx="127.796" cy="191.081" r="31.03" fill="#F4B83F" />
+        <g id="glow-light" class="light-level" opacity="0.86">
+          <g class="light-pulse">
+            <circle cx="127.796" cy="191.081" r="31.03" fill="url(#pleased-tail-light-gradient)" />
+          </g>
+        </g>
+        <circle id="tail-outline" cx="127.796" cy="191.081" r="31.03" fill="none" stroke="#44352F" stroke-width="2.858" />
+      </g>
+      <g id="firefly" class="firefly">
+        <g id="wing-left" fill="#F6B47F" stroke="#44352F" stroke-width="2.858" class="wing-left" transform="rotate(2 108.612 136.166)">
+          <g id="wing-left-flex" class="wing-left-flex">
+            <path d="M 104.037 132.881 C 106.142 132.677 108.292 132.571 109.468 133.618 C 110.511 134.547 110.786 136.38 110.429 138.201 C 110.053 140.106 108.986 141.996 108.161 143.789 C 107.324 145.61 106.738 147.331 106.085 149.05 C 103.568 155.674 100.034 162.299 95.486 168.358 C 91.327 173.896 86.317 178.963 80.493 182.995 C 73.67 187.717 65.727 191.024 58.474 187.635 C 55.326 186.163 52.306 183.43 50.684 180.26 C 48.72 176.417 48.803 171.934 50.047 167.947 C 52.137 161.243 57.506 155.948 63.112 151.314 C 75.216 141.306 88.416 134.396 104.037 132.881 Z" />
+          </g>
+        </g>
+        <g id="wing-right" fill="#F6B47F" stroke="#44352F" stroke-width="2.858" class="wing-right" transform="rotate(-2 146.986 136.166)">
+          <g id="wing-right-flex" class="wing-right-flex">
+            <path d="M 151.554 132.881 C 149.45 132.677 147.3 132.571 146.124 133.618 C 145.081 134.547 144.805 136.38 145.163 138.201 C 145.538 140.106 146.606 141.996 147.431 143.789 C 148.268 145.61 148.854 147.331 149.507 149.05 C 152.024 155.674 155.558 162.299 160.106 168.358 C 164.265 173.896 169.274 178.963 175.099 182.995 C 181.921 187.717 189.865 191.024 197.118 187.635 C 200.266 186.163 203.285 183.43 204.908 180.26 C 206.872 176.417 206.788 171.934 205.545 167.947 C 203.455 161.243 198.086 155.948 192.48 151.314 C 180.376 141.306 167.176 134.396 151.554 132.881 Z" />
+          </g>
+        </g>
+        <g id="neck-shape" fill="#E58769" stroke="#44352F" stroke-width="2.858" clip-path="url(#pleased-neck-clip)">
+          <path d="M 124.462 73.076 C 137.131 71.956 150.558 77.717 158.106 88.02 C 165.812 98.536 167.39 113.781 158.512 123.86 C 154.492 128.423 148.327 131.928 143.974 134.084 C 143.356 134.39 142.776 134.669 142.715 135.168 C 142.664 135.586 142.982 136.16 143.319 136.735 C 144.038 137.964 144.84 139.206 145.62 140.488 C 147.276 143.213 148.827 146.132 149.687 149.201 C 151.499 155.662 150.24 162.787 146.202 168.117 C 142.503 172.996 136.474 176.371 130.313 177.038 C 117.27 178.455 103.633 167.751 104.737 154.327 C 105.023 150.844 106.301 147.178 107.73 144.199 C 109 141.553 110.388 139.449 112.185 136.954 C 112.618 136.354 113.073 135.731 113.095 135.276 C 113.12 134.772 112.618 134.471 112.009 134.177 C 110.795 133.59 109.163 133.03 107.655 132.344 C 104.868 131.079 102.494 129.378 100.32 127.363 C 95.863 123.229 92.252 117.76 91.039 111.946 C 89.657 105.332 91.378 98.266 94.798 92.246 C 100.875 81.548 112.319 74.15 124.462 73.076 Z" />
+        </g>
+        <g id="abdomen" class="abdomen-motion">
+          <g id="abdomen-shape" fill="#E58769" stroke="#44352F" stroke-width="2.858" clip-path="url(#pleased-abdomen-clip)">
+            <path d="M 124.462 73.076 C 137.131 71.956 150.558 77.717 158.106 88.02 C 165.812 98.536 167.39 113.781 158.512 123.86 C 154.492 128.423 148.327 131.928 143.974 134.084 C 143.356 134.39 142.776 134.669 142.715 135.168 C 142.664 135.586 142.982 136.16 143.319 136.735 C 144.038 137.964 144.84 139.206 145.62 140.488 C 147.276 143.213 148.827 146.132 149.687 149.201 C 151.499 155.662 150.24 162.787 146.202 168.117 C 142.503 172.996 136.474 176.371 130.313 177.038 C 117.27 178.455 103.633 167.751 104.737 154.327 C 105.023 150.844 106.301 147.178 107.73 144.199 C 109 141.553 110.388 139.449 112.185 136.954 C 112.618 136.354 113.073 135.731 113.095 135.276 C 113.12 134.772 112.618 134.471 112.009 134.177 C 110.795 133.59 109.163 133.03 107.655 132.344 C 104.868 131.079 102.494 129.378 100.32 127.363 C 95.863 123.229 92.252 117.76 91.039 111.946 C 89.657 105.332 91.378 98.266 94.798 92.246 C 100.875 81.548 112.319 74.15 124.462 73.076 Z" />
+          </g>
+        </g>
+        <g id="head-rig" class="head-motion">
+          <g id="antenna-left" fill="#F6B47F" stroke="#44352F" stroke-width="2.858" transform="rotate(1.5 112.689 74.514)">
+            <g id="antenna-left-flex" class="antenna-left-flex">
+              <path d="M 86.807 41.219 C 89.249 41.201 91.684 42.622 93.548 44.377 C 95.296 46.027 96.537 47.972 98.103 49.648 C 101.089 52.845 105.252 55.062 108.661 58.423 C 112.287 61.993 115.059 66.856 115.81 71.178 C 116.198 73.409 116.047 75.498 113.726 76.716 C 112.546 77.335 110.811 77.729 109.713 77.335 C 108.714 76.976 108.245 75.961 107.789 74.955 C 105.868 70.704 104.162 66.558 100.614 62.42 C 98.944 60.474 96.868 58.529 94.887 58.276 C 92.795 58.006 90.811 59.627 88.561 60.042 C 83.917 60.897 78.143 56.608 77.684 51.682 C 77.227 46.782 82.028 41.25 86.807 41.219 Z" />
+            </g>
+          </g>
+          <g id="antenna-right" fill="#F6B47F" stroke="#44352F" stroke-width="2.858" transform="rotate(-1.5 142.903 74.514)">
+            <g id="antenna-right-flex" class="antenna-right-flex">
+              <path d="M 168.784 41.219 C 166.343 41.201 163.907 42.622 162.044 44.377 C 160.296 46.027 159.055 47.972 157.489 49.648 C 154.502 52.845 150.34 55.062 146.931 58.423 C 143.305 61.993 140.533 66.856 139.781 71.178 C 139.393 73.409 139.544 75.498 141.866 76.716 C 143.046 77.335 144.781 77.729 145.879 77.335 C 146.877 76.976 147.347 75.961 147.802 74.955 C 149.723 70.704 151.43 66.558 154.978 62.42 C 156.648 60.474 158.724 58.529 160.704 58.276 C 162.797 58.006 164.781 59.627 167.031 60.042 C 171.675 60.897 177.448 56.608 177.908 51.682 C 178.365 46.782 173.564 41.25 168.784 41.219 Z" />
+            </g>
+          </g>
+          <g id="head-shape" fill="#E58769" stroke="#44352F" stroke-width="2.858" clip-path="url(#pleased-head-clip)">
+            <path d="M 124.462 73.076 C 137.131 71.956 150.558 77.717 158.106 88.02 C 165.812 98.536 167.39 113.781 158.512 123.86 C 154.492 128.423 148.327 131.928 143.974 134.084 C 143.356 134.39 142.776 134.669 142.715 135.168 C 142.664 135.586 142.982 136.16 143.319 136.735 C 144.038 137.964 144.84 139.206 145.62 140.488 C 147.276 143.213 148.827 146.132 149.687 149.201 C 151.499 155.662 150.24 162.787 146.202 168.117 C 142.503 172.996 136.474 176.371 130.313 177.038 C 117.27 178.455 103.633 167.751 104.737 154.327 C 105.023 150.844 106.301 147.178 107.73 144.199 C 109 141.553 110.388 139.449 112.185 136.954 C 112.618 136.354 113.073 135.731 113.095 135.276 C 113.12 134.772 112.618 134.471 112.009 134.177 C 110.795 133.59 109.163 133.03 107.655 132.344 C 104.868 131.079 102.494 129.378 100.32 127.363 C 95.863 123.229 92.252 117.76 91.039 111.946 C 89.657 105.332 91.378 98.266 94.798 92.246 C 100.875 81.548 112.319 74.15 124.462 73.076 Z" />
+          </g>
+          <g id="face" class="face" fill="#44352F">
+            <g id="eye-left" class="eye-left">
+              <ellipse cx="109.22" cy="107.38" rx="4.9" ry="3.8" />
+            </g>
+            <g id="eye-right" class="eye-right">
+              <ellipse cx="146.37" cy="107.38" rx="4.9" ry="3.8" />
+            </g>
+            <path id="smile" d="M 116.5 113.3 C 122.2 124 133.8 124 139.5 113.3" fill="none" stroke="#44352F" stroke-width="3.5" />
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

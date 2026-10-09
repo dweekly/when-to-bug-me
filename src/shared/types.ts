@@ -47,10 +47,20 @@ export interface Decision {
    * Hand-authored, conservative bounds per option key: whether taking that option can be undone, and
    * what it costs. Only these, never the model's say-so, can make an option eligible to settle alone.
    */
-  bounds: Record<string, { reversible: Reversible; cost_usd: number }>;
+  bounds: Record<string, { reversible: Reversible; cost_usd: number; undo_cost?: string }>;
+  /** A purpose-built briefing drawn as SVG on the decision's card; every number is in the decision's own text. */
+  visual?: Visual;
   /** Topic tags. Kept guidance re-routes waiting decisions that share a tag with its source decision. */
   tags: string[];
 }
+
+/** A decision briefing, drawn by src/page/visuals.ts. Each kind shows what changes under each option. */
+export type Visual =
+  | { kind: "timeline"; from: string; to: string; marks: { at: string; label: string }[]; bars: { option: string; from: string; to: string; label: string }[] }
+  | { kind: "clocks"; zones: { label: string; time: string }[]; repeat: string }
+  | { kind: "chart"; unit: string; series: number[]; spike: number; spike_label: string; variants: Record<string, "omit" | "annotate"> }
+  | { kind: "payload"; lines: string[]; field: string; variants: Record<string, string>; reach: string }
+  | { kind: "bars"; unit: string; items: { option: string; value: number; label: string; note: string }[] };
 
 export interface Rule {
   id: string;

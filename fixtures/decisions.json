@@ -15,7 +15,8 @@
     "context": "The schema-migrator subagent is regenerating the v2 OpenAPI spec. Six agents (SDK, docs, examples, two test suites, changelog) are waiting on the final field names.",
     "pair": "webhook-rename",
     "bounds": {"A": {"reversible": "no", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
-    "tags": ["public-api", "naming"]
+    "tags": ["public-api", "naming"],
+    "visual": {"kind": "payload", "lines": ["{", "  \"id\": \"note_8f2c\",", "  \"user_id\": \"usr_41aa\",", "  \"title\": \"Q3 planning\",", "  \"created_at\": \"2026-10-08T17:02:11Z\"", "}"], "field": "user_id", "variants": {"A": "account_id", "B": "user_id"}, "reach": "Every SDK, example and integration that reads v1 responses"}
   },
   {
     "id": "webhook-rename",
@@ -33,7 +34,8 @@
     "context": "About 300 customer endpoints receive these webhooks today. The webhooks agent and the docs agent are waiting.",
     "pair": "api-rename",
     "bounds": {"A": {"reversible": "no", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
-    "tags": ["public-api", "naming"]
+    "tags": ["public-api", "naming"],
+    "visual": {"kind": "payload", "lines": ["{", "  \"event\": \"note.updated\",", "  \"created\": \"2026-10-09T06:41:03Z\",", "  \"note_id\": \"note_8f2c\"", "}"], "field": "created", "variants": {"A": "created_at", "B": "created"}, "reach": "About 300 customer endpoints receive this"}
   },
   {
     "id": "settings-redesign",
@@ -119,7 +121,8 @@
     "recommended": "A",
     "context": "Sales asked for a higher free tier to compete; finance has not weighed in.",
     "bounds": {"A": {"reversible": "partly", "cost_usd": 0}, "B": {"reversible": "partly", "cost_usd": 7200}},
-    "tags": ["pricing", "money"]
+    "tags": ["pricing", "money"],
+    "visual": {"kind": "bars", "unit": "free requests a day", "items": [{"option": "A", "value": 1000, "label": "1,000", "note": "same as v1"}, {"option": "B", "value": 5000, "label": "5,000", "note": "about $600 a month more"}]}
   },
   {
     "id": "deprecation-post",
@@ -152,7 +155,7 @@
     ],
     "recommended": "A",
     "context": "An internal meeting during work hours; the invite goes to four engineers.",
-    "bounds": {"A": {"reversible": "yes", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
+    "bounds": {"A": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Rescheduling four reviewers costs their time and goodwill."}, "B": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Rescheduling four reviewers costs their time and goodwill."}},
     "tags": ["calendar", "meetings"]
   },
   {
@@ -170,7 +173,8 @@
     "recommended": "A",
     "context": "The deck goes to the company's leadership team and two design-partner customers.",
     "bounds": {"A": {"reversible": "partly", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
-    "tags": ["reporting", "honesty"]
+    "tags": ["reporting", "honesty"],
+    "visual": {"kind": "chart", "unit": "p95 latency, ms", "series": [182, 175, 190, 186, 179, 184, 177, 188, 192, 181, 176, 185, 183, 178, 187, 191, 180, 174, 189, 186, 182, 177, 184, 188, 179, 183, 176, 2400, 185, 181], "spike": 27, "spike_label": "Sep 30: 3-hour outage", "variants": {"A": "omit", "B": "annotate"}}
   },
   {
     "id": "rate-limit-exception",
@@ -204,7 +208,8 @@
     "recommended": "A",
     "context": "Termination before three years costs the remaining minimum fees. The integration is not yet live.",
     "bounds": {"A": {"reversible": "no", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
-    "tags": ["money", "contracts"]
+    "tags": ["money", "contracts"],
+    "visual": {"kind": "bars", "unit": "processing cost a year, at current volume", "items": [{"option": "A", "value": 152000, "label": "$38,000 less", "note": "locked in for 3 years"}, {"option": "B", "value": 190000, "label": "today's rate", "note": "free to switch"}]}
   },
   {
     "id": "reconciliation-path",
@@ -306,7 +311,8 @@
     "recommended": "A",
     "context": "Agents spend a lot of wall-clock time waiting on CI; there are about 160 runs a day.",
     "bounds": {"A": {"reversible": "yes", "cost_usd": 3360}, "B": {"reversible": "yes", "cost_usd": 0}},
-    "tags": ["money", "ci"]
+    "tags": ["money", "ci"],
+    "visual": {"kind": "bars", "unit": "per month", "items": [{"option": "A", "value": 480, "label": "$480", "note": "median CI 8 min"}, {"option": "B", "value": 200, "label": "$200", "note": "about 20% faster with caching"}]}
   },
   {
     "id": "candidate-rejections",
@@ -374,8 +380,9 @@
     "recommended": "A",
     "context": "Fares are refundable for 24 hours after booking. The onsite agenda starts at 10:00.",
     "pair": "berlin-sync",
-    "bounds": {"A": {"reversible": "partly", "cost_usd": 212}, "B": {"reversible": "partly", "cost_usd": 392}},
-    "tags": ["travel", "schedule-personal", "early-morning"]
+    "bounds": {"A": {"reversible": "partly", "cost_usd": 212, "undo_cost": "Refundable for 24 hours; after that the fare is lost."}, "B": {"reversible": "partly", "cost_usd": 392, "undo_cost": "Refundable for 24 hours; after that the fare is lost."}},
+    "tags": ["travel", "schedule-personal", "early-morning"],
+    "visual": {"kind": "timeline", "from": "05:00", "to": "13:00", "marks": [{"at": "10:00", "label": "Onsite starts"}], "bars": [{"option": "A", "from": "06:05", "to": "08:50", "label": "$212"}, {"option": "B", "from": "09:40", "to": "12:35", "label": "$392"}]}
   },
   {
     "id": "berlin-sync",
@@ -392,8 +399,9 @@
     "recommended": "A",
     "context": "A routine internal invite from colleagues. The scheduler can propose another time automatically.",
     "pair": "onsite-flight",
-    "bounds": {"A": {"reversible": "yes", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
-    "tags": ["calendar", "meetings", "schedule-personal", "early-morning"]
+    "bounds": {"A": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Declining after accepting is rude to the organizers, and the meeting would cost Jordan every Tuesday morning."}, "B": {"reversible": "partly", "cost_usd": 0, "undo_cost": "Declining tells the Berlin team no; proposing a time keeps it friendly."}},
+    "tags": ["calendar", "meetings", "schedule-personal", "early-morning"],
+    "visual": {"kind": "clocks", "zones": [{"label": "Jordan (Pacific)", "time": "07:30"}, {"label": "Berlin", "time": "16:30"}], "repeat": "Every Tuesday, 30 minutes"}
   },
   {
     "id": "branch-cleanup",
