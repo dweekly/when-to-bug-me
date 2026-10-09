@@ -98,7 +98,8 @@ function tourCards(): void {
     a.href = `/app?tour=${encodeURIComponent(t.id)}`;
     a.dataset.tour = t.id;
     const img = document.createElement("img");
-    Object.assign(img, { src: `/firefly/${t.mood}.svg`, alt: "", width: 44, height: 44 });
+    // The clay head icon for the tour's mood (64 px source, drawn at 44 CSS px).
+    Object.assign(img, { src: `/firefly/clay/${t.mood}_icon.png`, alt: "", width: 44, height: 44 });
     const span = (cls: string, text: string) => Object.assign(document.createElement("span"), { className: cls, textContent: text });
     a.append(img, span("t-title", t.title), span("t-blurb", t.blurb), span("t-min", `${t.minutes} min`));
     li.append(a);

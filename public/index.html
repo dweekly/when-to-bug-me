@@ -43,7 +43,14 @@
             <a class="ghost" href="/app">Open the app</a>
           </div>
         </div>
-        <img class="narrator" src="/firefly/resting.svg" alt="" width="220" height="220" />
+        <div class="narrator" aria-hidden="true">
+          <!-- Clay loop; Safari needs the HEVC file first. Under reduced motion the still poster shows instead. -->
+          <video class="moving" autoplay loop muted playsinline poster="/firefly/clay/resting.png" width="256" height="256">
+            <source src="/firefly/clay/resting_safari.mp4" type='video/mp4; codecs="hvc1"' />
+            <source src="/firefly/clay/resting.webm" type="video/webm" />
+          </video>
+          <img class="still" src="/firefly/clay/resting.png" alt="" width="256" height="256" />
+        </div>
       </section>
 
       <section class="jordan reveal" aria-labelledby="jordan-h">

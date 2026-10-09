@@ -55,7 +55,9 @@ h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); }
 .cta a { text-decoration: none; padding: 12px 20px; border-radius: 999px; font-weight: 700; }
 .cta .primary { background: var(--glow); color: var(--glow-ink); }
 .cta .ghost { border: 1px solid var(--line); color: var(--ink); }
-.narrator { width: clamp(140px, 24vw, 240px); height: auto; filter: drop-shadow(0 0 40px rgba(255, 216, 77, 0.25)); }
+.narrator { width: clamp(150px, 26vw, 280px); filter: drop-shadow(0 0 48px rgba(255, 216, 77, 0.22)); }
+.narrator video, .narrator img { display: block; width: 100%; height: auto; }
+.narrator .still { display: none; }
 
 /* Meet Jordan */
 .lanes { display: grid; gap: 10px; margin: 0 0 28px; }
@@ -108,7 +110,7 @@ h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); }
 
 @media (max-width: 720px) {
   .hero { grid-template-columns: 1fr; min-height: auto; }
-  .narrator { order: -1; width: 120px; }
+  .narrator { order: -1; width: 140px; }
   .loop, .kinds { grid-template-columns: 1fr; }
   .bins { gap: 4px; }
   .bins q { display: none; }
@@ -118,4 +120,6 @@ h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); }
   .reveal, .star, .tour-cards a { transition: none; }
   .reveal { opacity: 1; transform: none; }
   .star { transform: var(--to); }
+  .narrator .moving { display: none; }
+  .narrator .still { display: block; }
 }
