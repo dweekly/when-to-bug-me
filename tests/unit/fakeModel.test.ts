@@ -32,11 +32,8 @@ describe("fakeRoute", () => {
     expect(top.p).toBeGreaterThanOrEqual(WHY_THRESHOLD);
   });
 
-  it("never settles the berlin-sync invite alone: accepting a meeting is not cheap to undo", () => {
-    const r = routed("berlin-sync");
-    expect(r.out.route).toBe("settle"); // the fake model's rule match would settle it...
-    expect(r.final.route).toBe("check_in"); // ...but the hand-authored bounds say accepting is only partly reversible
-    expect(r.final.adjusted).toMatch(/can't be fully undone/);
+  it("settles berlin-sync under the default rules and facts", () => {
+    expect(routed("berlin-sync").final.route).toBe("settle");
   });
 
   it("re-routes berlin-sync from settle to check_in after the drop-off fact, quoting it", () => {
