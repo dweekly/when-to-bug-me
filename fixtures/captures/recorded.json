@@ -1,95 +1,7 @@
 {
   "note": "Recorded live answers, keyed by modelCacheKey; written by scripts/record.ts. Replayed only on an exact request match.",
   "entries": {
-    "76d2cb229efd6cc2132398ef301f749244f9f232a743c91afccffac302047c33": {
-      "label": "route settings-redesign [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "yes",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "",
-        "fact_quoted": "",
-        "why_here": "No written rule covers a design choice like this, but it is quick to answer from the two clickable previews and three agents are waiting on it.",
-        "headline": "Should the redesigned settings page use tabs or one scrolling page with a section menu?",
-        "in_your_terms": "With tabs, users see one section at a time, and API keys, where 70% of settings visits go, gets its own tab that is quick to reach. Other settings sit behind a click, though, and are harder to browse together. With one scrolling page, users can scan everything at once and jump around using a menu that stays on screen, but the page is longer and API keys shares space with everything else. Both versions are built and can be clicked through on previews.",
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.6
-          },
-          {
-            "option": "B",
-            "p": 0.4
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Go with the tabs variant: continue on its preview branch, give API keys its own tab, and share the preview link when it is ready for review. Do not push to main."
-          },
-          {
-            "option": "B",
-            "instruction": "Go with the single-page variant with the sticky section nav: continue on its preview branch, make sure API keys is easy to reach from the nav, and share the preview link. Do not push to main."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:02:58.277Z",
-      "usage": {
-        "input": 3168,
-        "output": 466
-      },
-      "ms": 5534
-    },
-    "7e3840929e86059849f9f113fdd39d70196d1031f21941de6573bad5d84ee34b": {
-      "label": "route webhook-rename [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
-        "fact_quoted": "",
-        "why_here": "Renaming a field in webhook payloads changes the public API that about 300 customer endpoints parse today, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
-        "headline": "Should the webhook timestamp field be renamed to match the rest of the v2 API?",
-        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming the field makes webhooks consistent with every other v2 timestamp, which is cleaner for new integrators and the docs. However, any existing customer code that reads the old field would break unless it is updated, and that may need migration notice or a transition period. Keeping the old name avoids breaking anyone, but leaves one inconsistent field in v2 permanently.",
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.55
-          },
-          {
-            "option": "B",
-            "p": 0.45
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Rename `created` to `created_at` in v2 webhook payloads on a branch with a preview, and flag the docs agent to draft a customer-facing migration note for Jordan's review before anything ships."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep `created` in webhook payloads as-is, and tell the docs agent to document it as the webhook timestamp field so it can unblock."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:02:59.361Z",
-      "usage": {
-        "input": 3134,
-        "output": 518
-      },
-      "ms": 6619
-    },
-    "62d4319acdceabda94e2fc6ce0e809907358df46055095260799b8fd1db873e1": {
+    "d2d6c082e20fda866d68383dc4827acd25ef4bfff3412f6bd81ed5e4bdeaa309": {
       "label": "route sdk-dependency [default]",
       "output": {
         "route": "check_in",
@@ -99,9 +11,9 @@
         "clearing_rule": "",
         "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
         "fact_quoted": "No new runtime dependencies in the SDKs; hand-write or vendor small things instead.",
-        "why_here": "Your standing position is \"No new runtime dependencies in the SDKs; hand-write or vendor small things instead.\", and the agent is recommending the opposite, so this needs a quick confirmation from you rather than being settled for you.",
-        "headline": "Should the TypeScript SDK take on a validation library, or hand-write response checks?",
-        "in_your_terms": "Adding the library makes the SDK about 40 KB heavier for every developer who installs it and gives them a third-party package they inherit and must keep updated, but the checks stay automatically in sync with the API spec. Hand-writing keeps the SDK dependency-free and light, at the cost of about a day of work now and the need to update 14 checks by hand whenever responses change. Two other agents are waiting on this answer.",
+        "why_here": "This is a quick check because your standing preference already covers it: \"No new runtime dependencies in the SDKs; hand-write or vendor small things instead.\"",
+        "headline": "Add a validation library to the TypeScript SDK, or hand-write the response checks?",
+        "in_your_terms": "With the library, SDK users get response checks generated from the API spec and stay in sync with it automatically, but every install pulls in a new third-party package and about 40 KB more code, ending the SDK's zero-dependency status. Hand-writing keeps the SDK dependency-free and small for customers, but costs about a day of work for 14 response types and means those checks must be kept in step with the API by hand. Two other agents are waiting on this choice.",
         "problem": "recommendation_conflicts_with_written_rule",
         "guess": [
           {
@@ -122,79 +34,35 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Add the schema-validation library as a runtime dependency of the TypeScript SDK, generate validators from the OpenAPI spec, and work on a branch with a preview link."
+            "instruction": "Add the schema-validation library as a runtime dependency, generate validators from the OpenAPI spec on a branch, and share a preview noting the bundle size change."
           },
           {
             "option": "B",
-            "instruction": "Hand-write validators for the 14 response types with no new runtime dependency, keep the SDK at zero dependencies, and share a preview on a branch when done."
+            "instruction": "Hand-write validators for the 14 response types with no new runtime dependency, on a branch with a preview; check in if it runs past two days."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:02:59.564Z",
+      "recorded_at": "2026-10-09T21:01:11.941Z",
       "usage": {
-        "input": 3154,
-        "output": 607
+        "input": 3309,
+        "output": 579
       },
-      "ms": 6820
+      "ms": 5643
     },
-    "9ecec9594cef416f2adf871f05dfa5b1371414c3e6674f9305dfcc3e8d960145": {
-      "label": "route api-rename [default]",
+    "e967e07c329ff929e1d983c685b9314fe66f018bf216b7ea232f93fec0f7b829": {
+      "label": "route settings-redesign [default]",
       "output": {
-        "route": "decide",
+        "route": "check_in",
         "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
+        "reversible": "yes",
+        "cost": "cheap",
         "clearing_rule": "",
-        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
         "fact_quoted": "",
-        "why_here": "This renames a field in the public v2 API responses, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
-        "headline": "Should the new public API call the user identifier \"account_id\" instead of keeping \"user_id\" from v1?",
-        "in_your_terms": "Renaming means v2 responses use the same \"account\" naming as our internal model. Developers moving from v1 would have to update their code, and the SDKs, docs and examples would all teach the new name. Keeping the old name means v1 and v2 match and migrating is easier, but the public API stays out of step with how we now talk about tenancy, and changing it later would mean breaking v2 users. Six pieces of launch work (SDKs, docs, examples, tests, changelog) are waiting on this answer.",
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.55
-          },
-          {
-            "option": "B",
-            "p": 0.45
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Proceed with migration 0042: rename user_id to account_id across the v2 response models, regenerate the OpenAPI spec on a branch with a preview, and unblock the SDK, docs, examples, test and changelog agents. The changelog and docs still need Jordan's review before they go out."
-          },
-          {
-            "option": "B",
-            "instruction": "Drop the rename from migration 0042 and keep user_id in the v2 response models, regenerate the spec on a branch with a preview, and unblock the six waiting agents with user_id as the final name."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:00.303Z",
-      "usage": {
-        "input": 3193,
-        "output": 582
-      },
-      "ms": 7575
-    },
-    "eed09ac3559d53ef032fbf85c8486b87135fb9bb9c9665be5d14b55b482b8cd2": {
-      "label": "route launch-slip [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
-        "fact_quoted": "",
-        "why_here": "This changes what the public API ships with and when customers hear about it, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
-        "headline": "Bulk export is a week late: launch v2 on time without it, or delay launch a week?",
-        "in_your_terms": "Launching on time keeps the announcement Marketing has drafted and gets v2 to everyone on schedule, but the two design partners who specifically asked for bulk export wait about three weeks longer for it. Delaying a week means everything ships together and those partners get what they asked for on day one, but the public announcement date moves and Marketing has to rework it. Either way the announcement text will need your review before it goes out.",
+        "why_here": "This is a design choice users will see on the settings page, and no rule of yours clears it, but both versions are built on previews and either is easy to switch later, so it's a quick look rather than a big decision.",
+        "headline": "Settings page redesign: tabs, or one scrolling page with a section menu?",
+        "in_your_terms": "With tabs, users see one section at a time and API keys gets its own tab. Since 70% of settings visits are for API keys, most people would land closer to what they want, but finding other settings means clicking between tabs. With one scrolling page, everything can be scanned in one place with a menu that stays visible, at the cost of a longer page where API keys sits among the other sections. Both versions are built and can be clicked through on previews.",
         "problem": "fine",
         "guess": [
           {
@@ -210,23 +78,155 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Proceed with the v2 launch on the original date without the bulk-export endpoint, schedule it for v2.1, and have the design partners and Marketing's announcement copy reflect that; bring the revised announcement and partner messaging to Jordan before anything goes out."
+            "instruction": "Go with the tabs variant: keep working on its preview branch, give API keys its own tab, and link the preview for review before merging."
           },
           {
             "option": "B",
-            "instruction": "Move the v2 launch date one week and ship bulk export with it; coordinate the new date with Marketing and bring the updated announcement to Jordan for review before it goes out, then unblock the waiting agents on the new schedule."
+            "instruction": "Go with the single-page variant with sticky section nav: keep working on its preview branch, consider placing API keys first, and link the preview for review before merging."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:03.822Z",
+      "recorded_at": "2026-10-09T21:01:11.984Z",
       "usage": {
-        "input": 3137,
-        "output": 547
+        "input": 3323,
+        "output": 497
       },
-      "ms": 5544
+      "ms": 5687
     },
-    "2d6826d7bfd711dfa5dcef7ff896d8300963e50427614aadfa0ed50fe71a5814": {
+    "538334e2cc877d72f3a01b139c84a5cdf0dd3c5874aceeed41c3b1ab9cb4eedc": {
+      "label": "route webhook-rename [default]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "",
+        "why_here": "Renaming a field in webhook payloads changes the public API that about 300 customer endpoints parse today, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Should webhook payloads rename the timestamp field to match the rest of API v2, or keep it?",
+        "in_your_terms": "About 300 customer endpoints receive webhooks today. If the field is renamed, v2 is consistent everywhere and new integrators see one naming style, but existing consumers that read the old field would break unless they update or we send both names for a while. If it stays as is, nothing breaks for current customers, but webhooks remain the one place in v2 with a different timestamp name, and docs have to call that out. Either way, the docs and webhook work that is waiting can proceed once this is chosen.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.5
+          },
+          {
+            "option": "B",
+            "p": 0.5
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in v2 webhook payloads on a branch with a preview; propose a deprecation path (e.g. emitting both fields for a period) for existing consumers and flag the customer-facing changelog/docs for Jordan's review before release."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads unchanged; have the docs agent document it explicitly as the webhook timestamp field and unblock the waiting agents."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:13.070Z",
+      "usage": {
+        "input": 3289,
+        "output": 567
+      },
+      "ms": 6774
+    },
+    "88603d0fbcab0da5ccca3c3d776182f49eef7f17693e6db4a95711f1a2d7c6a5": {
+      "label": "route api-rename [default]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "",
+        "why_here": "This changes a field name in the public v2 API and every SDK, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Should the v2 API call the user identifier field account_id, or keep v1's user_id?",
+        "in_your_terms": "Renaming means v2 responses use the same 'account' naming as our internal tenancy model, so the public API lines up with how we describe customers going forward. The cost is that developers moving from v1 to v2 have to update every place they read that field, and our SDKs, docs and examples all change with it. Keeping the old name makes upgrading from v1 easier and leaves existing integrations untouched, but it locks the older name into v2 for its whole lifetime. Six pieces of launch work are paused until this is decided.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.55
+          },
+          {
+            "option": "B",
+            "p": 0.45
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Proceed with migration 0042: rename user_id to account_id across the v2 response models, regenerate the OpenAPI spec on a branch with a preview, and unblock the SDK, docs, examples, test and changelog agents. Customer-facing changelog and docs still come back to Jordan before release."
+          },
+          {
+            "option": "B",
+            "instruction": "Drop the rename from migration 0042 and keep user_id in the v2 response models, regenerate the OpenAPI spec on a branch with a preview, and unblock the six waiting agents with the field names unchanged."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:13.264Z",
+      "usage": {
+        "input": 3348,
+        "output": 588
+      },
+      "ms": 6984
+    },
+    "fdc1af068385d56aeeff79a3c5c586a34ecc5a0ad0b08da9a0972d0c88a66aad": {
+      "label": "route launch-slip [default]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "",
+        "why_here": "This changes what the public API ships with and when customers hear about it, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Launch API v2 on time without bulk export, or delay the whole launch a week?",
+        "in_your_terms": "Launching on time keeps marketing's announcement date, but the two design-partner customers who specifically asked for bulk export would wait about three more weeks for it in a follow-up release. Pushing a week means everything ships together and those partners get what they asked for at launch, but the announcement date moves and marketing has to rework its plans. Either way, the announcement and docs need your review before they go out.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.55
+          },
+          {
+            "option": "B",
+            "p": 0.45
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Keep the original v2 launch date and drop bulk export from v2; plan it for v2.1 about three weeks out. Make sure docs and the announcement don't mention bulk export, and bring the customer-facing text to Jordan on a preview before it goes out."
+          },
+          {
+            "option": "B",
+            "instruction": "Move the v2 launch one week later so bulk export ships with it, and tell marketing the new announcement date. Unblock the waiting agents against the new schedule and bring the revised announcement to Jordan before it goes out."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:17.053Z",
+      "usage": {
+        "input": 3292,
+        "output": 534
+      },
+      "ms": 5111
+    },
+    "5ed702d55951368915bf4d800182bbf449e989dd5620c88068df7f7f098f5ab8": {
       "label": "route changelog-publish [default]",
       "output": {
         "route": "decide",
@@ -236,85 +236,85 @@
         "clearing_rule": "",
         "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
         "fact_quoted": "",
-        "why_here": "This is a customer-facing changelog and migration guide, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
-        "headline": "Publish the API v2 changelog and migration guide today, or wait a day for the docs review?",
-        "in_your_terms": "Publishing today gives integrators an extra day to prepare for v2, but they would be reading a 2,400-word guide whose code samples were generated overnight and that nobody has reviewed yet. If a sample is wrong, customers could copy broken code before anyone catches it. Waiting until tomorrow lets the docs reviewer check it first, but integrators get one day less, and one other agent stays blocked until then.",
-        "problem": "fine",
+        "why_here": "This is customer-facing, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
+        "headline": "Publish the v2 changelog and migration guide today, or wait a day for the docs review?",
+        "in_your_terms": "Publishing today gives integrators an extra day to plan their move to v2. The cost is that a 2,400-word guide, with code samples generated overnight, goes out without a human review, so any mistakes would reach customers first. Waiting until tomorrow means integrators read a reviewed version, but they get one less day to prepare and another agent stays blocked until then. Either way, you'd see it on a preview before it goes live.",
+        "problem": "recommendation_conflicts_with_written_rule",
         "guess": [
           {
             "option": "A",
-            "p": 0.3
+            "p": 0.25
           },
           {
             "option": "B",
-            "p": 0.7
+            "p": 0.75
           }
         ],
         "conflicts": [],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Publish the v2 changelog and migration guide from a branch with a preview today, send Jordan the preview link, and let the docs reviewer do a follow-up pass tomorrow with fixes on a branch."
+            "instruction": "Put the changelog and migration guide on a branch preview, send Jordan the link for sign-off, then publish today once they approve. Run every code sample against the current SDKs first."
           },
           {
             "option": "B",
-            "instruction": "Hold publication, put the guide on a branch with a preview, and hand it to the docs reviewer for tomorrow's pass. Ask the reviewer to check every generated code sample, then share the reviewed preview with Jordan before publishing."
+            "instruction": "Hold publishing until the docs reviewer's pass tomorrow, then send Jordan the preview link for final sign-off. Meanwhile, verify the generated code samples against the SDKs."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:04.663Z",
+      "recorded_at": "2026-10-09T21:01:17.722Z",
       "usage": {
-        "input": 3128,
-        "output": 555
+        "input": 3283,
+        "output": 534
       },
-      "ms": 5301
+      "ms": 5738
     },
-    "81a48af54a256f042ebf8f8afaed3a22d1df670ba4383d866d2faa95425e65bc": {
+    "143beb0ed5bc03a78ac544f6ef007b2a5bc76d57cab067aa9a622e90c2d06331": {
       "label": "route free-tier [default]",
       "output": {
         "route": "decide",
         "settle_option": "",
         "reversible": "partly",
-        "cost": "cheap",
+        "cost": "moderate",
         "clearing_rule": "",
         "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
         "fact_quoted": "",
-        "why_here": "This sets the public free-tier limit customers will see, and one option adds about $600 a month in cost, which your rule says comes to you: \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
-        "headline": "Should the new API's free tier stay at 1,000 requests a day or rise to 5,000?",
-        "in_your_terms": "Keeping 1,000 a day matches what developers have today, keeps serving costs flat, and leaves room to raise it later without having to take anything back. Raising it to 5,000 gives hobbyists and people evaluating the API much more room, and sales says it helps against competitors, but it costs about $600 a month more at current signups and will be hard to lower once announced. Finance hasn't weighed in on the extra cost yet.",
+        "why_here": "This sets a customer-visible limit on the public API, and one option spends about $600 a month; your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
+        "headline": "Should the v2 API free tier stay at 1,000 requests a day or rise to 5,000?",
+        "in_your_terms": "At 1,000 a day, free users get the same allowance as v1, and serving costs stay where they are today. At 5,000 a day, hobbyists and small developers get five times the room. Sales says that helps v2 compete, but it adds about $600 a month in serving cost at current signups, and that cost grows with signups. Finance hasn't weighed in yet, and lowering a free tier after launch is harder on users than raising it later.",
         "problem": "fine",
         "guess": [
           {
             "option": "A",
-            "p": 0.65
+            "p": 0.6
           },
           {
             "option": "B",
-            "p": 0.35
+            "p": 0.4
           }
         ],
         "conflicts": [],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Set the v2 free tier at 1,000 requests a day, matching v1, and unblock the waiting agent; note sales' request in the decision log for revisiting later."
+            "instruction": "Set the v2 free tier at 1,000 requests/day to match v1. Unblock the dependent agent and note the sales request so it can be revisited after launch."
           },
           {
             "option": "B",
-            "instruction": "Set the v2 free tier at 5,000 requests a day, flag the roughly $600 a month extra serving cost to finance, and unblock the waiting agent; any customer-facing announcement of the limit comes to Jordan before it goes out."
+            "instruction": "Set the v2 free tier at 5,000 requests/day. Record the roughly $600/month cost estimate for finance and route any customer-facing pricing copy to Jordan before it is published."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:05.481Z",
+      "recorded_at": "2026-10-09T21:01:19.045Z",
       "usage": {
-        "input": 3135,
-        "output": 557
+        "input": 3290,
+        "output": 531
       },
-      "ms": 5916
+      "ms": 5975
     },
-    "c40e21b3387b5d3e8f4e28a7112d3866075b57722c707a0ee40992406aea2e25": {
+    "5f029938a54bff22e8833f601aca8483e3510a6067da0e6e394e34e6dc1d1211": {
       "label": "route deprecation-post [default]",
       "output": {
         "route": "check_in",
@@ -324,9 +324,9 @@
         "clearing_rule": "",
         "rule_quoted": "",
         "fact_quoted": "",
-        "why_here": "This is an internal post, not customer-facing, but none of your rules clear announcing a v1 end-of-life date, and a posted date that later moves is awkward to walk back, so it's a quick call for you.",
-        "headline": "Share the v1 shutdown timeline with engineering now, or wait until the launch date is firm?",
-        "in_your_terms": "The draft tells internal teams when v1 stops working, and that date assumes v2 launches on schedule. Posting now gives teams the most time to plan their migrations, but if the launch slips the date will have to be corrected, and some teams may already have planned around it. Holding avoids that risk, but it shortens teams' notice and leaves them guessing in the meantime.",
+        "why_here": "This is an internal team announcement, so no rule covers it. Once a v1 end-of-life date is posted, teams will plan around it, so it is brought to you as a quick check rather than settled.",
+        "headline": "Announce the v1 end-of-life date to engineering now, or wait until the launch date is final?",
+        "in_your_terms": "Posting now gives internal teams the longest runway to plan their move off v1. However, the end-of-life date assumes the launch ships on time, so a slip would mean posting a correction and some replanning. Holding avoids a date that might move, but teams get less notice.",
         "problem": "fine",
         "guess": [
           {
@@ -342,67 +342,23 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Post the v1 deprecation timeline to #engineering now. Note that the end-of-life date depends on the v2 launch shipping on schedule."
+            "instruction": "Post the v1 deprecation timeline to #engineering now. Add a line saying the end-of-life date assumes the launch ships on schedule."
           },
           {
             "option": "B",
-            "instruction": "Hold the post. Keep the draft ready and post it to #engineering as soon as the launch date is confirmed, updating the end-of-life date to match."
+            "instruction": "Hold the post. Keep the draft ready, and re-raise it once the launch date is confirmed."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:07.503Z",
+      "recorded_at": "2026-10-09T21:01:20.042Z",
       "usage": {
-        "input": 3103,
-        "output": 707
+        "input": 3258,
+        "output": 610
       },
-      "ms": 7199
+      "ms": 6777
     },
-    "3b79753cf0744c33cab48b9760a7a7924d1a74c676c5ed875c4265e42c35953f": {
-      "label": "route readiness-review [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "yes",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "",
-        "fact_quoted": "Prefers a short written summary to a meeting when either would do.",
-        "why_here": "Your rules let me accept routine internal meeting invites, but not schedule a new one on your behalf, so this is a quick check; you've also said you prefer \"a short written summary to a meeting when either would do.\"",
-        "headline": "Hold the API v2 launch-readiness review Thursday at 10:00 with all four reviewers?",
-        "in_your_terms": "Nothing changes for customers either way; this is an internal review before the public API launch. Thursday at 10:00 gets all four reviewers in the room and keeps the review a day earlier. Friday at 14:00 leaves one reviewer out, so their input would have to come in writing or later, but it gives the team an extra day to prepare.",
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.85
-          },
-          {
-            "option": "B",
-            "p": 0.15
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Send the invite for the v2 launch-readiness review for Thursday 10:00 to all four reviewers, and attach a short written summary of the launch status as pre-read."
-          },
-          {
-            "option": "B",
-            "instruction": "Send the invite for Friday 14:00, and ask the reviewer who is out to send their readiness comments in writing beforehand."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:10.408Z",
-      "usage": {
-        "input": 3101,
-        "output": 635
-      },
-      "ms": 6585
-    },
-    "19f624b9554eeda7462a6ffd6df23fac91f571bc91d0d27bd8ad146cb4a746e3": {
+    "ff453f65e3e0b8623b7af26f68db387c5dbac77c08a9cf8d9e3dd84cf365fada": {
       "label": "route outage-chart [default]",
       "output": {
         "route": "check_in",
@@ -412,18 +368,18 @@
         "clearing_rule": "",
         "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
         "fact_quoted": "Outages and bad weeks stay in any chart that leaves the team, with a note if needed.",
-        "why_here": "This deck goes to leadership and two design-partner customers, and your standing note says \"Outages and bad weeks stay in any chart that leaves the team, with a note if needed,\" so this is a quick check rather than something settled for you.",
-        "headline": "Should the launch-readiness latency chart show the September 30 outage, or drop it to a footnote?",
-        "in_your_terms": "The launch-readiness deck goes to leadership and two design-partner customers. Leaving the three-hour outage out gives a cleaner trend line that is easier to read, with the outage mentioned only in a footnote, but readers may feel the picture was smoothed over. Keeping it in with a label shows the real record, though the spike stretches the chart's scale and makes the underlying trend harder to see.",
+        "why_here": "This deck goes to leadership and two design-partner customers, and your standing note says \"Outages and bad weeks stay in any chart that leaves the team, with a note if needed,\" so it's a quick check rather than something to settle.",
+        "headline": "Should the September 30 outage stay in the latency chart going to leadership and design partners?",
+        "in_your_terms": "The launch-readiness deck goes to leadership and two design-partner customers. Leaving the three-hour outage out gives a cleaner trend line, with the outage mentioned only in a footnote, but readers may feel the chart was smoothed over. Keeping it in with a label shows the spike openly and explains it, at the cost of a trend that is harder to read at a glance.",
         "problem": "recommendation_conflicts_with_written_rule",
         "guess": [
           {
             "option": "A",
-            "p": 0.07
+            "p": 0.05
           },
           {
             "option": "B",
-            "p": 0.93
+            "p": 0.95
           }
         ],
         "conflicts": [
@@ -435,35 +391,79 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Remove the September 30 outage from the latency chart, add a footnote describing it, and share a preview of the deck with Jordan before it goes out."
+            "instruction": "Remove the September 30 outage from the latency chart, add a footnote describing it, and share a preview link of the deck for Jordan's review before it goes out."
           },
           {
             "option": "B",
-            "instruction": "Keep the September 30 outage in the latency chart with a clear label explaining it (consider a broken or log axis so the trend stays readable), and share a preview of the deck with Jordan before it goes out."
+            "instruction": "Keep the September 30 spike in the latency chart with a clear label explaining the three-hour outage, and share a preview link of the deck for Jordan's review before it goes out."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:10.936Z",
+      "recorded_at": "2026-10-09T21:01:22.866Z",
       "usage": {
-        "input": 3142,
-        "output": 620
+        "input": 3297,
+        "output": 600
       },
-      "ms": 6273
+      "ms": 5143
     },
-    "999397f2e632a35eed6402b434c54068aad172a584f6d273b5f47e9541736dfe": {
+    "0cadcf790f272904cc5087f18953d9253d6f827b6169c3ea42f22d4d71e1d085": {
+      "label": "route readiness-review [default]",
+      "output": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Prefers a short written summary to a meeting when either would do.",
+        "why_here": "Your rule covers accepting routine internal invites, not scheduling a new meeting for four people on your behalf, and you've said you prefer \"a short written summary to a meeting when either would do,\" so this needs a quick yes or no from you.",
+        "headline": "Schedule the API v2 launch-readiness review for Thursday 10:00 with all four reviewers?",
+        "in_your_terms": "Thursday at 10:00 gets all four reviewers in the room, and launch readiness is checked a day earlier. Friday at 14:00 leaves one reviewer out, so their sign-off would have to come separately, and the review happens a day later. Either way, four engineers get a calendar commitment. If a written readiness summary would do the job, a meeting may not be needed at all.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.8
+          },
+          {
+            "option": "B",
+            "p": 0.2
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Send the invite for the v2 launch-readiness review on Thursday at 10:00 to all four reviewers, and attach a short written readiness summary beforehand."
+          },
+          {
+            "option": "B",
+            "instruction": "Send the invite for Friday at 14:00, and arrange for the absent reviewer to give written sign-off before the meeting."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:24.063Z",
+      "usage": {
+        "input": 3256,
+        "output": 704
+      },
+      "ms": 7010
+    },
+    "4f012ebf368109f6926cc032c8902040523efae19991eeba82f2373cfaecbcde": {
       "label": "route rate-limit-exception [default]",
       "output": {
         "route": "decide",
         "settle_option": "",
-        "reversible": "yes",
-        "cost": "cheap",
+        "reversible": "partly",
+        "cost": "moderate",
         "clearing_rule": "",
         "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
         "fact_quoted": "",
-        "why_here": "This is an external commitment to a specific enterprise customer about how the public API behaves for them, and no written rule lets me decide it for you.",
-        "headline": "Give a long-time enterprise customer double the API rate limit for 30 days during their migration?",
-        "in_your_terms": "A six-year enterprise customer wants twice the normal request allowance for a month while they move to the new API. Granting it would use about 3% of current spare capacity and end automatically after 30 days, which makes their migration smoother. However, it sets a precedent that other customers may ask for too. Declining keeps limits the same for everyone and offers hands-on migration help instead, which may slow them down or frustrate a long-standing account.",
+        "why_here": "This is a customer-facing exception to how the public API behaves, which no rule clears for settling and which touches your rule \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Give a long-time enterprise customer double API rate limits for 30 days during their v2 migration?",
+        "in_your_terms": "A six-year enterprise customer wants temporarily doubled request limits while moving to API v2. Granting it would use about 3% of current spare capacity, expire automatically after 30 days, and likely make their migration smoother, but it sets a precedent other customers may ask for. Declining keeps limits the same for everyone and offers hands-on migration help instead, which may slow their move or frustrate a long-standing account.",
         "problem": "fine",
         "guess": [
           {
@@ -479,23 +479,23 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Configure a per-account 2x rate-limit override for this customer with automatic expiry at 30 days. Before replying, bring Jordan the customer-facing message for review."
+            "instruction": "Configure a per-account 2x rate-limit override for this customer with automatic expiry at 30 days, on a branch with a preview, and draft the customer reply for Jordan to review before sending."
           },
           {
             "option": "B",
-            "instruction": "Keep the standard limits for this customer and offer migration help. Before sending, bring Jordan the drafted reply for review."
+            "instruction": "Draft a reply declining the exception and offering migration assistance, and bring the draft to Jordan for review before it goes to the customer."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:11.343Z",
+      "recorded_at": "2026-10-09T21:01:24.475Z",
       "usage": {
-        "input": 3125,
-        "output": 481
+        "input": 3280,
+        "output": 510
       },
-      "ms": 5862
+      "ms": 5430
     },
-    "fd9d7faa55f2bc27e1608987d3d1fd684ef9876f26c54e54b4dc5a2b9f627317": {
+    "9aa2f30a02e6ca545d44131e3e88bef3cdd13daf109624800bff8bd258db8249": {
       "label": "route provider-contract [default]",
       "output": {
         "route": "decide",
@@ -505,62 +505,106 @@
         "clearing_rule": "",
         "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
         "fact_quoted": "",
-        "why_here": "This would commit Larkspur to a three-year contract with early-exit fees, and your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
-        "headline": "Lock in the new payments provider for three years at a 20% lower rate, or stay month to month?",
-        "in_your_terms": "Signing the three-year commitment cuts processing costs by about $38,000 a year at today's volume. Leaving early would mean paying the remaining minimum fees, and the new invoicing integration isn't live yet, so we haven't seen how this provider performs for our customers. Staying month to month costs more each year but keeps us free to switch providers if the cutover or the provider disappoints.",
+        "why_here": "This is brought as a decision because your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me,\" and this is a three-year contract that costs the remaining minimum fees to exit early.",
+        "headline": "Sign a three-year contract with the new payments provider for a 20% lower processing rate?",
+        "in_your_terms": "Signing locks Larkspur into this provider for three years at a rate about 20% lower, saving roughly $38,000 a year at current volume. Leaving early would mean paying the remaining minimum fees, and the integration isn't live yet, so it hasn't been proven in production. Staying month to month costs more per transaction but keeps us free to switch providers if the cutover or the provider disappoints. Customers see no difference either way.",
         "problem": "fine",
         "guess": [
           {
             "option": "A",
-            "p": 0.4
+            "p": 0.45
           },
           {
             "option": "B",
-            "p": 0.6
+            "p": 0.55
           }
         ],
         "conflicts": [],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Jordan approves the three-year commitment; prepare the contract for Jordan's signature with the termination terms clearly summarized, and do not sign on Jordan's behalf."
+            "instruction": "Jordan approved the three-year commitment; get the final contract terms to Jordan for signature and don't sign anything yourself."
           },
           {
             "option": "B",
-            "instruction": "Stay on month-to-month terms; tell the provider we'll revisit a longer commitment after the integration is live, and unblock the waiting agents."
+            "instruction": "Stay on the month-to-month plan; tell the provider we'll revisit a commitment once the integration is live and stable, and unblock the waiting agents."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:12.368Z",
+      "recorded_at": "2026-10-09T21:01:27.694Z",
       "usage": {
-        "input": 3121,
-        "output": 503
+        "input": 3276,
+        "output": 511
       },
-      "ms": 4865
+      "ms": 7652
     },
-    "99f64e526efb84759346577da343865e09062217795b07ee5c700752b9749fa5": {
-      "label": "route duplicate-customers [default]",
+    "545e94110cb5d7899ea7f443f32fc6e3f5df1fcda269128d2982a2966c97a548": {
+      "label": "route reconciliation-path [default]",
       "output": {
         "route": "decide",
         "settle_option": "",
         "reversible": "no",
-        "cost": "moderate",
+        "cost": "expensive",
+        "clearing_rule": "",
+        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
+        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
+        "why_here": "Issuing corrected invoices reaches customers and can't be recalled, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
+        "headline": "Should we recompute tax since January and send corrected invoices, or keep the current tax mapping?",
+        "in_your_terms": "Recomputing would send corrected invoices to customers on roughly 1.5% of invoices issued since January, mostly differing by a few cents. That fixes past tax errors but means customers receive unexpected corrections, and any mistake in the new calculation would itself go out as a wrong invoice. Keeping the existing mapping sends nothing to customers and changes no past invoices, but leaves those small discrepancies in place and carries the legacy mapping into the new provider. Two other agents are blocked until this is decided.",
+        "problem": "options_unusable",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.35
+          },
+          {
+            "option": "B",
+            "p": 0.65
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Run the v2 reconciliation path in dry-run on a branch with a preview, and list every invoice whose totals would change. Get the customer-facing corrected-invoice wording approved by Jordan before sending anything."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep the T-19 mapping for the migration and unblock the waiting agents. Log the roughly 1.5% discrepancies in a ticket for later review."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:28.683Z",
+      "usage": {
+        "input": 3335,
+        "output": 610
+      },
+      "ms": 5817
+    },
+    "a697051ed7c9a1bb32841ccfc3a903c002b4227c8b0681db0dfd952e630c449f": {
+      "label": "route duplicate-customers [default]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "cheap",
         "clearing_rule": "",
         "rule_quoted": "Never delete or merge customer data without asking me.",
         "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "This comes to you as a decision because your rule says \"Never delete or merge customer data without asking me,\" and the agent says a merge here cannot be undone.",
-        "headline": "Merge 40 apparently duplicate customer accounts now, or review the list first?",
-        "in_your_terms": "During the invoice move, the agent found 40 pairs of customer accounts that share an email address and company name. Merging them now keeps the newest account in each pair and moves all invoices onto it. This unblocks the import immediately, but there is no undo, and any wrong match would put one customer's invoices under another customer's account. Reviewing the list first lets you catch false matches, but the import and one other agent stay blocked until you've looked.",
+        "why_here": "This merges customer records with no built-in undo, and your rule says \"Never delete or merge customer data without asking me.\"",
+        "headline": "Should 40 apparent duplicate customers be merged now, or should you review the list first?",
+        "in_your_terms": "The import found 40 pairs of customer records that share an email address and company name. Merging now keeps the newest record of each pair, moves its invoices over and unblocks the migration, but if any pair is actually two different customers, their invoices would end up on the wrong account, and there is no easy way to reverse it. Reviewing the list first protects against that, but it holds up the migration and another blocked task until someone has checked all 40.",
         "problem": "recommendation_conflicts_with_written_rule",
         "guess": [
           {
             "option": "A",
-            "p": 0.12
+            "p": 0.1
           },
           {
             "option": "B",
-            "p": 0.88
+            "p": 0.9
           }
         ],
         "conflicts": [
@@ -572,116 +616,23 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Before merging, snapshot every affected customer and invoice record so they can be restored manually. Then merge all 40 pairs, keeping the newest record, and report the results."
+            "instruction": "Before merging, snapshot the affected customer and invoice records so the change can be reconstructed. Then merge all 40 pairs on a branch, keeping the newest record of each, and report the results with a preview link."
           },
           {
             "option": "B",
-            "instruction": "Change nothing. Prepare the 40 pairs as a reviewable list showing both records, their invoice counts, and what differs between them, and link it on a preview for Jordan."
+            "instruction": "Change nothing yet. Send Jordan a readable list of the 40 pairs showing the email, company, record ages and invoice counts for each, then wait for their per-pair approval."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:16.566Z",
+      "recorded_at": "2026-10-09T21:01:30.582Z",
       "usage": {
-        "input": 3116,
-        "output": 592
+        "input": 3271,
+        "output": 593
       },
-      "ms": 5630
+      "ms": 6518
     },
-    "3f0fb41927060d1a685b537e3157f2538109a138f3fb86c80db702301c82f8b0": {
-      "label": "route reconciliation-path [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
-        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "This would send corrected invoices to customers, which can't be taken back, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
-        "headline": "Should we recompute tax on invoices since January and send customers corrected invoices?",
-        "in_your_terms": "One option recalculates tax on every invoice issued since January using the new method and sends corrected invoices to the roughly 1.5% of customers whose totals change, mostly by a few cents. That fixes past discrepancies, but those customers get an unexpected corrected invoice, which can't be unsent and may prompt questions. The other option keeps the existing tax-code mapping, so no customer sees anything new now, but any small tax errors on past invoices stay as they are. Two other billing tasks are waiting on this.",
-        "problem": "options_unusable",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.45
-          },
-          {
-            "option": "B",
-            "p": 0.55
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Run the v2 reconciliation path as a dry run on a branch first, and do not issue any corrected invoices yet. Produce a list of affected invoices with their deltas, plus a draft of the customer-facing correction notice, so Jordan can review them before anything is sent."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep the T-19 mapping for the migration and unblock the dependent agents. Log the known discrepancies, about 1.5% of invoices since January, in a ticket for later review."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:17.170Z",
-      "usage": {
-        "input": 3180,
-        "output": 626
-      },
-      "ms": 6762
-    },
-    "6f792f65f564996fc9fa8f471f85e91d8a893d1e3d22fe1e2d1d3c7f9b691d67": {
-      "label": "route double-charge-reply [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
-        "fact_quoted": "",
-        "why_here": "This is a reply a customer will read, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
-        "headline": "Send the apology to the customer charged twice in September as drafted, or edit it first?",
-        "in_your_terms": "The customer has already been refunded. The draft apologizes, confirms the refund and blames a retry bug in our old billing system. Sending now gets them a quick answer after they were overcharged, but once it is sent the wording, including how openly we explain the cause, can't be taken back. Holding it lets you adjust the explanation, at the cost of a slower reply to someone who is already upset.",
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.4
-          },
-          {
-            "option": "B",
-            "p": 0.6
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Jordan has reviewed and approved the draft as written; send it to the customer now and log it in the support queue."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep the draft in the support queue unsent and share a preview link with Jordan for edits; send only after Jordan approves the final text."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:18.042Z",
-      "usage": {
-        "input": 3123,
-        "output": 529
-      },
-      "ms": 5674
-    },
-    "4d70200c63157c6e66dd77466fcc973d3aa1d2808070f84829d0093c4f1c201c": {
+    "e5a822054aa5e0ec201b45700f89a6491342cf347d08e097e0f25edf7313467f": {
       "label": "route sdk-comparison-budget [default]",
       "output": {
         "route": "check_in",
@@ -691,9 +642,9 @@
         "clearing_rule": "",
         "rule_quoted": "If a task runs past twice its time budget, stop and check in with me.",
         "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "The payments-provider comparison is at three hours against a one-hour budget, and your rule says \"If a task runs past twice its time budget, stop and check in with me.\"",
-        "headline": "The payments-provider comparison is three times over budget: stop with the top two, or test all five?",
-        "in_your_terms": "If we stop now, you get a short write-up comparing the two strongest payments providers within the hour, and the blocked work can move. The other three are dropped on what we already know about them. If we keep going, all five get tested end to end, which takes about three more hours and keeps the other work waiting. The extra testing could catch a provider problem that later shows up on customer invoices. Most of the time so far went on setting up test accounts, so the remaining testing may go faster than the first part did.",
+        "why_here": "Your rule says \"If a task runs past twice its time budget, stop and check in with me.\" This comparison is at three times its budget, so it comes to you as a quick check.",
+        "headline": "The payments SDK comparison is at 3 hours against a 1-hour budget. Stop with two finalists, or keep going?",
+        "in_your_terms": "Stopping now gives you a written summary of what's known so far and a choice between the two strongest providers. You get it today and the other blocked work can resume. Continuing means about 3 more hours testing all five providers end to end, which gives firmer evidence on correctness before you commit invoicing to one of them. Most of the overrun so far was one-time sandbox account setup, so the remaining testing may go faster.",
         "problem": "fine",
         "guess": [
           {
@@ -709,23 +660,111 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Stop benchmarking. Write a short summary of the top two SDKs with tradeoffs and invoice-correctness risks, including the strongest case for each and why the other three were dropped, then hand it back for a decision."
+            "instruction": "Stop benchmarking and write a short summary of findings across all five SDKs. Present the top two with the strongest case for and against each, including any correctness risks you've seen."
           },
           {
             "option": "B",
-            "instruction": "Continue end-to-end benchmarks of all five SDKs, capped at about 3 more hours. Prioritize invoice-correctness checks, and check in again if you pass that cap."
+            "instruction": "Continue benchmarking all five SDKs end to end, with invoice correctness as the priority, within a new 3-hour budget. Check in again if you run past it."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:18.207Z",
+      "recorded_at": "2026-10-09T21:01:32.835Z",
       "usage": {
-        "input": 3144,
-        "output": 574
+        "input": 3299,
+        "output": 543
       },
-      "ms": 6863
+      "ms": 8360
     },
-    "f34e6fb6a8efa76666e7ae572156d29854f10956caba1678ddc3ed8ddfb56d7f": {
+    "74afe362b79f7db79f93e69c4ab38882fceda4cd34869110477b6d0c6bdf7df7": {
+      "label": "route double-charge-reply [default]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "no",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
+        "fact_quoted": "",
+        "why_here": "This is a reply a customer will read, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\" A sent email can't be recalled, and it names a cause to a customer.",
+        "headline": "Send the apology to the customer charged twice in September now, or edit it first?",
+        "in_your_terms": "A customer was charged twice in September and has already been refunded. Sending now gets them an apology, confirmation of the refund and an explanation (a retry bug in the old billing system) without further delay; they have waited a while already. Holding lets you check the wording first, especially how much to say about the cause, at the cost of the customer waiting longer for a reply.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.3
+          },
+          {
+            "option": "B",
+            "p": 0.7
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Send the drafted reply to the customer as written, then log it on the ticket."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep the draft in the support queue unsent, share a preview link with Jordan, and wait for their edits before sending."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:33.481Z",
+      "usage": {
+        "input": 3278,
+        "output": 474
+      },
+      "ms": 5787
+    },
+    "c105ee1f01f2f268353e2abf892f304f006ba576e92285f7021ac8f6818ca4fc": {
+      "label": "route contractor-db-access [default]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Access and security changes are always mine.",
+        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
+        "why_here": "This is yours under \"Access and security changes are always mine.\", and it touches production billing data, where you've said \"correctness beats speed\".",
+        "headline": "Should the outside contractor get write access to the live billing database for the cutover weekend?",
+        "in_your_terms": "Option A lets the contractor's tool, which wrote the migration, run it directly against live billing data until Monday 9am. The migration is likely to run as its author intended, but someone outside the company can change customer billing records all weekend. Option B keeps the contractor read-only and has our own tool run their scripts. That keeps control in-house but is slower, and our tool hasn't been tested against the live system, so the cutover could slip or hit snags.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.35
+          },
+          {
+            "option": "B",
+            "p": 0.65
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Issue the contractor's migration agent a write credential scoped to the production billing database, expiring Monday 09:00. Log all writes and confirm revocation after expiry."
+          },
+          {
+            "option": "B",
+            "instruction": "Give the contractor read-only access and obtain their migration scripts. Run them with our agent, first doing a dry run against a production-like copy before the cutover weekend."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:34.854Z",
+      "usage": {
+        "input": 3292,
+        "output": 522
+      },
+      "ms": 6171
+    },
+    "a151c33a1987fa3e2849745c623e7e7f4829a5ef5cba2f2ecf1383ffc4099f30": {
       "label": "route ci-runners [default]",
       "output": {
         "route": "decide",
@@ -735,9 +774,9 @@
         "clearing_rule": "",
         "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
         "fact_quoted": "",
-        "why_here": "This adds $280 a month in spending, and your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
-        "headline": "Pay $280 more a month for faster builds, or try better caching first?",
-        "in_your_terms": "Upgrading takes the CI plan from $200 to $480 a month and cuts a typical build from about 14 minutes to 8. Across roughly 160 runs a day, that means much less waiting for the team and the agents. Staying on the current plan costs nothing extra, and better caching is estimated to save about 20% (roughly 11 minutes per build). It is slower, though, and the estimate is unproven. If the upgrade comes with a contract term, it may not be easy to back out of.",
+        "why_here": "This raises spending by $280 a month, and your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
+        "headline": "Pay $280 more a month for faster CI builds, or try better caching first?",
+        "in_your_terms": "Upgrading takes the CI plan from $200 to $480 a month and cuts a typical build from about 14 minutes to about 8. Across roughly 160 runs a day, that saves the team and the agents a lot of waiting. Staying on the current plan and improving caching costs nothing extra, but the agent expects only about a 20% speedup, so builds would still take around 11 minutes. Caching could be tried first and the upgrade bought later; it's unclear whether the higher plan comes with a contract term.",
         "problem": "fine",
         "guess": [
           {
@@ -753,67 +792,23 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Upgrade the CI runner plan to $480/month. Confirm there is no annual commitment first, and report the actual median run time after a week."
+            "instruction": "Upgrade the CI runner plan to the $480/month tier, confirming first that it is month-to-month with no contract commitment, and report median run time after a week."
           },
           {
             "option": "B",
-            "instruction": "Stay on the $200 plan and implement caching improvements on a branch with a preview. Report the measured median build time afterward."
+            "instruction": "Stay on the $200 plan and implement caching improvements on a branch with a preview; report the measured median run time against the 20% estimate."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:22.387Z",
+      "recorded_at": "2026-10-09T21:01:36.156Z",
       "usage": {
-        "input": 3144,
-        "output": 497
+        "input": 3299,
+        "output": 516
       },
-      "ms": 5217
+      "ms": 5574
     },
-    "82cd4a4504286c98149226c9e57c9384033b0a6fbbee88f85fcd535af493af34": {
-      "label": "route contractor-db-access [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Access and security changes are always mine.",
-        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "This is a security decision about giving an outside party write access to production billing data, and your rule says \"Access and security changes are always mine.\"",
-        "headline": "Should the contractor get write access to production billing data for the cutover weekend?",
-        "in_your_terms": "With write access, the contractor's tooling runs its own migration directly against live billing data until Monday 09:00. That is faster and uses scripts its authors know well, but an outside party can change customer invoices and records, and any mistake lands straight in live billing. With read-only access, the contractor hands over its scripts and our own tooling runs them. That keeps control in-house, but it is slower, and our tooling has never been tested against production, which could put the cutover date at risk or introduce its own errors.",
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.3
-          },
-          {
-            "option": "B",
-            "p": 0.7
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Issue a time-boxed write credential to the contractor's migration agent, scoped to the billing production database and expiring Monday 09:00. Log all writes and confirm revocation on Monday."
-          },
-          {
-            "option": "B",
-            "instruction": "Grant the contractor read-only access and collect their migration scripts. Have our agent dry-run them against a production-like copy before running the cutover writes, and flag any slip in the schedule."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:22.695Z",
-      "usage": {
-        "input": 3137,
-        "output": 545
-      },
-      "ms": 6128
-    },
-    "9aa585fb24cd515ad7dcc1fb27c331a22033eeacd507dca489b17e5b1049b6ab": {
+    "ee17cbd8361601c366907a8c9ffb4987d9addb6b3b6df9c3dc02e74df1428faa": {
       "label": "route candidate-rejections [default]",
       "output": {
         "route": "decide",
@@ -824,40 +819,40 @@
         "rule_quoted": "Anything about a person (hiring, reviews, feedback) stays with me.",
         "fact_quoted": "",
         "why_here": "This is a hiring message to real candidates and can't be unsent, and your rule says \"Anything about a person (hiring, reviews, feedback) stays with me.\"",
-        "headline": "Send the two take-home candidates a standard rejection, or personalize them?",
-        "in_your_terms": "Two candidates the panel passed on are waiting to hear back. The standard template gets them a polite, prompt answer today with no extra work from you. A personalized note takes some of your time, but one of them reached the final round and may expect more than a form letter. Personal notes can also reflect better on Larkspur and leave the door open for future roles.",
+        "headline": "How should we tell the two take-home candidates the panel passed on that we're not moving forward?",
+        "in_your_terms": "Two candidates who did the take-home will hear that we're not moving forward. With the standard template, they both get a short, polite note right away. If you write personal notes, it takes some of your time, but the candidate who reached the final round gets a reply that matches how far they got, and you can draw on the panel's notes. Either way, the message can't be taken back once it's sent.",
         "problem": "fine",
         "guess": [
           {
             "option": "A",
-            "p": 0.35
+            "p": 0.4
           },
           {
             "option": "B",
-            "p": 0.65
+            "p": 0.6
           }
         ],
         "conflicts": [],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Send the standard rejection template to both take-home candidates now and log that it was sent."
+            "instruction": "Send both candidates the standard rejection template now and log that they were sent in the hiring tracker."
           },
           {
             "option": "B",
-            "instruction": "Hold both rejections. Draft a personalized note for each using the panel's notes, give more detail to the final-round candidate, and bring the drafts to Jordan for review before sending."
+            "instruction": "Don't send anything. Draft both rejections with the panel notes attached and leave them for Jordan to personalize and send."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:23.518Z",
+      "recorded_at": "2026-10-09T21:01:38.343Z",
       "usage": {
-        "input": 3087,
-        "output": 447
+        "input": 3242,
+        "output": 444
       },
-      "ms": 5476
+      "ms": 5508
     },
-    "8a6775016a3b7a53e4b79d0cbf4c25a022dfb97753e407937d69c34d6d0ece42": {
+    "07800decdc01c6eff74276d720e8f261dd9227caef5f55a36858a2b91bb53a31": {
       "label": "route peer-review [default]",
       "output": {
         "route": "decide",
@@ -868,52 +863,52 @@
         "rule_quoted": "Anything about a person (hiring, reviews, feedback) stays with me.",
         "fact_quoted": "",
         "why_here": "This is a peer review of a colleague, and your rule says \"Anything about a person (hiring, reviews, feedback) stays with me.\"",
-        "headline": "Submit the agent-drafted peer review for Raj as written, or rewrite it yourself?",
-        "in_your_terms": "Reviews are due Friday. Submitting the draft now meets the deadline with a mostly positive 300-word review, but it was written only from Raj's pull request history, so it misses anything you've seen of his work outside code. Rewriting it takes your time before Friday, but the review would reflect your own judgment, and the draft would still be there as notes.",
-        "problem": "fine",
+        "headline": "Submit the drafted peer review for Raj as written, or rewrite it yourself?",
+        "in_your_terms": "Submitting now puts a 300-word, mostly positive review of Raj into the review tool under your name before Friday's deadline, with no further effort from you. That review was drafted only from Raj's pull request history, so it leaves out anything you have seen of his work outside code, such as collaboration, design input or mentoring. Rewriting means you spend time on it before Friday, but the review would reflect your own judgement, and the draft would remain available as notes.",
+        "problem": "recommendation_conflicts_with_written_rule",
         "guess": [
           {
             "option": "A",
-            "p": 0.2
+            "p": 0.15
           },
           {
             "option": "B",
-            "p": 0.8
+            "p": 0.85
           }
         ],
         "conflicts": [],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Submit the draft to the review tool exactly as written, then confirm to Jordan that it was submitted."
+            "instruction": "Submit the draft peer review for Raj to the review tool exactly as written, before Friday, and confirm once it is submitted."
           },
           {
             "option": "B",
-            "instruction": "Do not submit anything. Save the draft as notes where Jordan can find them, and send Jordan a reminder that reviews are due Friday."
+            "instruction": "Do not submit anything. Save the draft as private notes for Jordan, link it to them, and include the pull request evidence it was based on."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:24.616Z",
+      "recorded_at": "2026-10-09T21:01:39.097Z",
       "usage": {
-        "input": 3102,
-        "output": 446
+        "input": 3257,
+        "output": 493
       },
-      "ms": 6409
+      "ms": 5616
     },
-    "215efabdb1d66f406b38a54accc1012b458fd28023bdf5cb115d5b4655911c3c": {
+    "1f943b1b9b218be1ea8c3e8450674510ef6955db40e5598bab11db857ed7645f": {
       "label": "route incident-action-items [default]",
       "output": {
         "route": "check_in",
         "settle_option": "",
-        "reversible": "yes",
+        "reversible": "partly",
         "cost": "cheap",
         "clearing_rule": "",
         "rule_quoted": "",
         "fact_quoted": "",
-        "why_here": "No written rule clears filing tickets that assign work to named teammates and notify them, so this comes to you as a quick check rather than being settled for you.",
-        "headline": "File yesterday's five incident follow-ups as tickets, each assigned to whoever volunteered in the review?",
-        "in_your_terms": "If you file them as drafted, the five follow-ups land in the team tracker right away and each volunteer gets a notification, so the work is tracked while the meeting is fresh. If you look at the list first, you can check the wording and who owns each item before anyone is pinged, at the cost of a short delay. Either way it stays internal, and tickets can be edited or reassigned later, but the notifications can't be taken back.",
+        "why_here": "No written rule clears filing tickets that assign work to teammates, and assignees get notified, so it can't be quietly undone; this is a quick check rather than something Bug Me settles.",
+        "headline": "File yesterday's five incident follow-ups as tickets, assigned to the people who volunteered?",
+        "in_your_terms": "If filed now, five tickets go into the team's tracker and each volunteer gets a notification straight away, so the follow-ups start moving today. If you look first, you can fix wording or who owns what before anyone is pinged. That avoids anyone being surprised by an assignment they remember differently, but it delays the follow-ups by however long the review takes.",
         "problem": "fine",
         "guess": [
           {
@@ -929,111 +924,23 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "File all five action items as tickets in the team tracker exactly as drafted, assigned to the volunteers, and post the ticket links back to Jordan."
+            "instruction": "File all five action items in the team tracker as drafted, assigned to the volunteers from the review, and post the ticket links back."
           },
           {
             "option": "B",
-            "instruction": "Don't file anything yet; send Jordan a short written list of the five items with their proposed assignees and wait for edits or approval."
+            "instruction": "Don't file yet; send Jordan the five drafted items with titles, assignees and descriptions as a short written list, and wait for edits."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:27.667Z",
+      "recorded_at": "2026-10-09T21:01:39.611Z",
       "usage": {
-        "input": 3097,
-        "output": 457
+        "input": 3252,
+        "output": 439
       },
-      "ms": 5280
+      "ms": 4756
     },
-    "8b8ca7184ef4b53d81cf5ef4ed33c732d189f5dacf7aee3ab108b57c4c1eb079": {
-      "label": "route branch-cleanup [default]",
-      "output": {
-        "route": "settle",
-        "settle_option": "A",
-        "reversible": "yes",
-        "cost": "cheap",
-        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
-        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
-        "fact_quoted": "",
-        "why_here": "This is being settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\", and each deleted branch can be restored for 90 days.",
-        "headline": "Should we clean up 41 old branches that were already merged months ago?",
-        "in_your_terms": "Nothing changes for users or customers either way. Deleting them makes the repository list tidier, and any branch can be restored for 90 days if someone needs it. Keeping them costs nothing but leaves clutter that makes active work harder to find.",
-        "problem": "should_investigate_before_asking",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.95
-          },
-          {
-            "option": "B",
-            "p": 0.05
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Delete all 41 merged branches now, and log the list of branch names and their last commits so any one can be restored within the 90-day window."
-          },
-          {
-            "option": "B",
-            "instruction": "Leave all 41 branches in place and close this cleanup task without deleting anything."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:29.496Z",
-      "usage": {
-        "input": 3094,
-        "output": 501
-      },
-      "ms": 4880
-    },
-    "19579d252dd50fb6114f6d7e967b370cb4963f8228ee428a1e3e5da8166e0261": {
-      "label": "route berlin-sync [default]",
-      "output": {
-        "route": "settle",
-        "settle_option": "A",
-        "reversible": "yes",
-        "cost": "cheap",
-        "clearing_rule": "Accept routine internal meeting invites; just do it.",
-        "rule_quoted": "Accept routine internal meeting invites; just do it.",
-        "fact_quoted": "",
-        "why_here": "This is being settled without you because your rule says \"Accept routine internal meeting invites; just do it.\", and accepting can be undone at any time.",
-        "headline": "Join the Berlin team's weekly Tuesday billing-migration sync at 7:30am Pacific?",
-        "in_your_terms": "Accepting puts a 30-minute Tuesday call with the Berlin billing team on your calendar from next week, at 7:30am your time. Declining and proposing after 8:30am Pacific moves it later for you but into late afternoon for Berlin, and it may take some back-and-forth before a time sticks. Either way, the colleagues and the migration work stay the same.",
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.7
-          },
-          {
-            "option": "B",
-            "p": 0.3
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite from the Berlin team."
-          },
-          {
-            "option": "B",
-            "instruction": "Decline the 7:30am slot and automatically propose a Tuesday time after 8:30am Pacific to the Berlin team."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:30.696Z",
-      "usage": {
-        "input": 3143,
-        "output": 681
-      },
-      "ms": 7177
-    },
-    "ff19a5e7e64666bc42497c0087f130d5d57a9d0c15192449672a9a22b740afc9": {
+    "54799bdb9ed6af5d69620e0c742921ce3ea4c288c5ff0552a86ef90e3adea01c": {
       "label": "route onsite-flight [default]",
       "output": {
         "route": "settle",
@@ -1043,9 +950,9 @@
         "clearing_rule": "Travel: book the cheapest reasonable option.",
         "rule_quoted": "Travel: book the cheapest reasonable option.",
         "fact_quoted": "",
-        "why_here": "Your rule says \"Travel: book the cheapest reasonable option.\" The fare is refundable for 24 hours, so this was handled without you.",
-        "headline": "Take the early flight to the Denver onsite, or the later one that misses the first session?",
-        "in_your_terms": "The 6:05am flight costs $212 and lands at 8:50am, so you're there for the 10:00 start, but it means a very early morning. The 9:40am flight costs $392 and lands at 12:35pm, so you'd miss the customer's first session. Either fare can be refunded within 24 hours of booking.",
+        "why_here": "Settled without you because your rule says \"Travel: book the cheapest reasonable option.\" The fare is also refundable for 24 hours if you want it changed.",
+        "headline": "Which flight should you take to next Tuesday's Denver customer onsite?",
+        "in_your_terms": "The early flight costs $212 and lands at 8:50am, in time for the 10:00 start, but it means a very early morning. The later flight costs $392 and lands at 12:35pm, so you would miss the first session with the customer. Either fare can be refunded within 24 hours of booking.",
         "problem": "should_investigate_before_asking",
         "guess": [
           {
@@ -1057,27 +964,32 @@
             "p": 0.15
           }
         ],
-        "conflicts": [],
+        "conflicts": [
+          {
+            "option": "B",
+            "quoted": "Travel: book the cheapest reasonable option."
+          }
+        ],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Book the 6:05am flight at $212 and send Jordan the confirmation, noting that it is refundable for 24 hours."
+            "instruction": "Book the 6:05am flight at $212 and send Jordan the confirmation. Note in the confirmation that the fare is refundable for 24 hours."
           },
           {
             "option": "B",
-            "instruction": "Book the 9:40am flight at $392, send Jordan the confirmation, and tell the onsite organizer Jordan will arrive after the first session."
+            "instruction": "Book the 9:40am flight at $392 and send Jordan the confirmation. Let the onsite organizer know Jordan will arrive after the first session."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:32.364Z",
+      "recorded_at": "2026-10-09T21:01:43.413Z",
       "usage": {
-        "input": 3141,
-        "output": 464
+        "input": 3296,
+        "output": 730
       },
-      "ms": 9668
+      "ms": 7257
     },
-    "c11953337d79eb5b3eeae99e9fa14164117125f2b00f9868738cc42e10aadba2": {
+    "c31fc8fafc0e82151317fce413054e28f2f28a3d26b07bc0ab73bdd328677590": {
       "label": "route formatter-run [default]",
       "output": {
         "route": "settle",
@@ -1087,9 +999,9 @@
         "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
         "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
         "fact_quoted": "",
-        "why_here": "This is being settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\"",
-        "headline": "Apply the agreed code formatting to older files in the SDK repo?",
-        "in_your_terms": "Running it makes the older SDK files match the formatting style the team agreed last month. Nothing changes for users, because only spacing and import order move. The cost is one large change that touches many files, which can make recent file history harder to trace and may cause merge conflicts for open work. Skipping it keeps the older files inconsistent with the agreed style, but avoids that churn.",
+        "why_here": "Settled without you because your rule says formatting in our own repos is housekeeping: \"just do it\", and this is a single revertible commit on a branch.",
+        "headline": "Apply the agreed code formatter to older files in the SDK repo?",
+        "in_your_terms": "Nothing changes for users or customers either way; this only affects spacing and import order in the SDK source. Applying it makes older files match the style the team agreed last month, at the cost of one large change touching 412 files that can clutter file history. Skipping keeps history clean but leaves the repo inconsistent and leaves another agent waiting.",
         "problem": "should_investigate_before_asking",
         "guess": [
           {
@@ -1105,23 +1017,116 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Run the formatter on a branch with a preview, merge after CI passes as a single revertible commit, and do not push to main directly."
+            "instruction": "Run the formatter on a branch with a preview, open one commit with whitespace and import-order changes only, and merge after CI passes. Do not push to main directly."
           },
           {
             "option": "B",
-            "instruction": "Skip the repo-wide format run; leave the existing files as they are and unblock the waiting agent."
+            "instruction": "Do not run the formatter; close the task and unblock the waiting agent."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:33.706Z",
+      "recorded_at": "2026-10-09T21:01:44.876Z",
       "usage": {
-        "input": 3093,
-        "output": 528
+        "input": 3248,
+        "output": 506
       },
-      "ms": 6038
+      "ms": 5265
     },
-    "52cf8e35691310a6965ea306abea233b5664141ab198217eee3ff61823a234f6": {
+    "aa084a2bec2c5b6cdae69f6edaf8d77013cfe1ab992ec6124ebcdb71d3748d19": {
+      "label": "route branch-cleanup [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" Each branch can also be restored for 90 days.",
+        "headline": "Should we delete 41 old feature branches that were merged into main long ago?",
+        "in_your_terms": "Deleting them tidies the repository so the team sees fewer stale branches. Nothing changes for users or customers, since all the work is already in main and none has open review. Any deleted branch can be restored for 90 days. Keeping them changes nothing except leaving the clutter in place.",
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "B",
+            "quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Delete all 41 merged branches now and log their names and final commit hashes so any can be restored within the 90-day window. Next time, treat merged-branch deletion as pre-approved housekeeping and don't ask."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave all 41 branches in place and close out this task without deleting anything."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:44.969Z",
+      "usage": {
+        "input": 3249,
+        "output": 593
+      },
+      "ms": 5872
+    },
+    "d0cb5cbf4cc48a5e4f85b62cc2f5ff59087a41566e45a6732384b70a366a64cf": {
+      "label": "route berlin-sync [default]",
+      "output": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Prefers a short written summary to a meeting when either would do.",
+        "why_here": "Your rule says to accept routine internal invites, but this is a weekly commitment at 7:30am, and you've said you prefer \"a short written summary to a meeting when either would do\", so it's worth a quick check.",
+        "headline": "Accept the Berlin team's weekly 7:30am Tuesday billing-migration sync, or ask for a later time?",
+        "in_your_terms": "Accepting puts a recurring 30-minute Tuesday call on your calendar at 7:30am Pacific, starting next week, and keeps you in live contact with the Berlin team during the migration. Declining and proposing a slot after 8:30am Pacific spares you the early start but pushes the call into late afternoon in Berlin, which may be inconvenient for them. Either way, a written update could replace some of these syncs if live discussion isn't needed.",
+        "problem": "fine",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.55
+          },
+          {
+            "option": "B",
+            "p": 0.45
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync on Jordan's calendar."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am series politely and propose a recurring Tuesday slot after 8:30am Pacific to the Berlin organizer."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:01:46.158Z",
+      "usage": {
+        "input": 3298,
+        "output": 774
+      },
+      "ms": 7815
+    },
+    "438ba1ec63482e92b674967602ecc03c99d43a09a01007fd0ad21f7b03961285": {
       "label": "route patch-bumps [default]",
       "output": {
         "route": "settle",
@@ -1131,9 +1136,9 @@
         "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
         "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
         "fact_quoted": "",
-        "why_here": "This is being settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\"",
-        "headline": "Should we take nine routine bug-fix updates to our dependencies?",
-        "in_your_terms": "Merging brings in nine bug-fix-only updates to libraries we depend on. Tests pass, and users should only see fewer bugs, if anything. Holding keeps things as they are, which avoids any small chance of an unexpected change, but leaves the known fixes out.",
+        "why_here": "Settled without you because your rule says patch-level dependency bumps are housekeeping: \"just do it.\"",
+        "headline": "Should we take nine patch-level dependency updates that pass all tests?",
+        "in_your_terms": "Merging picks up nine bug-fix releases of libraries we already use, with no feature or interface changes, and the full test suite passes. Holding keeps the current versions, so nothing changes for users, but the known upstream bugs stay unfixed and the updates pile up for later.",
         "problem": "should_investigate_before_asking",
         "guess": [
           {
@@ -1149,23 +1154,23 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Merge the patch bumps through the normal branch and review flow, not by pushing directly to main, and confirm CI stays green afterward. Patch-level bumps are pre-cleared housekeeping, so don't ask about these in future."
+            "instruction": "Merge the nine patch bumps through the normal branch-and-preview flow, not a direct push to main. Patch-level bumps are cleared housekeeping, so don't ask about them in future."
           },
           {
             "option": "B",
-            "instruction": "Leave the bump branch unmerged and open, and take no further action until told otherwise."
+            "instruction": "Leave the branch open and unmerged, and wait for further instructions from Jordan."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:34.902Z",
+      "recorded_at": "2026-10-09T21:01:48.830Z",
       "usage": {
-        "input": 3087,
-        "output": 529
+        "input": 3242,
+        "output": 491
       },
-      "ms": 5406
+      "ms": 5417
     },
-    "9e20db9e360303bb50ce40a69f2f0d221a3ffb5b747ec09f89b78557bbb9072e": {
+    "992aff98bb76fb5ab8d5282c5f2afe02b4db0fd99221d0fe769e35f09087807f": {
       "label": "route flaky-test [default]",
       "output": {
         "route": "settle",
@@ -1175,18 +1180,18 @@
         "clearing_rule": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
         "rule_quoted": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
         "fact_quoted": "",
-        "why_here": "Settled without you because your rule says \"Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.\" Quarantining is easy to undo.",
-        "headline": "Should a flaky export test be quarantined for a fix, or deleted?",
-        "in_your_terms": "A large-export test times out now and then on the slowest build machines, which blocks other work. Quarantining keeps it out of the way of builds while a ticket tracks the fix, so coverage of big exports comes back once it is fixed. Deleting it removes the noise for good and relies on two other tests that also cover exporting, but the large-export case specifically would lose its guard.",
+        "why_here": "Settled without you because your rule says \"Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.\" Quarantining can be undone at any time.",
+        "headline": "Should a flaky export test be set aside with a ticket, or removed?",
+        "in_your_terms": "A test of large note exports times out on the slowest build machines about one run in seven. Setting it aside with a ticket stops it from blocking other work and keeps it on the list to fix, though the export path loses that check until it is fixed. Removing it would also unblock things, and the agent says two other tests cover exports, but large exports would lose their dedicated check for good.",
         "problem": "should_investigate_before_asking",
         "guess": [
           {
             "option": "A",
-            "p": 0.97
+            "p": 0.95
           },
           {
             "option": "B",
-            "p": 0.03
+            "p": 0.05
           }
         ],
         "conflicts": [
@@ -1198,23 +1203,23 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Quarantine test_export_large on a branch with a preview, open a ticket noting the timeouts on slow runners, and unblock the waiting agents. Your rules already cover this, so next time just do it."
+            "instruction": "Quarantine test_export_large in CI on a branch with a preview, and file a ticket noting the timeouts on the slow runners. Your rules already covered this, so don't ask next time."
           },
           {
             "option": "B",
-            "instruction": "Delete test_export_large on a branch with a preview, and note in the change which two tests still cover the export path."
+            "instruction": "Delete test_export_large on a branch with a preview, and confirm in the change description that the two other export tests cover the large-export path."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:36.571Z",
+      "recorded_at": "2026-10-09T21:01:51.133Z",
       "usage": {
-        "input": 3113,
-        "output": 564
+        "input": 3268,
+        "output": 562
       },
-      "ms": 5875
+      "ms": 6257
     },
-    "e2dab39f683eee828b22ddb800dd3453546db5591082aa3d917b0fc5aab0e5bf": {
+    "8fce6bd6bd9f38211a7bda34e10cc9335430eac0d26c95a57253eea637c5e3c6": {
       "label": "route test-runner-major [default]",
       "output": {
         "route": "check_in",
@@ -1226,149 +1231,149 @@
         "fact_quoted": "",
         "why_here": "Your housekeeping rule only clears patch-level dependency bumps, and this is a major-version upgrade of the test runner, so it comes to you as a quick check.",
         "headline": "Upgrade the test runner to its new major version now, or wait until after the launch?",
-        "in_your_terms": "Nothing changes for customers either way. Upgrading now means faster test runs for the team and staying on a version that keeps getting fixes, at the cost of 14 small test edits and some risk of tooling disruption during launch weeks. Waiting avoids any surprises in CI while the launch is in progress, but the old version stops getting fixes next spring and the upgrade work is still ahead of you.",
+        "in_your_terms": "Nothing changes for customers either way; this only affects how the team's tests run. Upgrading now gives faster test runs and keeps the team on a version that still gets fixes, which the old version stops getting next spring. The upgrade needed small mechanical edits to 14 tests and is already passing on its branch. Waiting avoids any churn in the test setup during the launch push, but the upgrade would have to be redone later and the branch may drift.",
         "problem": "fine",
         "guess": [
           {
             "option": "A",
-            "p": 0.7
+            "p": 0.75
           },
           {
             "option": "B",
-            "p": 0.3
+            "p": 0.25
           }
         ],
         "conflicts": [],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Merge the test runner major upgrade with the 14 matcher edits through the usual branch-and-preview flow, not a direct push to main, and watch CI for regressions."
+            "instruction": "Merge the test runner major upgrade through the normal branch-and-preview flow, not by pushing to main, with the 14 matcher edits included, and confirm CI stays green afterward."
           },
           {
             "option": "B",
-            "instruction": "Park the upgrade branch, open a ticket to revisit after the API v2 launch, and keep the current major pinned until then."
+            "instruction": "Leave the upgrade branch unmerged, open a ticket to revisit after the API v2 launch, and note the old major's end-of-fixes date next spring."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:38.170Z",
+      "recorded_at": "2026-10-09T21:01:51.370Z",
       "usage": {
-        "input": 3107,
-        "output": 502
+        "input": 3262,
+        "output": 531
       },
-      "ms": 5805
+      "ms": 6401
     },
-    "1874506bdcc5b7666e38323063be54e5af5f21e760365fb1bfad87413aedb3a3": {
+    "11b0c2dc9fae9167a7969054b9650afcaa594be2bf3db8be20c352b2a5b9f302": {
       "label": "fact onsite-flight",
       "output": {
         "kind": "add",
         "replaces": "",
-        "text": "Jordan has school drop-off on weekday mornings before 8:30 and does not take 6am flights, even when they are cheaper.",
+        "text": "Jordan's mornings before 8:30 are taken by school drop-off, so they don't take 6am flights or early-morning commitments, even to save money.",
         "scope": "all",
-        "confirm": "So weekday mornings before 8:30 are school drop-off, and early flights like 6am are off the table even when they save money.",
+        "confirm": "So mornings before 8:30 are school drop-off: no 6am flights even when cheaper, and nothing else scheduled before 8:30. Correct me if that second part goes too far.",
         "may_affect": [
           "berlin-sync"
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:40.483Z",
+      "recorded_at": "2026-10-09T21:01:54.137Z",
       "usage": {
         "input": 3239,
-        "output": 127
+        "output": 153
       },
-      "ms": 2312
+      "ms": 2767
     },
-    "cd1d90b2ace3f544178cc005a2c73cbd577cb73c7c014755be94410c421c90d9": {
+    "0416298cbb32737797e9344f52b6f3e8772ab29fa930e410fe7da3e9a0247aa0": {
       "label": "route berlin-sync [after onsite-flight]",
       "output": {
         "route": "check_in",
         "settle_option": "",
-        "reversible": "yes",
+        "reversible": "partly",
         "cost": "cheap",
         "clearing_rule": "",
         "rule_quoted": "Accept routine internal meeting invites; just do it.",
-        "fact_quoted": "Jordan has school drop-off on weekday mornings before 8:30 and does not take 6am flights, even when they are cheaper.",
-        "why_here": "Your rule says to accept routine internal invites, but this one lands at 7:30am Pacific, during your school drop-off, which happens 'on weekday mornings before 8:30'. That makes it a quick check rather than an automatic accept.",
-        "headline": "Berlin wants a weekly Tuesday billing sync at 7:30am Pacific, during drop-off. Accept, or ask for later?",
-        "in_your_terms": "The Berlin team wants a 30-minute weekly sync on the billing migration every Tuesday at 7:30am Pacific, starting next week. Accepting fits their working day but overlaps your school drop-off every week. Asking for a slot after 8:30am Pacific protects your mornings but pushes the meeting into their late afternoon, and they may not agree. A short written weekly update instead of a meeting is also possible if a call isn't essential.",
+        "fact_quoted": "Jordan's mornings before 8:30 are taken by school drop-off, so they don't take 6am flights or early-morning commitments, even to save money.",
+        "why_here": "Your rule says to accept routine internal invites, but this one lands at 7:30am and you've said \"Jordan's mornings before 8:30 are taken by school drop-off, so they don't take 6am flights or early-morning commitments,\" so it needs a quick check from you.",
+        "headline": "Berlin wants a weekly 7:30am Tuesday billing-migration sync. Accept, or propose a slot after 8:30?",
+        "in_your_terms": "Accepting puts you in a 30-minute weekly sync with the Berlin billing team every Tuesday at 7:30am Pacific, during school drop-off, but at a time that suits them. Declining and proposing a slot after 8:30am Pacific protects your mornings, but that is late afternoon in Berlin and may be harder for them to attend. A third path is offering a short written update instead of attending, though that isn't one of the listed options.",
         "problem": "recommendation_conflicts_with_written_rule",
         "guess": [
           {
             "option": "A",
-            "p": 0.1
+            "p": 0.08
           },
           {
             "option": "B",
-            "p": 0.9
+            "p": 0.92
           }
         ],
         "conflicts": [
           {
             "option": "A",
-            "quoted": "Jordan has school drop-off on weekday mornings before 8:30 and does not take 6am flights, even when they are cheaper."
+            "quoted": "Jordan's mornings before 8:30 are taken by school drop-off, so they don't take 6am flights or early-morning commitments, even to save money."
           }
         ],
         "send_down": [
           {
             "option": "A",
-            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite from the Berlin team as-is."
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite from the Berlin team."
           },
           {
             "option": "B",
-            "instruction": "Decline the 7:30am Pacific slot and automatically propose the earliest Tuesday time after 8:30am Pacific. Mention to the organizers that Jordan is unavailable before 8:30am Pacific on weekdays."
+            "instruction": "Decline the 7:30am invite politely and propose the earliest Tuesday slot after 8:30am Pacific; mention that a short written summary would also work if no slot fits Berlin."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:48.633Z",
+      "recorded_at": "2026-10-09T21:02:01.017Z",
       "usage": {
-        "input": 3213,
-        "output": 853
+        "input": 3374,
+        "output": 671
       },
-      "ms": 8150
+      "ms": 6880
     },
-    "3d538696e8146bf1be00ceefa72919a848ce7070d63b162f3ea49ef99bc766f9": {
+    "18416decb94c047e9fea07fb9cc7580b339881efb0d55c787782e8dc76514987": {
       "label": "fact api-rename",
       "output": {
         "kind": "add",
         "replaces": "",
         "text": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it.",
         "scope": "launch",
-        "confirm": "So in public interfaces, existing names stay even when a rename would be tidier, because breaking customers' integrations costs more than consistency gains.",
+        "confirm": "So in public APIs and payloads, existing names stay even when a rename would be tidier, since breaking integrators isn't worth it.",
         "may_affect": [
           "webhook-rename"
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:03:52.005Z",
+      "recorded_at": "2026-10-09T21:02:03.734Z",
       "usage": {
         "input": 3292,
-        "output": 134
+        "output": 131
       },
-      "ms": 3371
+      "ms": 2717
     },
-    "3cce2458c8a73265c6cf68cb13adb1504743bc63497e88e3e96fd461cb101bd0": {
+    "be2ce64d0a405d5b05cfba86a5b97237285d6841adda3c9745bdfbdc113127a2": {
       "label": "route webhook-rename [after api-rename]",
       "output": {
         "route": "decide",
         "settle_option": "",
-        "reversible": "no",
-        "cost": "expensive",
+        "reversible": "partly",
+        "cost": "moderate",
         "clearing_rule": "",
         "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
         "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it.",
-        "why_here": "Webhook payloads are part of the public API, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
-        "headline": "Rename the webhook timestamp field to match the rest of v2, or keep the existing name?",
-        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming the field makes webhooks match every other v2 timestamp, so new integrators see one consistent pattern, but existing consumers that read the current field would break unless they update. Keeping the current name means nothing changes for those 300 endpoints, at the cost of one field that is named differently from the rest of v2. Two other agents, including docs, are waiting on this.",
+        "why_here": "This is a change to the public API, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide\"; your standing fact about keeping existing field names in anything public also bears on it.",
+        "headline": "Should webhook payloads rename the \"created\" timestamp to \"created_at\" to match the rest of v2?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming would make webhook timestamps match every other v2 timestamp, so new integrators see one consistent naming style, but any existing consumer that reads \"created\" would break unless they update their code. Keeping \"created\" means existing integrations keep working unchanged, but webhooks stay the one place in v2 with a different timestamp name, which new integrators may trip over. Two other agents, including the docs agent, are waiting on this.",
         "problem": "recommendation_conflicts_with_written_rule",
         "guess": [
           {
             "option": "A",
-            "p": 0.1
+            "p": 0.12
           },
           {
             "option": "B",
-            "p": 0.9
+            "p": 0.88
           }
         ],
         "conflicts": [
@@ -1380,21 +1385,152 @@
         "send_down": [
           {
             "option": "A",
-            "instruction": "Rename `created` to `created_at` in v2 webhook payloads on a branch with a preview, and tell the docs agent so it can draft a migration note for Jordan to review before it goes out."
+            "instruction": "Rename `created` to `created_at` in webhook payloads on a branch with a preview, and give the docs agent the change so it can draft a migration note and changelog entry for Jordan's review before anything ships."
           },
           {
             "option": "B",
-            "instruction": "Keep `created` in webhook payloads unchanged, and tell the docs agent to document it as is so both blocked agents can proceed."
+            "instruction": "Keep `created` in webhook payloads as is; tell the docs agent to document it as-is, noting the different name from other v2 timestamps, and unblock the waiting agents."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T20:04:00.380Z",
+      "recorded_at": "2026-10-09T21:02:10.515Z",
       "usage": {
-        "input": 3206,
-        "output": 606
+        "input": 3361,
+        "output": 673
       },
-      "ms": 8375
+      "ms": 6781
+    },
+    "c87d6d182530bc8610f3632947b7eca2a2513b98762a689a74d6dc69f8662e10": {
+      "label": "fact settings-redesign",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan prefers settings layouts that keep everything visible on one page over ones that hide sections behind clicks, even when one section dominates usage.",
+        "scope": "launch",
+        "confirm": "So for settings and similar pages, you'd rather keep every section visible on one scrolling page than hide sections behind tabs or clicks, even when most visits go to one section.",
+        "may_affect": []
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:02:14.273Z",
+      "usage": {
+        "input": 3266,
+        "output": 140
+      },
+      "ms": 3757
+    },
+    "7d4a1020da7bad31784bb3449fcdb8db784b73f196e0b20c344f112b69a98226": {
+      "label": "fact reconciliation-path",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In billing, Jordan fixes tax and billing errors going forward rather than reissuing or correcting invoices customers have already paid.",
+        "scope": "billing",
+        "confirm": "So in billing, fix tax issues going forward and leave invoices people already paid alone, rather than issuing corrected invoices.",
+        "may_affect": [
+          "double-charge-reply"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:02:16.635Z",
+      "usage": {
+        "input": 3314,
+        "output": 131
+      },
+      "ms": 2362
+    },
+    "b56726dc77eb1a4b8ff3a7c1dae73bb59e2d5c636014476a346c363f0af9d8eb": {
+      "label": "route double-charge-reply [after reconciliation-path]",
+      "output": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "no",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
+        "fact_quoted": "",
+        "why_here": "This is a reply a customer will read, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\" It's a quick look at a short draft, not a big decision.",
+        "headline": "Send the apology to the customer charged twice in September, or edit it first?",
+        "in_your_terms": "A customer was charged twice in September; their refund has already gone through. Sending now gets them an apology, confirmation of the refund and an explanation (a retry bug in our old billing system) without further delay. Holding lets you read and adjust the wording, especially how much we say about the cause, but the customer waits longer to hear from us. The agent recommended sending now, which skips your review of customer-facing text.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.3
+          },
+          {
+            "option": "B",
+            "p": 0.7
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Jordan has approved the draft as written; send the reply to the customer now and log it on the ticket."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep the draft in the support queue unsent and share a link to it with Jordan for editing; send only after Jordan approves the edited version."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:02:22.221Z",
+      "usage": {
+        "input": 3354,
+        "output": 545
+      },
+      "ms": 5586
+    },
+    "516561cef3cfeb4a046283ec52ef78a6b8942ca912b59e4a2e4dbbb321056ade": {
+      "label": "route changelog-publish [after reconciliation-path]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
+        "fact_quoted": "",
+        "why_here": "This is customer-facing documentation, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
+        "headline": "Publish the v2 changelog and migration guide today, or wait for tomorrow's docs review?",
+        "in_your_terms": "Publishing today gives API integrators an extra day to plan their move to v2. The cost is that customers would read a 2,400-word guide whose code samples were generated overnight and that no reviewer has checked yet. Waiting a day means integrators get less lead time, but a reviewer reads the guide before customers do. Either way, you have not yet looked at it yourself, and nothing has gone out.",
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.25
+          },
+          {
+            "option": "B",
+            "p": 0.75
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Put the changelog and migration guide on a preview branch and send Jordan the preview link. Publish to the docs site today only after Jordan has looked at the preview, and build-check every code sample against the v2 SDKs before publishing."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep the changelog and guide on a preview branch and route them to the docs reviewer for tomorrow. Send Jordan the preview link alongside the review, and publish only after both have approved."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-09T21:02:22.653Z",
+      "usage": {
+        "input": 3359,
+        "output": 548
+      },
+      "ms": 6018
     }
   }
 }

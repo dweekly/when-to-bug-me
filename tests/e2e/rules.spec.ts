@@ -1,7 +1,7 @@
 // Editable written rules (build plan, item 3): editing a rule re-routes the decisions it touches, and
-// the change note quotes the edited rule.
+// the change note on home's agenda quotes the edited rule.
 import { expect, test } from "@playwright/test";
-import { freshPage } from "./helpers";
+import { agendaItem, editRule, expandProject, freshPage, goHome } from "./helpers";
 
 const NEW_R12 = "Travel: never book flights that leave before 8am.";
 
@@ -10,15 +10,16 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("editing R12 re-routes the flight to 'Your decision' quoting the new rule", async ({ page }) => {
-  const flight = page.locator("#agenda").getByRole("button", { name: /6:05am flight/ });
-  await expect(flight.locator(".r").first()).toContainText("Quick check-in");
+  await expandProject(page, "Platform");
+  const flight = agendaItem(page, "6:05am flight");
+  await expect(flight.locator(".glyph")).toHaveAttribute("aria-label", "Quick check-in");
 
-  await page.getByRole("button", { name: /^Edit rule R12/ }).click();
-  await page.getByLabel("Rule R12").fill(NEW_R12);
-  await page.getByRole("button", { name: "Save and re-route" }).click();
-
+  await editRule(page, "R12", NEW_R12);
   await expect(page.locator("#rules")).toContainText(NEW_R12);
-  await expect(flight.locator(".r").first()).toContainText("Your decision");
+
+  await goHome(page);
+  await expandProject(page, "Platform");
+  await expect(flight.locator(".glyph")).toHaveAttribute("aria-label", "Your decision");
   const note = flight.locator(".change-note");
   await expect(note).toContainText("Moved from “Quick check-in” to “Your decision”");
   // The quote must carry the edited rule's words; where its final period lands is presentation.

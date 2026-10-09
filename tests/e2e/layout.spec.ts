@@ -1,6 +1,7 @@
-// Layout and motion: no horizontal scroll at phone width, and no card animation under reduced motion.
+// Layout and motion: no horizontal scroll at phone width (home, then the settings card in focus), and no
+// card animation under reduced motion.
 import { expect, test } from "@playwright/test";
-import { freshPage, openFromAgenda } from "./helpers";
+import { freshPage, openDecision, openFromAgenda } from "./helpers";
 
 const NO_HSCROLL = "document.documentElement.scrollWidth <= window.innerWidth";
 const OVERFLOW = "({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth })";
@@ -24,6 +25,7 @@ const CARD_ANIMATION = "getComputedStyle(document.querySelector('#now .card')).a
 test.describe("motion", () => {
   test("cards animate by default (so the reduced-motion check below can fail)", async ({ page }) => {
     await freshPage(page);
+    await openDecision(page, "onsite-flight");
     expect(await page.evaluate(CARD_ANIMATION)).not.toBe("none");
   });
 
@@ -31,6 +33,7 @@ test.describe("motion", () => {
     test.use({ reducedMotion: "reduce" });
     test("cards do not animate", async ({ page }) => {
       await freshPage(page);
+      await openDecision(page, "onsite-flight");
       expect(await page.evaluate(CARD_ANIMATION)).toBe("none");
     });
   });

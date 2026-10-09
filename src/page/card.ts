@@ -5,8 +5,11 @@
 import { EXAMPLES } from "../shared/examples";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, RouteKind } from "../shared/types";
-import { answer, done, finalize, glowEvent, keepFact, next, propose } from "./actions";
-import { ROUTE_LABEL, SOURCE_LABEL, firstAgendaId, routeOf } from "./derive";
+import { PUNT_KINDS } from "../shared/punt";
+import { answer, done, finalize, glowEvent, keepFact, next, propose, setAside } from "./actions";
+import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
+import { go } from "./router";
+import { renderVisual } from "./visuals";
 import { type Child, $, announce, h } from "./dom";
 import { type Flow, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
 import { render } from "./views";
@@ -17,20 +20,16 @@ export function quoteLine(c: Card): Child {
 }
 
 export function renderNow(): void {
-  const root = $("now");
+  const root = document.getElementById("now");
+  if (!root) return; // not in the focus view
   root.replaceChildren();
-  if (!S.current || (S.answered[S.current] && !unfinished(S.current) && (!F || F.id !== S.current))) S.current = firstAgendaId();
+  const id = S.current;
+  if (!id) return;
   // A re-route can settle the card in front of the person; then it is no longer theirs to decide.
-  if (S.current && !S.answered[S.current] && !unfinished(S.current) && routeOf(S.current) === "settle") {
-    announce("A rule change means Bug Me now handles that one; it is under Decisions made for you.");
-    if (F?.id === S.current) setF(null);
-    S.current = firstAgendaId();
-  }
-  const id = F && F.id === S.current ? F.id : S.current;
-  if (!id) {
-    root.append(
-      h("div", { class: "card" }, h("h3", {}, "Nothing is waiting on you."), h("p", { class: "context" }, "Every agent is unblocked. The firefly is resting; so can you.")),
-    );
+  if (!S.answered[id] && !unfinished(id) && !S.punts[id] && routeOf(id) === "settle") {
+    announce("A rule change means Bug Me now handles that one; it is under Decided for you.");
+    if (F?.id === id) setF(null);
+    go({ view: "settled" });
     return;
   }
   const d = byId.get(id)!;
@@ -39,7 +38,7 @@ export function renderNow(): void {
   const flow = F!;
   stopVoiceUnlessFor(flow.id);
   if (!isCard(c)) {
-    root.append(h("div", { class: "card" }, h("h3", {}, d.question), h("p", { class: "adjusted" }, `Couldn't evaluate this one: ${c?.unavailable ?? "no route yet"}.`)));
+    root.append(h("div", { class: "card" }, h("h3", { id: "now-q" }, d.question), h("p", { class: "adjusted" }, `Couldn't evaluate this one: ${c?.unavailable ?? "no route yet"}.`)));
     return;
   }
   const route = routeOf(id)!;
@@ -128,39 +127,129 @@ export function renderNow(): void {
         )
       : null;
 
+  const notNow =
+    !locked || flow.phase === "pushback"
+      ? h("button", { type: "button", class: "ghost", onclick: () => startPunt(flow) }, "Not now")
+      : null;
+  const lastPunt = !S.answered[id] ? S.puntHistory[id]?.[S.puntHistory[id].length - 1] : undefined;
+  const why = c.adjusted
+    ? h("p", { class: "why" }, h("span", { class: "why-mark", "aria-hidden": "true" }, "⌁"), "Code adjusted this route. ", c.adjusted)
+    : quoteLine(c);
+
   const card = h(
     "article",
-    { class: "card", "data-route": route, "aria-labelledby": "now-q" },
+    { class: `card${arrived.has(id) ? " steady" : ""}`, "data-route": route, "aria-labelledby": "now-q" },
     h(
       "div",
       { class: "meta" },
-      h("span", { class: `chip ${route}` }, ROUTE_LABEL[route]),
-      h("span", {}, project.name),
+      h("span", { class: "glyph", "aria-hidden": "true" }, GLYPH[route]),
+      h("span", { class: "route-label" }, ROUTE_LABEL[route]),
       h("span", { class: "chain" }, d.agent.join(" › ")),
-      h("span", { class: `badge ${c.source}`, title: "Where this card's routing came from" }, SOURCE_LABEL[c.source]),
     ),
     h("h3", { id: "now-q" }, c.headline || d.question),
-    c.in_your_terms ? h("p", { class: "briefing-text" }, c.in_your_terms) : null,
-    c.adjusted
-      ? h(
-          "div",
-          { class: "why" },
-          h("p", { style: "margin:0" }, h("b", {}, "Code adjusted this route. "), c.adjusted),
-          h("details", { class: "claude-why" }, h("summary", {}, "Claude's own reasoning"), h("p", {}, c.why_here)),
-        )
-      : quoteLine(c),
-    S.changes[id] ? h("p", { class: "adjusted" }, S.changes[id]) : null,
-    (c.headline || c.in_your_terms) && c.headline !== d.question
-      ? h("details", { class: "original" }, h("summary", {}, "What the agent actually asked"), h("blockquote", {}, d.question))
+    lastPunt
+      ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
       : null,
-    h("p", { class: "context" }, d.context),
+    d.visual ? drawnOnce(id, renderVisual(d.visual, d, flow.choice)) : null,
     variants,
     opts,
-    basis,
-    locked ? null : h("div", { class: "actions" }, submit, skip),
-    followup(d, route),
+    why,
+    S.changes[id] ? h("p", { class: "change-note" }, S.changes[id]) : null,
+    h(
+      "details",
+      { class: "more" },
+      h("summary", {}, "More context"),
+      c.in_your_terms ? h("p", { class: "briefing-text" }, c.in_your_terms) : null,
+      c.headline !== d.question ? h("p", { class: "original" }, h("span", { class: "quiet" }, "The agent asked: "), h("q", {}, d.question)) : null,
+      h("p", { class: "context" }, d.context),
+      c.adjusted ? h("p", { class: "quiet" }, "Claude's own reasoning: ", c.why_here) : null,
+      h("p", { class: "quiet" }, `Routing: ${SOURCE_LABEL[c.source]}.`),
+    ),
+    flow.phase === "punting" ? null : basis,
+    flow.phase === "punting" ? puntPanel(flow, d) : locked ? null : h("div", { class: "actions" }, submit, skip, notNow),
+    flow.phase === "punting" ? null : followup(d, route),
   );
+  arrived.add(id);
   root.append(card);
+}
+
+/** Cards already shown on this visit; only a card's first appearance animates in. */
+const arrived = new Set<string>();
+
+/** Decisions whose briefing has already drawn in on this visit; later renders skip the animation. */
+const drawn = new Set<string>();
+function drawnOnce(id: string, fig: HTMLElement): HTMLElement {
+  if (drawn.has(id)) fig.classList.add("drawn");
+  else drawn.add(id);
+  return fig;
+}
+
+/** Open the "Not now" panel on this card, remembering where to return if the person cancels. */
+function startPunt(flow: Flow): void {
+  flow.puntFrom = flow.phase === "pushback" ? "pushback" : "choose";
+  flow.phase = "punting";
+  flow.error = "";
+  save();
+  renderNow();
+}
+
+/**
+ * "What would you need to decide this?" Four quick choices, each followed by its own pointed
+ * question; a sentence is required, because it is what the agent will act on.
+ */
+function puntPanel(flow: Flow, d: Decision): HTMLElement {
+  const spec = PUNT_KINDS.find((k) => k.kind === flow.puntKind);
+  const ta = h("textarea", { id: "punt-reason", rows: 2, placeholder: spec ? spec.ask : "", disabled: !spec }) as HTMLTextAreaElement;
+  ta.value = flow.puntReason;
+  ta.addEventListener("input", () => (flow.puntReason = ta.value));
+  return h(
+    "div",
+    { class: "punt", role: "group", "aria-labelledby": "punt-h" },
+    h("p", { class: "lead", id: "punt-h" }, "What would you need to decide this?"),
+    h(
+      "div",
+      { class: "chips" },
+      ...PUNT_KINDS.map((k) =>
+        h(
+          "button",
+          {
+            type: "button",
+            class: "chip-btn",
+            "aria-pressed": String(flow.puntKind === k.kind),
+            onclick: () => {
+              flow.puntKind = k.kind;
+              flow.error = "";
+              renderNow();
+              (document.getElementById("punt-reason") as HTMLTextAreaElement | null)?.focus();
+            },
+          },
+          k.label,
+        ),
+      ),
+    ),
+    spec ? h("label", { for: "punt-reason" }, spec.ask) : null,
+    h("div", { class: "basis-row" }, ta, spec ? micButton(ta, false, flow, (t) => (flow.puntReason = t)) : h("span", {})),
+    flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
+    h(
+      "div",
+      { class: "actions" },
+      h("button", { type: "button", class: "primary", onclick: () => setAside(flow, d) }, "Set aside"),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "linkish",
+          onclick: () => {
+            flow.phase = flow.puntFrom ?? "choose";
+            flow.error = "";
+            save();
+            renderNow();
+          },
+        },
+        "Cancel",
+      ),
+    ),
+  );
 }
 
 /** The one recognition session that may be running, and the decision whose answer it is writing. */
@@ -266,7 +355,7 @@ export function followup(d: Decision, route: RouteKind): Child {
     return h(
       "div",
       { class: "followup push", role: "alert" },
-      h("p", { class: "big" }, "Before this goes out: you told me something that points the other way."),
+      h("p", { class: "lead" }, "Before this goes out: you told me something that points the other way."),
       h("p", {}, h("q", {}, F.pushback ?? "")),
       h("p", {}, `Still go with “${chosen.label}”?`),
       h(
@@ -276,6 +365,7 @@ export function followup(d: Decision, route: RouteKind): Child {
         ...d.options
           .filter((o) => o.key !== F!.choice)
           .map((o) => h("button", { type: "button", class: "ghost", onclick: () => void finalize(F!, d, route, o.key, "changed") }, `Change to “${o.label}”`)),
+        h("button", { type: "button", class: "ghost", onclick: () => startPunt(F!) }, "Not now"),
       ),
     );
   }
@@ -293,7 +383,7 @@ export function followup(d: Decision, route: RouteKind): Child {
     ta.value = flow.basis;
     ta.addEventListener("input", () => (flow.basis = ta.value));
     parts.push(
-      h("p", { class: "big" }, "I'm curious: why?"),
+      h("p", { class: "lead" }, "I'm curious: why?"),
       h("p", {}, "Your answer surprised me. Your reason can become guidance for every agent."),
       h("label", { for: "why", class: "sr-only" }, "Why did you choose that?"),
       h("div", { class: "basis-row" }, ta, micButton(ta, false, flow, (t) => (flow.basis = t))),
@@ -323,7 +413,7 @@ export function followup(d: Decision, route: RouteKind): Child {
         h("p", {}, h("b", {}, replacing ? `Replace “${replacing.text}” with:` : "Remember this for every agent?")),
         input,
         flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
-        h("p", { class: "senddown" }, `${SOURCE_LABEL[p.source]} · would re-check ${p.reroute.length} waiting decision${p.reroute.length === 1 ? "" : "s"}`),
+        h("p", { class: "meta-line" }, `${SOURCE_LABEL[p.source]} · would re-check ${p.reroute.length} waiting decision${p.reroute.length === 1 ? "" : "s"}`),
         h(
           "div",
           { class: "actions" },
@@ -347,7 +437,7 @@ export function followup(d: Decision, route: RouteKind): Child {
           " ",
           h("span", {}, S.changes[rid] ?? ""),
           " ",
-          S.answered[rid] ? null : h("button", { type: "button", class: "linkish", onclick: () => { S.current = rid; setF(null); render(); $("now").focus(); } }, "Look at it"),
+          S.answered[rid] ? null : h("button", { type: "button", class: "linkish", onclick: () => go({ view: "focus", id: rid }) }, "Look at it"),
         ),
       );
     }

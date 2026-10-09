@@ -27,6 +27,7 @@ export function publicDecision(d: Decision) {
     recommended: d.recommended,
     context: d.context,
     explore: d.explore,
+    visual: d.visual,
     bounds: d.bounds,
     tags: d.tags,
   };

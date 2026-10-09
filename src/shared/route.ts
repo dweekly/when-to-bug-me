@@ -151,7 +151,7 @@ export interface InvariantResult {
  * downgrades the route to a check-in, with the reason. This checks exactly these conditions; it does
  * not prove that a natural-language rule really authorizes the action.
  */
-export function enforceSettleInvariant(out: RouteOutput, decision: Decision, rules: Rule[]): InvariantResult {
+export function enforceSettleInvariant(out: RouteOutput, decision: Decision, rules: Rule[], facts: Fact[] = []): InvariantResult {
   if (out.route !== "settle") return { route: out.route, settle_option: "" };
   const missing: string[] = [];
   const bound = decision.bounds[out.settle_option];
@@ -164,6 +164,11 @@ export function enforceSettleInvariant(out: RouteOutput, decision: Decision, rul
   // authorization "...: just do it."
   if (!wholeSource(out.clearing_rule, rules.map((r) => r.text))) {
     missing.push("no written rule clears it");
+  }
+  // Precedence: a standing preference that bears on the choice outranks a rule that would let Bug Me
+  // settle it, so a verified quoted fact always brings it to the person (at least as a check-in).
+  if (verifyQuote(out.fact_quoted, facts.map((f) => f.text))) {
+    missing.push("one of your standing preferences bears on it");
   }
   if (missing.length === 0) return { route: "settle", settle_option: out.settle_option };
   return {

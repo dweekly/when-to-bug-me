@@ -1,112 +1,298 @@
-// Everything on the page except the card in front of the person: the header and firefly, the agenda,
-// what Bug Me settled, and the editable rules and facts. render() redraws all of it from state.
+// Every screen except the decision card itself. One view at a time, chosen by the URL (router.ts):
+// home (the overview: nothing to decide here), focus (one decision; card.ts draws it), between (a
+// change of project), and the secondary views for what Bug Me decided, the rules, and the record.
+// render() redraws the bar and the current view from state.
 
+import { estimateMinutes, nextInSession, overnightTotals } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
-import { editRule, undo } from "./actions";
-import { markButton, renderNow } from "./card";
-import { ROUTE_LABEL, SOURCE_LABEL, agenda } from "./derive";
+import { editRule, resume, startSession, undo } from "./actions";
+import { markButton, renderNow, stopVoiceUnlessFor } from "./card";
+import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
+import { type Route, go, hrefFor, parseRoute } from "./router";
+import { renderSky } from "./sky";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
 let ruleDraft: { id: string; text: string; error: string; focus: boolean } | null = null;
 
-export function renderAgenda(): void {
+/** Which agenda rows on home are expanded. Per visit only. */
+const expanded = new Set<string>();
+
+/** Glow level at which the firefly is delighted rather than pleased. Heuristic, near the top of 0..1. */
+const DELIGHTED_AT = 0.85;
+
+/** The firefly's six drawn moods (public/firefly/*.svg), picked from the glow state. */
+export function moodAsset(mood: Mood, glow: number, waiting: number): string {
+  if (waiting === 0) return "resting";
+  if (mood === "sheepish") return "sheepish";
+  if (mood === "dim") return "disappointed";
+  if (glow >= DELIGHTED_AT) return "delighted";
+  if (mood === "glowing") return "pleased";
+  return "attentive";
+}
+
+function currentRoute(): Route {
+  return parseRoute(location.hash, new Set(byId.keys()));
+}
+
+function waitingCount(): number {
+  return agenda().sections.reduce((n, s) => n + s.decisions.length + s.check_ins.length, 0);
+}
+
+function link(r: Route, ...children: (Node | string)[]): HTMLElement {
+  return h("a", { href: hrefFor(r) }, ...children);
+}
+
+function headline(id: string): string {
+  const c = S.cards[id];
+  return (isCard(c) && c.headline) || byId.get(id)!.question;
+}
+
+// ---------- The bar ----------
+
+function renderBar(route: Route): void {
+  const waiting = waitingCount();
+  const asset = moodAsset(S.mood, S.glow, waiting);
+  const reasons = S.record.filter((r) => (r.kind === "answer" && r.basis) || r.kind === "reason" || r.kind === "punt").length;
+  const status: Record<string, string> = {
+    resting: "Nothing is waiting on you.",
+    attentive: reasons ? `${reasons} reason${reasons === 1 ? "" : "s"} given so far.` : "Glows brighter with every real reason you give.",
+    pleased: `Glowing: ${reasons} real reason${reasons === 1 ? "" : "s"} this morning.`,
+    delighted: `Bright: ${reasons} real reasons this morning.`,
+    disappointed: "A little dimmer: that went through without a reason.",
+    sheepish: "Sheepish: Bug Me brought you something it should have handled.",
+  };
+  const settledCount = agenda().settled.filter((id) => !S.reopened.includes(id)).length;
+  const nav = (r: Route, label: string) =>
+    h("a", { href: hrefFor(r), class: "nav", "aria-current": route.view === r.view ? "page" : null }, label);
+  $("bar").replaceChildren(
+    h(
+      "a",
+      { href: "#/", class: "brand", title: status[asset] },
+      h("img", { src: `/firefly/${asset}.svg`, alt: `Bug Me's firefly. ${status[asset]}`, width: 40, height: 40, class: "firefly", "data-mood": asset }),
+      h("span", { class: "wordmark" }, "Bug Me"),
+    ),
+    h(
+      "nav",
+      { "aria-label": "Views" },
+      nav({ view: "home" }, "Home"),
+      nav({ view: "settled" }, `Decided for you${settledCount ? ` · ${settledCount}` : ""}`),
+      nav({ view: "rules" }, "Rules"),
+      nav({ view: "record" }, "Record"),
+    ),
+    h("a", { href: "/#real", class: "synthetic", title: "Everything here is made up. See what is real." }, { live: "Synthetic · live Claude", recorded: "Synthetic · recorded Claude", fake: "Synthetic · code stand-in" }[Q.mode]),
+  );
+}
+
+// ---------- Home ----------
+
+function renderHome(view: HTMLElement): void {
   const a = agenda();
-  const root = $("agenda");
-  root.replaceChildren();
-  const current = F?.id ?? S.current;
-  // Answered decisions whose follow-up is still open (a pushback, "why?", or proposed guidance) stay
-  // one click away, so leaving one never loses the loop.
-  const open = Object.keys(S.flows).filter((id) => id !== current && S.answered[id] && unfinished(id));
-  if (open.length) {
-    root.append(h("h3", { class: "section" }, "Waiting for you to finish"), h("p", { class: "section-reason" }, "You answered these; Bug Me is still waiting on a reason or on your call about the guidance."));
-    const list = h("ol", {});
-    for (const id of open) {
-      const d = byId.get(id)!;
-      const c = S.cards[id];
-      const step = { pushback: "Bug Me pushed back", why: "Bug Me asked why", proposal: "Keep this guidance?", busy: "Working…" }[S.flows[id].phase as "pushback" | "why" | "proposal" | "busy"];
-      list.append(
+  const routes0 = Object.fromEntries(Q.cards.filter(isCard).map((c) => [c.id, c.route])) as Record<string, RouteKind>;
+  const t = overnightTotals(routes0);
+  const remaining = a.sections.reduce((m, s) => m + s.minutes, 0);
+  const waiting = waitingCount();
+  const start = nextInSession(a, null);
+
+  const hero = h(
+    "section",
+    { class: "hero", "aria-labelledby": "hello" },
+    renderSky(),
+    h("h1", { id: "hello" }, waiting ? `Good morning, ${Q.persona.first_name}.` : "All clear."),
+    h(
+      "p",
+      { class: "overnight", id: "overnight" },
+      `${Q.decisions.length} questions overnight`,
+      h(
+        "span",
+        { class: "tally", "aria-label": `${t.settle} settled for you, ${t.check_in} quick checks, ${t.decide} decisions` },
+        h("span", { "aria-hidden": "true" }, `  ·  ${GLYPH.settle} ${t.settle}   ${GLYPH.check_in} ${t.check_in}   ${GLYPH.decide} ${t.decide}`),
+      ),
+    ),
+    waiting
+      ? h(
+          "div",
+          { class: "start-row" },
+          h("button", { type: "button", class: "primary big", id: "start", onclick: () => start.id && startSession(start.id) }, "Start"),
+          h("span", { class: "quiet" }, `${waiting} waiting · about ${remaining} min`),
+        )
+      : h("p", { class: "quiet" }, "Nothing is waiting on you. The firefly is resting; so can you."),
+  );
+
+  const agendaList = h("section", { id: "agenda", class: "agenda", "aria-label": "Your agenda" });
+  for (const s of a.sections) {
+    const items = [...s.decisions, ...s.check_ins];
+    const open = expanded.has(s.project.id);
+    const row = h(
+      "button",
+      {
+        type: "button",
+        class: "project-row",
+        "aria-expanded": String(open),
+        onclick: () => {
+          if (open) expanded.delete(s.project.id);
+          else expanded.add(s.project.id);
+          render();
+        },
+      },
+      h("span", { class: "pname" }, s.project.name),
+      h("span", { class: "pcounts", "aria-label": `${s.decisions.length} decisions, ${s.check_ins.length} quick checks` }, h("span", { "aria-hidden": "true" }, `${GLYPH.decide} ${s.decisions.length}   ${GLYPH.check_in} ${s.check_ins.length}`)),
+      h("span", { class: "quiet pmin" }, `${s.minutes} min`),
+      h("span", { class: "chev", "aria-hidden": "true" }, open ? "–" : "+"),
+    );
+    const block = h("div", { class: "project" }, row, h("p", { class: "preason" }, s.section_reason));
+    if (open) {
+      block.append(
         h(
-          "li",
-          {},
-          h(
-            "button",
-            { type: "button", class: "item changed", onclick: () => { S.current = id; setF(null); render(); $("now").focus(); } },
-            h("span", { class: "dot check_in" }),
-            h("span", {}, h("span", { class: "q" }, (isCard(c) && c.headline) || d.question), h("span", { class: "r" }, step)),
-            h("span", { class: "r" }, "›"),
+          "ol",
+          { class: "items" },
+          ...items.map((i) =>
+            h(
+              "li",
+              {},
+              h(
+                "a",
+                { href: hrefFor({ view: "focus", id: i.id }), class: `item${S.changes[i.id] ? " changed" : ""}${S.pending.includes(i.id) ? " pending" : ""}` },
+                h("span", { class: "glyph", "aria-label": ROUTE_LABEL[i.route] }, GLYPH[i.route]),
+                h("span", { class: "q" }, headline(i.id)),
+                S.changes[i.id] ? h("span", { class: "change-note" }, S.changes[i.id]) : null,
+                S.pending.includes(i.id) ? h("span", { class: "change-note" }, "re-checking…") : null,
+              ),
+            ),
           ),
         ),
       );
     }
-    root.append(list);
+    agendaList.append(block);
   }
-  for (const s of a.sections) {
-    const items = [...s.decisions, ...s.check_ins].filter((i) => i.id !== current);
-    root.append(h("h3", { class: "section" }, s.heading), h("p", { class: "section-reason" }, s.section_reason));
-    const list = h("ol", {});
-    const add = (i: { id: string; route: RouteKind; order_reason: string }) => {
-      const d = byId.get(i.id)!;
-      const c = S.cards[i.id];
-      list.append(
+
+  // Answered decisions whose follow-up is still open, so leaving one never loses the loop.
+  const open = Object.keys(S.flows).filter((id) => S.answered[id] && unfinished(id));
+  const unfinishedList = open.length
+    ? h(
+        "section",
+        { class: "list-block", id: "unfinished" },
+        h("h2", { class: "section-h" }, "Waiting for you to finish"),
         h(
-          "li",
-          {},
-          h(
-            "button",
-            {
-              type: "button",
-              class: `item${S.changes[i.id] ? " changed" : ""}${S.pending.includes(i.id) ? " pending" : ""}`,
-              onclick: () => {
-                S.current = i.id;
-                setF(null);
-                render();
-                $("now").focus();
-              },
-            },
-            h("span", { class: `dot ${i.route}`, title: ROUTE_LABEL[i.route] }),
+          "ol",
+          { class: "items" },
+          ...open.map((id) => {
+            const step = { pushback: "Bug Me pushed back", why: "Bug Me asked why", proposal: "Keep this guidance?", busy: "Working…" }[S.flows[id].phase as "pushback" | "why" | "proposal" | "busy"];
+            return h("li", {}, h("a", { href: hrefFor({ view: "focus", id }), class: "item changed" }, h("span", { class: "glyph", "aria-hidden": "true" }, "…"), h("span", { class: "q" }, headline(id)), h("span", { class: "change-note" }, step)));
+          }),
+        ),
+      )
+    : null;
+
+  const asideIds = Object.keys(S.punts);
+  const asideList = asideIds.length
+    ? h(
+        "section",
+        { class: "list-block", id: "aside" },
+        h("h2", { class: "section-h" }, "Set aside"),
+        h(
+          "ol",
+          { class: "items" },
+          ...asideIds.map((id) =>
             h(
-              "span",
-              {},
-              h("span", { class: "q" }, (isCard(c) && c.headline) || d.question),
-              h("span", { class: "r" }, `${ROUTE_LABEL[i.route]} · ${i.order_reason}`),
-              S.changes[i.id] ? h("span", { class: "change-note" }, S.changes[i.id]) : null,
-              S.pending.includes(i.id) ? h("span", { class: "change-note" }, "re-checking…") : null,
+              "li",
+              { class: "aside-item" },
+              h("span", { class: "q" }, headline(id)),
+              h("q", { class: "aside-reason" }, S.punts[id].reason),
+              h("button", { type: "button", class: "ghost small", onclick: () => resume(id) }, "Resume"),
             ),
-            h("span", { class: "r" }, "›"),
           ),
         ),
-      );
-    };
-    s.decisions.filter((i) => i.id !== current).forEach(add);
-    const quick = s.check_ins.filter((i) => i.id !== current);
-    if (quick.length) list.append(h("li", { class: "batch-label" }, `Quick check-ins, batched (${quick.length})`));
-    quick.forEach(add);
-    if (items.length) root.append(list);
-  }
-  const answered = Object.keys(S.answered).length;
-  if (answered) root.append(h("p", { class: "done-note" }, `${answered} answered this morning.`));
+      )
+    : null;
+
+  const settledCount = a.settled.filter((id) => !S.reopened.includes(id)).length;
+  const more = h(
+    "nav",
+    { class: "more-links", "aria-label": "More" },
+    link({ view: "settled" }, `${GLYPH.settle} ${settledCount} decided for you`),
+    link({ view: "rules" }, "Rules and what Bug Me knows"),
+    link({ view: "record" }, "Your record"),
+  );
+  view.replaceChildren(hero, agendaList, unfinishedList ?? "", asideList ?? "", more);
 }
 
-export function renderSettled(): void {
+// ---------- Focus ----------
+
+function renderFocus(view: HTMLElement, id: string): void {
+  // A decision that has become settled (and has nothing in progress) is no longer the person's.
+  if (!S.answered[id] && !unfinished(id) && routeOf(id) === "settle" && !S.punts[id]) {
+    go({ view: "settled" });
+    return;
+  }
+  const d = byId.get(id)!;
+  S.current = id;
+  S.sessionProject = d.project;
   const a = agenda();
-  const root = $("settled");
-  root.replaceChildren();
+  const section = a.sections.find((s) => s.project.id === d.project);
+  const items = section ? [...section.decisions, ...section.check_ins] : [];
+  const pos = items.findIndex((i) => i.id === id);
+  const project = Q.persona.projects.find((p) => p.id === d.project)!;
+  const bar = h(
+    "div",
+    { class: "focus-bar" },
+    link({ view: "home" }, "← Home"),
+    h("span", { class: "quiet" }, `${project.name}${pos >= 0 ? ` · ${pos + 1} of ${items.length}` : ""}`),
+  );
+  view.replaceChildren(bar, h("div", { id: "now", class: "now", tabindex: "-1" }));
+  renderNow();
+}
+
+// ---------- Between projects ----------
+
+function renderBetween(view: HTMLElement, projectId: string): void {
+  const a = agenda();
+  const stillOpen =
+    Object.keys(S.punts).filter((id) => byId.get(id)?.project === projectId).length +
+    Object.keys(S.flows).filter((id) => byId.get(id)?.project === projectId && S.answered[id] && unfinished(id)).length;
+  const finished = Q.persona.projects.find((p) => p.id === projectId);
+  const n = nextInSession(a, null);
+  const nextSection = a.sections.find((s) => s.project.id === n.project);
+  view.replaceChildren(
+    h(
+      "section",
+      { class: "between" },
+      h("p", { class: "glyph-big", "aria-hidden": "true" }, GLYPH.settle),
+      h("h1", {}, stillOpen ? `${finished?.name}'s active queue is clear.` : `${finished?.name} is done.`),
+      stillOpen ? h("p", { class: "quiet" }, `${stillOpen} set aside or waiting for you to finish.`) : null,
+      nextSection
+        ? h(
+            "div",
+            { class: "start-row" },
+            h("button", { type: "button", class: "primary big", onclick: () => n.id && startSession(n.id) }, `Next: ${nextSection.project.name}`),
+            h("span", { class: "quiet" }, `${nextSection.decisions.length + nextSection.check_ins.length} waiting · about ${estimateMinutes(nextSection.decisions.length, nextSection.check_ins.length)} min`),
+          )
+        : h("p", {}, "That's everything waiting on you."),
+      link({ view: "home" }, "Back to the overview"),
+    ),
+  );
+}
+
+// ---------- Decided for you ----------
+
+function renderSettledView(view: HTMLElement): void {
+  const a = agenda();
   const ids = a.settled.filter((id) => !S.reopened.includes(id));
-  if (!ids.length) root.append(h("li", {}, "Nothing settled without you yet."));
+  const list = h("ol", { id: "settled", class: "settled" });
+  if (!ids.length) list.append(h("li", {}, "Nothing decided without you yet."));
   for (const id of ids) {
     const d = byId.get(id)!;
     const c = S.cards[id] as Card;
     const opt = d.options.find((o) => o.key === c.settle_option);
-    root.append(
+    list.append(
       h(
         "li",
         { class: S.changes[id] ? "changed" : "" },
-        h("span", {}, (c.headline || d.question).replace(/\?$/, ""), ": "),
-        h("span", { class: "picked" }, opt?.label ?? c.settle_option),
-        h("span", { class: "why-s" }, `${c.why_here} · ${SOURCE_LABEL[c.source]}`),
+        h("span", { class: "glyph", "aria-hidden": "true" }, GLYPH.settle),
+        h("div", { class: "settled-body" }, h("span", { class: "q" }, (c.headline || d.question).replace(/\?$/, "")), h("span", { class: "picked" }, opt?.label ?? c.settle_option)),
+        h("details", { class: "why-s" }, h("summary", {}, "Why"), h("p", {}, `${c.why_here} · ${SOURCE_LABEL[c.source]}`)),
         S.changes[id] ? h("span", { class: "change-note" }, S.changes[id]) : null,
         S.pending.includes(id) ? h("span", { class: "change-note" }, "re-checking…") : null,
         h(
@@ -119,10 +305,36 @@ export function renderSettled(): void {
       ),
     );
   }
+  view.replaceChildren(
+    h("section", { class: "page" }, h("h1", {}, "Decided for you"), h("p", { class: "quiet" }, "Only what is reversible, cheap, and cleared by one of your rules."), list),
+  );
+}
+
+// ---------- Rules and what Bug Me knows ----------
+
+function renderRulesView(view: HTMLElement): void {
+  const facts = h("ul", { id: "facts", class: "facts" });
+  for (const f of S.facts) facts.append(h("li", { class: S.newFacts.includes(f.id) ? "new" : "" }, f.text, h("span", { class: "src" }, f.source)));
+  view.replaceChildren(
+    h(
+      "section",
+      { class: "page" },
+      h("h1", {}, "Your rules"),
+      h("p", { class: "quiet" }, "Edit one and the decisions it touches are checked again."),
+      h("ol", { id: "rules", class: "rules" }),
+      h("h2", { class: "section-h" }, "What Bug Me knows about how you decide"),
+      facts,
+      h("h2", { class: "section-h" }, "How to work with me"),
+      h("ul", { id: "note", class: "note" }, ...Q.persona.how_to_work_with_me.map((t) => h("li", {}, t))),
+      h("p", { class: "quiet", id: "note-source" }, Q.persona.how_to_work_with_me_source),
+    ),
+  );
+  renderRules();
 }
 
 export function renderRules(): void {
-  const root = $("rules");
+  const root = document.getElementById("rules");
+  if (!root) return;
   root.replaceChildren();
   for (const r of S.rules) {
     const li = h("li", {}, h("span", { class: "rid" }, r.id));
@@ -152,62 +364,40 @@ export function renderRules(): void {
   }
 }
 
-export function renderFacts(): void {
-  const root = $("facts");
-  root.replaceChildren();
-  for (const f of S.facts) root.append(h("li", { class: S.newFacts.includes(f.id) ? "new" : "" }, f.text, h("span", { class: "src" }, f.source)));
-  const note = $("note");
-  note.replaceChildren(...Q.persona.how_to_work_with_me.map((t) => h("li", {}, t)));
-  $("note-source").textContent = Q.persona.how_to_work_with_me_source;
+// ---------- The record ----------
+
+function renderRecordView(view: HTMLElement): void {
+  view.replaceChildren(
+    h(
+      "section",
+      { class: "page" },
+      h("h1", {}, "Your record"),
+      h(
+        "p",
+        { id: "record-summary" },
+        `${S.record.filter((r) => r.kind === "answer").length} answers, ${Object.keys(S.punts).length} set aside, ${S.record.filter((r) => r.kind === "mark").length} marks, ${S.record.length} events. Every guess made before an answer is kept with the answer and your reason. It stays in this browser.`,
+      ),
+      h("div", { class: "row" }, h("button", { type: "button", id: "export", class: "ghost" }, "Export JSON"), h("button", { type: "button", id: "reset", class: "ghost" }, "Start the morning over")),
+    ),
+  );
 }
 
-export function renderHeader(): void {
-  const a = agenda();
-  const waiting = a.sections.reduce((n, s) => n + s.decisions.length + s.check_ins.length, 0);
-  const settled = a.settled.filter((id) => !S.reopened.includes(id)).length;
-  const total = Q.decisions.length;
-  $("overnight").textContent =
-    `Overnight your agents raised ${total} questions. Bug Me settled ${settled} itself; ${waiting} need you` +
-    (a.sections[0] ? `, starting with ${a.sections[0].project.name.toLowerCase()} because answers there unblock the most agents.` : ".");
-  const ff = $("firefly");
-  ff.style.setProperty("--glow", S.glow.toFixed(2));
-  ff.dataset.mood = waiting === 0 ? "resting" : S.mood;
-  const reasons = S.record.filter((r) => r.kind === "answer" && r.basis).length;
-  const moodText: Record<Mood, string> = {
-    resting: "Nothing is waiting. The firefly is resting.",
-    glowing: `Glowing: you've given ${reasons} real reason${reasons === 1 ? "" : "s"} this morning.`,
-    neutral: reasons ? `${reasons} reason${reasons === 1 ? "" : "s"} given so far.` : "The glow grows with every real reason you give.",
-    dim: "A little dimmer: that decision went through without a recorded reason.",
-    sheepish: "Sheepish: Bug Me brought you something it should have handled.",
-  };
-  const status = moodText[waiting === 0 ? "resting" : S.mood];
-  $("glow-status").textContent = status;
-  ff.setAttribute("aria-label", `Bug Me's firefly. ${status}`);
-  $("record-summary").textContent = `${S.record.filter((r) => r.kind === "answer").length} answers, ${S.record.filter((r) => r.kind === "mark").length} marks, ${S.record.length} events recorded. Kept in this browser only.`;
-  const tryEl = $("try");
-  tryEl.replaceChildren();
-  if (!S.answered["onsite-flight"]) {
-    tryEl.append(
-      "To see the loop in one minute: ",
-      h("button", { type: "button", onclick: () => { S.current = "onsite-flight"; setF(null); render(); $("now").focus(); } }, "answer the 6:05am flight question"),
-      " the way you actually would, and say why.",
-    );
-  }
-  $("mode-note").textContent =
-    Q.mode === "fake"
-      ? " This deployment runs on a deterministic code stand-in for Claude (no API key yet), so routing here is keyword matching, not judgment."
-      : Q.mode === "recorded"
-        ? " Live calls are off right now: you are seeing recorded Claude runs, and anything new can't be evaluated."
-        : "";
-}
+// ---------- Dispatch ----------
 
 export function render(): void {
-  renderHeader();
-  renderNow();
-  renderAgenda();
-  renderSettled();
-  renderRules();
-  renderFacts();
+  const route = currentRoute();
+  renderBar(route);
+  const view = $("view");
+  if (route.view !== "focus") {
+    stopVoiceUnlessFor("");
+    if (F) setF(null);
+  }
+  if (route.view === "home") renderHome(view);
+  else if (route.view === "focus") renderFocus(view, route.id);
+  else if (route.view === "between") renderBetween(view, route.project);
+  else if (route.view === "settled") renderSettledView(view);
+  else if (route.view === "rules") renderRulesView(view);
+  else renderRecordView(view);
 }
 
 /** Replace the rule being edited (actions.ts saves or rejects a draft from outside this module). */

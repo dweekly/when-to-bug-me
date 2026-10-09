@@ -2,14 +2,14 @@
 // survive re-renders, late reasons reach the record, over-long guidance is refused, and re-routed
 // cards survive a reload.
 import { expect, test } from "@playwright/test";
-import { freshPage, openFromAgenda, option, stored, waitForLoad } from "./helpers";
+import { editRule, freshPage, goRules, goSettled, openDecision, openFromAgenda, option, stored, waitForLoad } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
 });
 
 async function flightNo(page: import("@playwright/test").Page): Promise<void> {
-  await page.getByRole("button", { name: "answer the 6:05am flight question" }).click();
+  await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
   await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
@@ -23,7 +23,7 @@ test("an answer in flight stays with its own card when another card is opened", 
     if (body.id === "onsite-flight" && body.stage === "check") await gate;
     await route.continue();
   });
-  await page.getByRole("button", { name: "answer the 6:05am flight question" }).click();
+  await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
   await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   // While the flight's check is held, open another decision and pick an option there.
@@ -38,10 +38,13 @@ test("an answer in flight stays with its own card when another card is opened", 
   await expect(option(page, "File all five as drafted")).toHaveAttribute("aria-pressed", "true");
 });
 
-test("a why draft survives a re-render caused by marking a settled decision", async ({ page }) => {
+test("a why draft survives leaving the card to mark a settled decision", async ({ page }) => {
   await flightNo(page);
   await page.getByLabel("Why did you choose that?").fill("School drop-off until 8:30");
+  await goSettled(page);
   await page.locator("#settled li").first().getByRole("button", { name: "Right to decide, wrong call" }).click();
+  await expect(page.locator("#settled li").first().getByRole("button", { name: "Right to decide, wrong call" })).toHaveAttribute("aria-pressed", "true");
+  await page.goBack();
   await expect(page.getByLabel("Why did you choose that?")).toHaveValue("School drop-off until 8:30");
 });
 
@@ -69,6 +72,7 @@ test("over-long guidance is refused and nothing is saved", async ({ page }) => {
 });
 
 test("an over-long rule edit is refused and the draft stays open", async ({ page }) => {
+  await goRules(page);
   await page.getByRole("button", { name: /Edit rule R12/ }).click();
   await page.getByLabel("Rule R12").fill("y".repeat(241));
   await page.getByRole("button", { name: "Save and re-route" }).click();
@@ -78,7 +82,8 @@ test("an over-long rule edit is refused and the draft stays open", async ({ page
 });
 
 test("a re-routed card whose route did not change survives a reload", async ({ page }) => {
-  // The API rename is first on the agenda, so it is already the card in front of the person.
+  // The API rename is first on the agenda, so Start opens it.
+  await page.locator("#start").click();
   await expect(page.locator("#now-q")).toContainText("user_id");
   await option(page, "Keep user_id").click();
   await page.locator("#basis").fill("Renames break every integrator; keep existing field names in anything public.");
@@ -98,12 +103,11 @@ test("a failed re-check is shown on a settled decision and announced", async ({ 
   await page.route("**/api/route", (route) =>
     route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "no API key configured", unavailable: true }) }),
   );
-  await page.getByRole("button", { name: /Edit rule R8/ }).click();
-  await page.getByLabel("Rule R8").fill("Ask me before accepting any recurring meeting.");
-  await page.getByRole("button", { name: "Save and re-route" }).click();
-  const berlin = page.locator("#settled li").filter({ hasText: "Berlin team" });
-  await expect(berlin.locator(".change-note")).toContainText("Couldn't re-check");
+  await editRule(page, "R8", "Ask me before accepting any recurring meeting.");
   await expect(page.locator("#announce")).toContainText("couldn't be re-checked");
+  await goSettled(page);
+  const formatter = page.locator("#settled li").filter({ hasText: "Run the formatter across the SDK repo" });
+  await expect(formatter.locator(".change-note")).toContainText("Couldn't re-check");
 });
 
 test("a newer edit takes over an unfinished re-route pass instead of abandoning it", async ({ page }) => {
@@ -114,13 +118,9 @@ test("a newer edit takes over an unfinished re-route pass instead of abandoning 
     if (held) await gate;
     await route.continue();
   });
-  await page.getByRole("button", { name: /Edit rule R12/ }).click();
-  await page.getByLabel("Rule R12").fill("Travel: never book flights that leave before 8am.");
-  await page.getByRole("button", { name: "Save and re-route" }).click();
+  await editRule(page, "R12", "Travel: never book flights that leave before 8am.");
   // The first pass is now waiting on held requests; a second edit supersedes it.
-  await page.getByRole("button", { name: /Edit rule R4/ }).click();
-  await page.getByLabel("Rule R4").fill("Anything customers will see comes to me before it goes out.");
-  await page.getByRole("button", { name: "Save and re-route" }).click();
+  await editRule(page, "R4", "Anything customers will see comes to me before it goes out.");
   held = false;
   release();
   const state = async () => JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string);

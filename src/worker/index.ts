@@ -76,7 +76,7 @@ export async function contextVersion(rules: Rule[], facts: Fact[]): Promise<stri
 /** Route one decision and turn the result into a public card with its hidden part sealed. */
 async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, rules: Rule[], facts: Fact[]): Promise<Card> {
   const { out, source } = await routeFor(env, canSpend, d, rules, facts);
-  const inv = enforceSettleInvariant(out, d, rules);
+  const inv = enforceSettleInvariant(out, d, rules, facts);
   const quotes = verifiedQuotes(out, rules, facts);
   const version = await contextVersion(rules, facts);
   const conflicts = verifiedConflicts(out, rules, facts);

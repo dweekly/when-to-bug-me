@@ -4,6 +4,7 @@
 // setter below. Nothing here touches the DOM.
 
 import { GLOW_START, type Guess, type Mood } from "../shared/lifecycle";
+import type { Punt, PuntKind } from "../shared/punt";
 import type { Card, Decision, Fact, FactOutput, Persona, RouteKind, Rule, Source } from "../shared/types";
 
 export type Unavailable = { id: string; unavailable: string };
@@ -68,6 +69,12 @@ export interface State {
   newFacts: string[];
   /** Bumped on every rule or fact change; answers from an older version are ignored. */
   version: number;
+  /** Decisions set aside with "Not now", by id. Removed on Resume; the record keeps the history. */
+  punts: Record<string, Punt>;
+  /** The project the person is working through in focus, so Next finishes it before moving on. */
+  sessionProject: string | null;
+  /** Every time a decision was set aside and later resumed, oldest first; shown when it comes back. */
+  puntHistory: Record<string, Punt[]>;
 }
 
 export const STORE_KEY = "bugme.state.v1";
@@ -80,7 +87,12 @@ export interface Flow {
   id: string;
   choice: string | null;
   basis: string;
-  phase: "choose" | "busy" | "pushback" | "why" | "proposal" | "done";
+  phase: "choose" | "busy" | "pushback" | "why" | "proposal" | "done" | "punting";
+  /** While setting the decision aside: the kind chosen and the sentence so far. */
+  puntKind: PuntKind | null;
+  puntReason: string;
+  /** The phase to return to if the person cancels setting it aside. */
+  puntFrom: "choose" | "pushback" | null;
   pushback: string | null;
   initial: string | null;
   guess: Guess | null;
@@ -98,7 +110,7 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, basis: "", phase: "choose", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null };
+  return { id, choice: null, basis: "", phase: "choose", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
 }
 
 /** A follow-up still waiting on the person after they answered (or while a request is out). */
@@ -129,6 +141,9 @@ export function fresh(q: Queue): State {
     flows: {},
     newFacts: [],
     version: 0,
+    punts: {},
+    sessionProject: null,
+    puntHistory: {},
   };
 }
 
@@ -156,11 +171,13 @@ export function load(q: Queue): State {
         // A request in flight when the page reloaded is gone: an answered card's follow-up ends
         // there (its answer and reason are already recorded); an unanswered one starts over.
         const flows: Record<string, Flow> = {};
-        for (const [id, f] of Object.entries(s.flows ?? {})) {
-          if (f.phase !== "busy") flows[id] = f;
+        for (const [id, saved] of Object.entries(s.flows ?? {})) {
+          const f = { ...newFlow(id), ...saved }; // fields added since this morning was saved get defaults
+          if (f.phase === "punting") flows[id] = { ...f, phase: f.puntFrom ?? "choose" };
+          else if (f.phase !== "busy") flows[id] = f;
           else if (s.answered[id]) flows[id] = { ...f, phase: "done", message: "The page reloaded before this finished; your answer and reason are recorded." };
         }
-        return { ...base, ...s, flows, evaluated: s.evaluated ?? {}, changes, cards: { ...base.cards, ...kept }, pending: [], pendingCause: {} };
+        return { ...base, ...s, punts: s.punts ?? {}, puntHistory: s.puntHistory ?? {}, sessionProject: s.sessionProject ?? null, flows, evaluated: s.evaluated ?? {}, changes, cards: { ...base.cards, ...kept }, pending: [], pendingCause: {} };
       }
     }
   } catch {
@@ -170,7 +187,8 @@ export function load(q: Queue): State {
 }
 
 export function log(kind: string, data: Record<string, unknown> = {}): void {
-  S.record.push({ at: new Date().toISOString(), kind, ...data });
+  // The event's own time and kind come last, so no field in `data` can overwrite them.
+  S.record.push({ ...data, at: new Date().toISOString(), kind });
 }
 
 export function setQ(q: Queue): void {

@@ -1,6 +1,7 @@
 // End-to-end tests: Playwright against `wrangler dev` with the deterministic fake model, so the whole
 // page and Worker run as deployed but no API key or money is involved. It starts its own server on
-// port 8799 (8787 is left to a developer's own `wrangler dev`). Chromium only, at desktop and phone size.
+// port 8799 (8787 is left to a developer's own `wrangler dev`). Chromium only, at desktop and phone size (plus a
+// 320px project for stage 2's no-horizontal-scroll check).
 import { defineConfig } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 
@@ -19,7 +20,8 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `npm run build && npx wrangler dev --var FAKE_MODEL:1 --var SEAL_KEY:${SEAL_KEY} --port ${PORT}`,
+    // Its own Durable Object state directory, so it never shares (and locks) a developer's wrangler dev state.
+    command: `npm run build && npx wrangler dev --var FAKE_MODEL:1 --var SEAL_KEY:${SEAL_KEY} --port ${PORT} --persist-to .wrangler/e2e-state`,
     url: `http://localhost:${PORT}/api/queue`,
     reuseExistingServer: false,
     timeout: 120_000,
@@ -27,5 +29,7 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { viewport: { width: 1440, height: 1000 } } },
     { name: "phone", use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    // The narrowest phone the layout promises (no horizontal scroll at 320px); only stage 2's layout check.
+    { name: "narrow", testMatch: /stage2\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
   ],
 });

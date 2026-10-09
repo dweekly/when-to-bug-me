@@ -6,12 +6,15 @@ import type { RouteKind, Source } from "../shared/types";
 import { Q, S, isCard } from "./state";
 
 export const ROUTE_LABEL: Record<RouteKind, string> = { settle: "Settled for you", check_in: "Quick check-in", decide: "Your decision" };
+/** Routes as symbols: handled for you, a quick check, needs you. */
+export const GLYPH: Record<RouteKind, string> = { settle: "○", check_in: "◐", decide: "●" };
 export const SOURCE_LABEL: Record<Source, string> = { live: "live Claude", cached: "cached Claude", recorded: "recorded Claude run", code: "code stand-in" };
 
 export function routeOf(id: string): RouteKind | null {
   const c = S.cards[id];
   if (!isCard(c)) return null;
-  if (S.reopened.includes(id) && c.route === "settle") return "check_in";
+  // Undone or set aside: never settled automatically again, even if a re-route says it could be.
+  if ((S.reopened.includes(id) || S.punts[id]) && c.route === "settle") return "check_in";
   return c.route;
 }
 
@@ -25,7 +28,7 @@ export function routesForAgenda(): Record<string, RouteKind> {
 }
 
 export function agenda() {
-  return buildAgenda(Q.decisions, routesForAgenda(), Q.persona.projects, new Set(Object.keys(S.answered)));
+  return buildAgenda(Q.decisions, routesForAgenda(), Q.persona.projects, new Set(Object.keys(S.answered)), new Set(Object.keys(S.punts)));
 }
 
 /** Decisions not yet answered by the person, including ones Bug Me settled: all can be re-routed. */

@@ -62,7 +62,7 @@ interface Check {
 async function route(id: string, f: Fact[]): Promise<{ out: RouteOutput; route: string }> {
   const d = byId.get(id)!;
   const out = parseRouteOutput(await call(`route ${id}`, routePrompt(persona, rules, f, d), ROUTE_SCHEMA), d);
-  return { out, route: enforceSettleInvariant(out, d, rules).route };
+  return { out, route: enforceSettleInvariant(out, d, rules, f).route };
 }
 
 /** The facts after keeping the guidance from an example's reason, and the kept fact's text ("" if none). */
@@ -84,10 +84,10 @@ const describe = (r: { out: RouteOutput; route: string }) => {
 const checks: Check[] = [
   {
     name: "berlin-sync, default facts",
-    expect: "settled (route settle after the code invariant)",
+    expect: "brought to Jordan as a quick check, not accepted alone (accepting a meeting is hard to undo); guess leans accept (A)",
     run: async () => {
       const r = await route("berlin-sync", facts);
-      return { pass: r.route === "settle", detail: describe(r) };
+      return { pass: r.route === "check_in" && topGuess(r.out.guess).option === "A", detail: describe(r) };
     },
   },
   {
@@ -171,8 +171,8 @@ async function main(): Promise<void> {
   const file = new URL(`../results/captures/eval-${new Date().toISOString().replace(/[:.]/g, "-")}.json`, import.meta.url);
   writeFileSync(file, `${JSON.stringify({ model: MODEL, effort: EFFORT, trials: TRIALS, spent_usd: spent, summary, raw }, null, 2)}\n`);
   console.log(`spent $${spent.toFixed(3)}; wrote ${file.pathname}`);
-  // The canonical path is a before-and-after change: Berlin settled under the default facts, then not
-  // settled (and framed by the new fact) after the flight reason. Both halves must hold every time.
+  // The canonical path is a before-and-after change: Berlin a check-in leaning accept under the default
+  // facts, then leaning decline and framed by the new fact after the flight reason. Both halves must hold.
   const [before, after] = summary;
   if (before.passed < TRIALS || after.passed < TRIALS) {
     console.error("the canonical flight path (before and after the reason) did not behave as designed in every trial");

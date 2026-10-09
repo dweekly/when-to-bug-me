@@ -3,7 +3,9 @@
 // and re-routing waiting decisions under the new guidance. Each step updates state, saves, and
 // redraws through views.ts / card.ts.
 
+import { nextInSession } from "../shared/agenda";
 import { MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, REROUTE_CONCURRENCY } from "../shared/constants";
+import { type Punt, puntInstruction, puntProblem } from "../shared/punt";
 import {
   type GlowEvent,
   type Guess,
@@ -20,9 +22,10 @@ import {
 import type { Card, Decision, FactOutput, RouteKind, Source } from "../shared/types";
 import { api } from "./api";
 import { renderNow } from "./card";
-import { ROUTE_LABEL, agenda, firstAgendaId, routeOf, waitingIds } from "./derive";
-import { $, announce } from "./dom";
-import { type Flow, type State, F, S, log, save, setF } from "./state";
+import { ROUTE_LABEL, agenda, routeOf, waitingIds } from "./derive";
+import { announce } from "./dom";
+import { go } from "./router";
+import { type Flow, type State, F, Q, S, byId, log, newFlow, save, setF } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
 
 export function glowEvent(e: GlowEvent): void {
@@ -231,12 +234,65 @@ export function done(flow: Flow, message: string): void {
   if (showing(flow)) render();
 }
 
+/** Open a decision in focus and start (or continue) a session in its project. */
+export function startSession(id: string): void {
+  S.sessionProject = byId.get(id)?.project ?? null;
+  save();
+  go({ view: "focus", id });
+}
+
+/**
+ * The next decision in the focus session: the rest of the current project first, then the next
+ * project in agenda order, with a one-screen pause between projects.
+ */
 export function next(): void {
   if (F && F.phase === "done") delete S.flows[F.id];
   setF(null);
-  S.current = firstAgendaId();
-  render();
-  $("now").focus();
+  const from = S.sessionProject;
+  const n = nextInSession(agenda(), from);
+  save();
+  if (n.changedProject && from) go({ view: "between", project: from });
+  else if (n.id) go({ view: "focus", id: n.id });
+  else go({ view: "home" });
+}
+
+/**
+ * "Not now": set the decision aside with the person's reason. Allowed before an answer is final
+ * (including at pushback). The decision stays unanswered and its guess stays sealed; the agent is told
+ * what to gather (simulated). It comes back only when the person resumes it.
+ */
+export function setAside(flow: Flow, d: Decision): void {
+  const problem = puntProblem(flow.puntKind, flow.puntReason);
+  if (problem) {
+    flow.error = problem;
+    if (showing(flow)) renderNow();
+    return;
+  }
+  const punt: Punt = {
+    id: d.id,
+    kind: flow.puntKind!,
+    reason: flow.puntReason.trim().replace(/\s+/g, " "),
+    at: new Date().toISOString(),
+    instruction: puntInstruction(flow.puntKind!, flow.puntReason, Q.persona.first_name),
+  };
+  S.punts[d.id] = punt;
+  log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: flow.puntFrom });
+  glowEvent({ kind: "punted" });
+  // The answer in progress is dropped: nothing was final, and the guess was never revealed.
+  delete S.flows[d.id];
+  announce(`Set aside. The agent was asked: ${punt.instruction}`);
+  next();
+}
+
+/** Bring a set-aside decision back to active work; its history stays with it. */
+export function resume(id: string): void {
+  const punt = S.punts[id];
+  if (!punt) return;
+  (S.puntHistory[id] ??= []).push(punt);
+  delete S.punts[id];
+  S.flows[id] = newFlow(id);
+  log("resume", { id, reason_kind: punt.kind, reason: punt.reason });
+  startSession(id);
 }
 
 export function undo(id: string): void {
@@ -313,6 +369,7 @@ export async function reroute(ids: string[], cause: string): Promise<string[]> {
           log("rerouted", { id, from: before, to: after, cause: why, source: card.source });
         } else if (card.fact_quoted && why.includes(card.fact_quoted.replace(/[.\s]+$/, ""))) {
           S.changes[id] = `Now framed by what you said ${why.replace(/^because you told me: /, "")}.`;
+          changedIds.push(id); // a changed framing is surfaced too, even when the route stays the same
         } else if (S.changes[id]?.startsWith("Couldn't re-check")) {
           delete S.changes[id];
         }

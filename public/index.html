@@ -4,98 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Bug Me</title>
-    <meta name="description" content="Bug Me: a chief of staff for people who run fleets of agents. It brings you only the decisions that need you, asks why, and turns your reasons into guidance every agent follows. A working prototype with a synthetic persona." />
-    <meta property="og:title" content="Bug Me" />
-    <meta property="og:description" content="A chief of staff for people who run fleets of agents. Working prototype; the persona and fleet are synthetic." />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="/firefly.png" />
-    <meta name="twitter:card" content="summary" />
+    <meta http-equiv="refresh" content="0; url=/app" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="theme-color" content="#14182b" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=JetBrains+Mono:wght@400;600&display=swap"
-    />
-    <link rel="stylesheet" href="/style.css" />
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Bug Me",
-        "description": "A prototype chief of staff for people who run fleets of AI agents.",
-        "applicationCategory": "ProductivityApplication",
-        "author": { "@type": "Person", "name": "David E. Weekly" }
-      }
-    </script>
+    <style>body{background:#0f1226;color:#ecebf5;font:16px system-ui,sans-serif;padding:24px}a{color:#ffd84d}</style>
   </head>
   <body>
-    <a class="skip" href="#now">Skip to the current decision</a>
-    <header class="top">
-      <div class="brand">
-        <div class="firefly" id="firefly" data-mood="neutral" style="--glow: 0.35" role="img" aria-label="Bug Me's firefly">
-          <span class="halo" aria-hidden="true"></span>
-          <img src="/firefly.png" alt="" width="64" height="64" />
-        </div>
-        <div>
-          <h1>Bug Me</h1>
-          <p class="tag">your chief of staff for the fleet</p>
-        </div>
-      </div>
-      <p class="glow-status" id="glow-status" aria-live="polite"></p>
-    </header>
-
-    <aside class="synthetic" role="note">
-      <strong>Prototype.</strong> Jordan, Larkspur and every agent and question here are made up.
-      Routing and guesses come from Claude (each card says whether it was <em>live</em>, <em>cached</em>, a
-      <em>recorded</em> run, or <em>code</em>); the order of the agenda is plain code. No real agent receives anything.
-      <span id="mode-note"></span>
-    </aside>
-
-    <main class="layout">
-      <section class="briefing" aria-labelledby="hello">
-        <div class="hello">
-          <h2 id="hello">Good morning, Jordan.</h2>
-          <p id="overnight" class="overnight"></p>
-          <p class="you-are">You're playing Jordan, a staff engineer running about twenty agents. Answer as yourself, and say why.</p>
-          <p class="try" id="try"></p>
-        </div>
-        <div id="now" class="now" tabindex="-1"></div>
-        <div id="agenda" class="agenda"></div>
-      </section>
-
-      <aside class="side">
-        <section class="panel" aria-labelledby="settled-h">
-          <h2 id="settled-h">Decisions made for you</h2>
-          <p class="panel-note">Bug Me settles alone only what is reversible, cheap, and cleared by one of your rules. Undo anything, or tell it where it went wrong.</p>
-          <ol id="settled" class="settled"></ol>
-        </section>
-        <section class="panel" aria-labelledby="rules-h">
-          <h2 id="rules-h">Your written rules</h2>
-          <p class="panel-note">Edit one and the decisions it touches are re-routed.</p>
-          <ol id="rules" class="rules"></ol>
-        </section>
-        <section class="panel" aria-labelledby="facts-h">
-          <h2 id="facts-h">What Bug Me knows about how you decide</h2>
-          <ul id="facts" class="facts"></ul>
-        </section>
-        <section class="panel" aria-labelledby="note-h">
-          <h2 id="note-h">How to work with me</h2>
-          <ul id="note" class="note"></ul>
-          <p class="panel-note" id="note-source"></p>
-        </section>
-        <section class="panel" aria-labelledby="record-h">
-          <h2 id="record-h">The record</h2>
-          <p class="panel-note" id="record-summary"></p>
-          <div class="row">
-            <button type="button" id="export" class="ghost">Export JSON</button>
-            <button type="button" id="reset" class="ghost">Start the morning over</button>
-          </div>
-        </section>
-      </aside>
-    </main>
-    <div id="announce" class="sr-only" aria-live="polite"></div>
-    <script type="module" src="/app.js"></script>
+    <!-- The explainer page replaces this in a later stage; until then, the app is one link away. -->
+    <p><a href="/app">Open Bug Me</a></p>
   </body>
 </html>
