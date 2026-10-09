@@ -4,12 +4,92 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Bug Me</title>
-    <meta http-equiv="refresh" content="0; url=/app" />
+    <meta name="description" content="Bug Me: a chief of staff for people who run fleets of agents. Overnight, your agents raise questions; Bug Me settles what your rules already answer and brings you the rest, one at a time. A working prototype with a synthetic persona and guided tours." />
+    <meta property="og:title" content="Bug Me" />
+    <meta property="og:description" content="Your agents worked all night. Bug Me brings you only the questions that need you. A working prototype with guided tours; the persona and fleet are synthetic." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/firefly.png" />
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <style>body{background:#0f1226;color:#ecebf5;font:16px system-ui,sans-serif;padding:24px}a{color:#ffd84d}</style>
+    <meta name="theme-color" content="#0f1226" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&display=swap"
+    />
+    <link rel="stylesheet" href="/landing.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Bug Me",
+        "description": "A prototype chief of staff for people who run fleets of AI agents.",
+        "applicationCategory": "ProductivityApplication",
+        "author": { "@type": "Person", "name": "David E. Weekly" }
+      }
+    </script>
   </head>
   <body>
-    <!-- The explainer page replaces this in a later stage; until then, the app is one link away. -->
-    <p><a href="/app">Open Bug Me</a></p>
+    <a class="skip" href="#story">Skip to content</a>
+    <main id="story">
+      <section class="hero" aria-labelledby="hero-h">
+        <div class="hero-text">
+          <p class="eyebrow">Bug Me · a working prototype</p>
+          <h1 id="hero-h">Your agents worked all night.</h1>
+          <p class="lede"><span data-count="total">Their</span> questions are waiting. Bug Me brings you only the ones that need you.</p>
+          <div class="cta">
+            <a class="primary" href="/app?tour=start-here">Take the two-minute tour</a>
+            <a class="ghost" href="/app">Open the app</a>
+          </div>
+        </div>
+        <img class="narrator" src="/firefly/resting.svg" alt="" width="220" height="220" />
+      </section>
+
+      <section class="jordan reveal" aria-labelledby="jordan-h">
+        <h2 id="jordan-h">Meet Jordan</h2>
+        <p class="say" data-persona="intro">A staff engineer running twenty agents on three projects.</p>
+        <div class="lanes" data-lanes aria-hidden="true"></div>
+        <blockquote class="note" data-persona="note"></blockquote>
+      </section>
+
+      <section class="sort reveal" aria-labelledby="sort-h">
+        <h2 id="sort-h">Overnight, every question gets sorted</h2>
+        <svg class="sorter" data-sorter viewBox="0 0 720 100" aria-hidden="true" focusable="false"></svg>
+        <ul class="bins" data-bins>
+          <li data-route="settle"><span class="glyph" aria-hidden="true">○</span><b data-n>–</b><span class="bin-name">settled for you</span><q data-headline></q></li>
+          <li data-route="check_in"><span class="glyph" aria-hidden="true">◐</span><b data-n>–</b><span class="bin-name">a quick check</span><q data-headline></q></li>
+          <li data-route="decide"><span class="glyph" aria-hidden="true">●</span><b data-n>–</b><span class="bin-name">yours to decide</span><q data-headline></q></li>
+        </ul>
+        <p class="aside" data-sort-note>Only what's reversible, cheap, and cleared by one of Jordan's written rules is settled without asking.</p>
+      </section>
+
+      <section class="why reveal" aria-labelledby="why-h">
+        <h2 id="why-h">Then it asks why</h2>
+        <ol class="loop">
+          <li><b>Bug Me guesses</b><span>and keeps the guess sealed until you answer.</span></li>
+          <li><b>You answer</b><span>by voice or typing.</span></li>
+          <li><b>“I'm curious: why?”</b><span>when your answer surprised it.</span></li>
+          <li><b>Your reason becomes guidance</b><span>every agent follows, and waiting questions are re-sorted.</span></li>
+        </ol>
+      </section>
+
+      <section class="tours reveal" aria-labelledby="tours-h">
+        <h2 id="tours-h">Step inside</h2>
+        <p class="say">Each tour runs on the real app. It points; you click.</p>
+        <ul class="tour-cards" data-tours></ul>
+      </section>
+
+      <section class="real reveal" aria-labelledby="real-h" id="real">
+        <h2 id="real-h">What's real here</h2>
+        <dl class="kinds">
+          <div><dt>Live Claude</dt><dd>Routing, the “why?”, and turning reasons into guidance are calls to Claude, labeled on every card.</dd></div>
+          <div><dt>Recorded</dt><dd data-mode-note>Without a live connection, the site replays Claude answers recorded earlier, and says so.</dd></div>
+          <div><dt>Code</dt><dd>Ordering, the time estimate, and the rule that only reversible, cheap things are settled alone.</dd></div>
+        </dl>
+        <p class="aside">Jordan, Larkspur and the fleet are made up. Nothing is sent anywhere: agents are told what you decided, in simulation.</p>
+      </section>
+    </main>
+    <script type="module" src="/landing.js"></script>
   </body>
 </html>
