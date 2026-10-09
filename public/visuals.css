@@ -1,0 +1,120 @@
+/* Decision briefings (src/page/visuals.ts). Night canvas, hairlines, three inks and one accent: the
+   firefly yellow marks only the option the person picked. Every color comes from the --viz-* tokens
+   below, so the page can retheme a figure by overriding them on .viz or an ancestor. */
+
+.viz {
+  --viz-canvas: #171b33; /* the card the figure sits on */
+  --viz-page: #0f1226; /* the inset behind code */
+  --viz-line: #2a2f4d; /* hairlines, and the highlighted payload line */
+  --viz-ink: #ecebf5;
+  --viz-ink-2: #9a9cb8;
+  --viz-ink-3: #6b6e8c;
+  --viz-accent: #ffd84d;
+  --viz-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --viz-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  container-type: inline-size;
+  margin: 0;
+  color: var(--viz-ink);
+  font-family: var(--viz-sans);
+}
+
+/* One drawing per width. The breakpoint equals WIDE_FROM_PX in src/page/visuals-layout.ts. */
+.viz-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.viz-svg--wide { display: none; }
+@container (min-width: 520px) {
+  .viz-svg--narrow { display: none; }
+  .viz-svg--wide { display: block; }
+}
+
+.viz-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-caption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45em;
+  margin-top: 0.7rem;
+  font: 0.8125rem/1.35 var(--viz-sans);
+  color: var(--viz-ink-3);
+}
+.viz-icon {
+  flex: none;
+  width: 1em;
+  height: 1em;
+  margin-top: 0.15em;
+  fill: none;
+  stroke: var(--viz-ink-3);
+  stroke-width: 1.25;
+}
+
+/* Type */
+.viz text { fill: var(--viz-ink); }
+.viz .vz-sans { font-family: var(--viz-sans); }
+.viz .vz-mono { font-family: var(--viz-mono); font-variant-numeric: tabular-nums; }
+.viz .vz-bold { font-weight: 700; }
+.viz text.vz-ink, .viz tspan.vz-ink { fill: var(--viz-ink); }
+.viz text.vz-ink2, .viz tspan.vz-ink2 { fill: var(--viz-ink-2); }
+.viz text.vz-ink3, .viz tspan.vz-ink3 { fill: var(--viz-ink-3); }
+.viz .vz-accent-text { fill: var(--viz-accent); }
+.viz text.vz-halo { paint-order: stroke; stroke: var(--viz-canvas); stroke-width: 5px; stroke-linejoin: round; }
+
+/* Structure */
+.viz .vz-hair { fill: none; stroke: var(--viz-line); stroke-width: 1; }
+.viz line.vz-ink2 { stroke: var(--viz-ink-2); stroke-width: 1; }
+.viz line.vz-ink3 { stroke: var(--viz-ink-3); stroke-width: 1; }
+.viz .vz-mark { stroke-dasharray: 2 3; }
+.viz .vz-well { fill: var(--viz-page); }
+.viz .vz-band { fill: var(--viz-line); }
+
+/* Options: ink outline, or the accent for the one picked */
+.viz .vz-outline { fill: none; stroke: var(--viz-ink); stroke-width: 1.25; }
+.viz .vz-accent-fill { fill: var(--viz-accent); stroke: none; filter: drop-shadow(0 0 5px rgb(255 216 77 / 0.35)); }
+.viz .vz-accent-stroke { fill: none; stroke: var(--viz-accent); stroke-width: 1.5; }
+.viz .vz-well.vz-accent-stroke { fill: var(--viz-page); }
+.viz .vz-well.vz-hair { fill: var(--viz-page); }
+
+/* Chart */
+.viz .vz-spark { fill: none; stroke: var(--viz-ink); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.viz .vz-pin { fill: var(--viz-ink); }
+
+/* Clocks */
+.viz .vz-tick { stroke-linecap: round; }
+.viz .vz-hand { stroke: var(--viz-ink); stroke-linecap: round; }
+.viz .vz-hand-hour { stroke-width: 3; }
+.viz .vz-hand-min { stroke-width: 2; }
+.viz .vz-arc { fill: none; stroke: var(--viz-ink-3); stroke-width: 3; stroke-linecap: round; }
+.viz .vz-dot { fill: none; stroke: var(--viz-ink-3); stroke-width: 1.25; }
+.viz .vz-dot-on { fill: var(--viz-ink); }
+
+/* A quiet draw-in, only for people who have not asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .viz .vz-draw {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: viz-grow 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .viz .vz-trace {
+    stroke-dasharray: 1;
+    animation: viz-trace 900ms cubic-bezier(0.3, 0.6, 0.2, 1) both;
+  }
+  @keyframes viz-grow { from { transform: scaleX(0); } }
+  @keyframes viz-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+}
+
+/* Draw in once per decision: a re-render (picking an option) shows the finished drawing at once. */
+.viz.drawn * { animation: none !important; }
