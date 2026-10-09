@@ -128,6 +128,7 @@ export function tourAfterRender(): void {
   if (!run || run.stopped) return;
   const step = run.tour.steps[run.index];
   if (!step) return; // past the last step: the closing popover is showing, nothing to re-find
+  if (!run.finishStep) return; // a retry or recovery prompt is showing, or the step isn't shown yet: leave it
   const el = document.querySelector(step.target);
   if (el && run.drv.isActive() && run.drv.getActiveElement() !== el) show(run, step, el);
 }
@@ -199,14 +200,22 @@ function show(r: Running, step: TourStep, el: Element): void {
   announce(`Tour step ${r.index + 1} of ${r.tour.steps.length}: ${step.title}. ${step.text}`);
 }
 
-/** Resolve when the visitor completes the step: clicks the target selector, the element appears, or presses Next. */
-function stepDone(r: Running, step: TourStep): Promise<void> {
+/** The app announces that the step a tour is waiting for can no longer happen (see actions.ts). */
+const STEP_FAILED_EVENT = "bugme:guidance-failed";
+
+/**
+ * Resolve when the visitor completes the step (clicks the target selector, the element appears, or
+ * they press Next) with "done", or with "failed" when the app reports that a step waiting for an
+ * element can no longer get there (the reason couldn't be turned into guidance).
+ */
+function stepDone(r: Running, step: TourStep): Promise<"done" | "failed"> {
   return new Promise((resolve) => {
     let cleanup = () => {};
+    let outcome: "done" | "failed" = "done";
     r.finishStep = () => {
       cleanup();
       r.finishStep = null;
-      resolve();
+      resolve(outcome);
     };
     if (step.until === "next") return;
     if ("click" in step.until) {
@@ -223,7 +232,14 @@ function stepDone(r: Running, step: TourStep): Promise<void> {
       window.addEventListener(name, onEvent);
       cleanup = () => window.removeEventListener(name, onEvent);
     } else {
-      // The visitor is doing something (typing a reason): wait as long as it takes.
+      // The visitor is doing something (typing a reason): wait as long as it takes, unless the app
+      // reports that what we're waiting for can no longer appear.
+      const onFailed = () => {
+        outcome = "failed";
+        r.finishStep?.();
+      };
+      window.addEventListener(STEP_FAILED_EVENT, onFailed);
+      cleanup = () => window.removeEventListener(STEP_FAILED_EVENT, onFailed);
       void waitFor(step.until.appear, r, Infinity).then((el) => el && r.finishStep?.());
     }
   });
@@ -246,7 +262,10 @@ async function play(r: Running): Promise<void> {
       continue;
     }
     show(r, step, el);
-    await stepDone(r, step);
+    if ((await stepDone(r, step)) === "failed") {
+      if (!r.stopped) offerRestart(r);
+      return;
+    }
     r.index++;
   }
   if (!r.stopped) finish(r);
@@ -276,6 +295,25 @@ function offerRetry(r: Running, step: TourStep): Promise<boolean> {
         },
       },
     });
+  });
+}
+
+/** A step that can't happen any more (the reason couldn't be checked): say why, plainly, and offer a way on. */
+function offerRestart(r: Running): void {
+  const why =
+    Q.mode === "live"
+      ? "Claude couldn't be reached for that sentence just now, so it didn't become guidance."
+      : "This copy of the demo has no live Claude connection, so it can only check the answers it has recorded, like Jordan's words.";
+  r.drv.highlight({
+    element: "#view",
+    popover: {
+      title: "That reason couldn't be checked",
+      description: `${why} Your answer is kept. Start the tour again (and use Jordan's words), or end it and keep exploring.`,
+      showButtons: ["next", "close"],
+      nextBtnText: "Start again",
+      onNextClick: () => begin(r.tour),
+      onCloseClick: () => stopTour(),
+    },
   });
 }
 

@@ -1,6 +1,7 @@
 // Regression tests for the stage 2 tour review, on the recorded run: a rejected set-aside does not
 // advance the tour, Tab reaches Decide during a step, a tour started on its own card shows a fresh
-// card, a slow typist is not stranded, and Escape inside a prototype ends the tour.
+// card, a slow typist is not stranded, Escape inside a prototype ends the tour, a reason that can't be
+// checked offers a way on.
 import { type Page, expect, test } from "@playwright/test";
 
 const title = (page: Page) => page.locator(".driver-popover-title");
@@ -90,3 +91,19 @@ test("Escape inside a settings prototype ends the tour", async ({ page }) => {
   await frame.locator("body").press("Escape");
   await expect(page.locator(".driver-popover")).toHaveCount(0);
 });
+
+test("a typed reason with no recorded answer says so and offers to start again", async ({ page }) => {
+  await page.goto("/app?tour=say-why#/");
+  await expect(title(page)).toHaveText("Code said no");
+  await page.locator(".driver-popover-next-btn").click();
+  await page.locator("#now .opt").nth(1).click();
+  await page.locator("#now .actions .primary").click();
+  await passPushback(page);
+  await page.locator("#why").fill("I prefer a later flight because I cannot leave home until after school drop-off.");
+  await page.locator("#now .followup .primary").first().click();
+  await expect(title(page)).toHaveText("That reason couldn't be checked");
+  await expect(page.locator(".driver-popover-description")).toContainText("no live Claude connection");
+  await page.locator(".driver-popover-next-btn").click(); // Start again
+  await expect(title(page)).toHaveText("Code said no");
+});
+

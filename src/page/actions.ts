@@ -188,6 +188,8 @@ export async function propose(flow: Flow, d: Decision): Promise<void> {
     if (!alive(s0, flow)) return;
     flow.phase = "done";
     flow.message = `Couldn't turn that into guidance right now (${(e as Error).message}). Your answer and reason are recorded.`;
+    // A tour waiting for the guidance step listens for this, so it can say what happened instead of waiting.
+    window.dispatchEvent(new CustomEvent("bugme:guidance-failed", { detail: { id: d.id } }));
   }
   save();
   if (showing(flow)) renderNow();
