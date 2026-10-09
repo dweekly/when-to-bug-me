@@ -17,3 +17,4 @@ test-results/
 playwright-report/
 .dev.vars
 .DS_Store
+public/variants/

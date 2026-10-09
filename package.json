@@ -1,0 +1,30 @@
+{
+  "name": "when-to-bug-me",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bug Me: a chief of staff for people who run fleets of agents (prototype)",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-page.mjs",
+    "dev": "npm run build && wrangler dev",
+    "dev:fake": "npm run build && wrangler dev --var FAKE_MODEL:1",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.page.json && tsc --noEmit -p tsconfig.scripts.json",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "deploy:staging": "npm run build && wrangler deploy --env staging",
+    "record": "esbuild scripts/record.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/record.mjs --log-level=warning && node dist/record.mjs",
+    "eval": "esbuild scripts/eval.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/eval.mjs --log-level=warning && node dist/eval.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261009.1",
+    "@playwright/test": "1.64.0",
+    "@types/node": "26.6.5",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3",
+    "wrangler": "4.149.0"
+  }
+}

@@ -1,0 +1,30 @@
+// Cloudflare Worker config. One Worker serves the static page (public/) and /api/*.
+// Secrets (never in this file): SEAL_KEY (base64, 32 bytes) for sealing hidden guesses, and
+// ANTHROPIC_API_KEY for live calls. Local values go in .dev.vars, which is gitignored.
+// Durable Object bindings are not inherited by environments, so staging repeats them.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "when-to-bug-me",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "SPEND", "class_name": "SpendCounter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SpendCounter"] }],
+  "observability": { "enabled": true },
+  "env": {
+    "staging": {
+      "name": "when-to-bug-me-staging",
+      "workers_dev": true,
+      "durable_objects": {
+        "bindings": [{ "name": "SPEND", "class_name": "SpendCounter" }]
+      }
+      // With no ANTHROPIC_API_KEY secret set, staging serves the recorded Claude run and says so.
+    }
+  }
+}

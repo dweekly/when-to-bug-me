@@ -1,0 +1,26 @@
+[
+  {
+    "id": "F1",
+    "text": "No new runtime dependencies in the SDKs; hand-write or vendor small things instead.",
+    "source": "Jordan's answer last week, declining a request to add an HTTP client library to the Python SDK",
+    "scope": "launch"
+  },
+  {
+    "id": "F2",
+    "text": "Outages and bad weeks stay in any chart that leaves the team, with a note if needed.",
+    "source": "onboarding interview",
+    "scope": "all"
+  },
+  {
+    "id": "F3",
+    "text": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
+    "source": "onboarding interview",
+    "scope": "billing"
+  },
+  {
+    "id": "F4",
+    "text": "Prefers a short written summary to a meeting when either would do.",
+    "source": "drafted from past sessions, confirmed in onboarding",
+    "scope": "all"
+  }
+]
