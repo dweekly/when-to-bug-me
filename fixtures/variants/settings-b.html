@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Larkspur Settings B</title>
+<style>
+:root{--bg:#fff;--sf:#f5f6f8;--tx:#1b1f24;--mu:#566070;--bd:#d6dae0;--ac:#2f5bd3;--fo:#2f5bd3;--sel:#e8eefc;--off:#878f9b;--kn:#fff;--dgb:#b42318;--dgt:#b42318;--dgs:#fdf0ef;color-scheme:light}
+[data-theme=dark]{--bg:#14171c;--sf:#1d2127;--tx:#e9ebee;--mu:#a4acb7;--bd:#363c45;--ac:#3f6be0;--fo:#8fb0ff;--sel:#252e44;--off:#6b7380;--kn:#e9ebee;--dgt:#ff9b91;--dgs:#2d1a1a;color-scheme:dark}
+*{box-sizing:border-box}
+html{font-size:15px;-webkit-text-size-adjust:100%}
+body{margin:0;font:1rem/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.55rem 1rem;border-bottom:1px solid var(--bd);background:var(--sf)}
+h1{font-size:.95rem;margin:0;font-weight:600}
+.tag{font-size:.7rem;padding:.1rem .45rem;border:1px solid var(--bd);border-radius:999px;color:var(--mu);white-space:nowrap;background:var(--bg)}
+h2{font-size:1.05rem;margin:0 0 .5rem}
+h2:focus{outline:0}
+label,.lbl{display:block;font-size:.85rem;color:var(--mu);margin:.4rem 0 .15rem}
+input[type=text],select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:.3rem .5rem;width:100%;max-width:18rem}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--bd);background:var(--bg);color:var(--tx);border-radius:6px;padding:.3rem .75rem}
+.btn.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+.btn.dg{background:var(--dgb);border-color:var(--dgb);color:#fff}
+.btn.sm{font-size:.85rem;padding:.15rem .55rem}
+:focus-visible{outline:2px solid var(--fo);outline-offset:2px}
+.prof{display:flex;gap:.8rem;align-items:flex-start}
+.av{flex:none;width:2.6rem;height:2.6rem;border-radius:50%;background:var(--ac);color:#fff;display:grid;place-items:center;font-weight:600}
+.prof>div:last-child{flex:1;min-width:0}
+.em{margin:0;overflow-wrap:anywhere}
+.row{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.4rem 0;border-bottom:1px solid var(--bd)}
+.row:last-child{border:0}
+.sw{flex:none;width:2.4rem;height:1.4rem;border-radius:999px;border:0;background:var(--off);position:relative;padding:0}
+.sw::after{content:"";position:absolute;top:.2rem;left:.2rem;width:1rem;height:1rem;border-radius:50%;background:var(--kn);transition:transform .15s}
+.sw[aria-checked=true]{background:var(--ac)}
+.sw[aria-checked=true]::after{transform:translateX(1rem);background:#fff}
+fieldset{border:0;padding:0;margin:0 0 .3rem}
+legend{font-size:.85rem;color:var(--mu);padding:0;margin-bottom:.15rem}
+.radios{display:flex;flex-wrap:wrap;gap:.2rem 1rem}
+.radios label{display:flex;align-items:center;gap:.3rem;margin:0;color:var(--tx);font-size:1rem}
+.keys{list-style:none;padding:0;margin:0 0 .7rem}
+.keys li{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.35rem 0;border-bottom:1px solid var(--bd)}
+code{font:.9rem ui-monospace,SFMono-Regular,Menlo,monospace;flex:1;min-width:0;overflow-wrap:anywhere}
+.st{font-size:.75rem;color:var(--mu)}
+.rv code{text-decoration:line-through;color:var(--mu)}
+.mu{color:var(--mu);font-size:.9rem;margin:0 0 .6rem}
+.dz h2{color:var(--dgt)}
+.confirm{margin-top:.7rem;padding:.7rem;border:1px solid var(--dgt);border-radius:8px;background:var(--dgs)}
+.confirm p{margin:0 0 .6rem}
+.acts{display:flex;gap:.5rem;flex-wrap:wrap}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+html{scroll-padding-top:3.4rem}
+.wrap{display:flex;flex-direction:column}
+.nav{position:sticky;top:0;z-index:2;display:flex;gap:.15rem;overflow-x:auto;scrollbar-width:thin;padding:.4rem .6rem;background:var(--bg);border-bottom:1px solid var(--bd)}
+.nav a{flex:none;color:var(--mu);text-decoration:none;padding:.35rem .6rem;border-radius:6px;white-space:nowrap}
+.nav a:hover{color:var(--tx)}
+.nav a[aria-current]{background:var(--sel);color:var(--tx);font-weight:600;box-shadow:inset 0 -2px var(--ac)}
+main{flex:1;min-width:0;padding:.3rem 1rem 60vh}
+main section{padding:.9rem 0;border-bottom:1px solid var(--bd)}
+main section:last-child{border:0}
+@media(min-width:440px){html{scroll-padding-top:.6rem}.wrap{flex-direction:row}.nav{flex-direction:column;align-self:flex-start;width:8.75rem;flex:none;overflow:visible;border-bottom:0;padding-top:.8rem}.nav a[aria-current]{box-shadow:inset 3px 0 var(--ac)}}
+</style>
+</head>
+<body>
+<header><h1>Larkspur Notes · Settings</h1><span class="tag">Variant B: One page</span></header>
+<div class="wrap">
+<nav class="nav" aria-label="Settings sections"><a href="#profile">Profile</a><a href="#notifications">Notifications</a><a href="#appearance">Appearance</a><a href="#keys">API keys</a><a href="#danger">Danger zone</a></nav>
+<main>
+<section id="profile" aria-labelledby="h-profile">
+<h2 id="h-profile" tabindex="-1">Profile</h2>
+<div class="prof"><div class="av" role="img" aria-label="Avatar, initials JO">JO</div><div><label for="dn">Display name</label><input type="text" id="dn" value="Jordan Okafor" autocomplete="off"><p class="lbl">Email</p><p class="em">jordan@larkspur.example</p></div></div>
+</section>
+<section id="notifications" aria-labelledby="h-notifications">
+<h2 id="h-notifications" tabindex="-1">Notifications</h2>
+<div class="row"><span id="n1">Mentions</span><button type="button" class="sw" role="switch" aria-checked="true" aria-labelledby="n1"></button></div>
+<div class="row"><span id="n2">Weekly digest</span><button type="button" class="sw" role="switch" aria-checked="false" aria-labelledby="n2"></button></div>
+<div class="row"><span id="n3">Product updates</span><button type="button" class="sw" role="switch" aria-checked="false" aria-labelledby="n3"></button></div>
+</section>
+<section id="appearance" aria-labelledby="h-appearance">
+<h2 id="h-appearance" tabindex="-1">Appearance</h2>
+<fieldset><legend>Theme</legend><div class="radios"><label><input type="radio" name="theme" value="light" checked> Light</label><label><input type="radio" name="theme" value="dark"> Dark</label><label><input type="radio" name="theme" value="system"> System</label></div></fieldset>
+<label for="fs">Font size</label><select id="fs"><option value="13">Small</option><option value="15" selected>Medium</option><option value="17">Large</option></select>
+</section>
+<section id="keys" aria-labelledby="h-keys">
+<h2 id="h-keys" tabindex="-1">API keys</h2>
+<ul class="keys" id="keylist"><li data-k="3f9a"><code>lk_live_••••3f9a</code><span class="st"></span><button type="button" class="btn sm"></button></li><li data-k="77c2"><code>lk_test_••••77c2</code><span class="st"></span><button type="button" class="btn sm"></button></li></ul>
+<button type="button" class="btn pri" id="mk">Create key</button>
+</section>
+<section id="danger" aria-labelledby="h-danger" class="dz">
+<h2 id="h-danger" tabindex="-1">Danger zone</h2>
+<p class="mu">Deletes every notebook and note for all members of this workspace.</p>
+<button type="button" class="btn dg" id="del" aria-expanded="false" aria-controls="cf">Delete workspace</button>
+<div class="confirm" id="cf" role="group" aria-labelledby="cft" hidden><p id="cft"><strong>Delete this workspace?</strong> This cannot be undone.</p><div class="acts"><button type="button" class="btn" id="cn">Cancel</button><button type="button" class="btn dg" id="yes">Yes, delete</button></div></div>
+<p class="mu" id="dmsg" style="margin-top:.6rem"></p>
+</section>
+</main>
+</div>
+<p class="sr" id="live" aria-live="polite"></p>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],root=document.documentElement;
+const live=$('#live'),say=t=>{live.textContent='';setTimeout(()=>{live.textContent=t},40)};
+$$('.sw').forEach(b=>b.addEventListener('click',()=>b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true')));
+const dark=matchMedia('(prefers-color-scheme: dark)');
+function theme(){const v=$('input[name=theme]:checked').value;root.dataset.theme=v==='system'?(dark.matches?'dark':'light'):v}
+$$('input[name=theme]').forEach(r=>r.addEventListener('change',theme));dark.addEventListener('change',theme);
+$('#fs').addEventListener('change',e=>{root.style.fontSize=e.target.value+'px'});
+const keys=$('#keylist');
+function lab(li){const r=li.classList.contains('rv'),b=li.querySelector('button');b.textContent=r?'Undo':'Revoke';b.setAttribute('aria-label',(r?'Undo revoke of':'Revoke')+' key ending '+li.dataset.k);li.querySelector('.st').textContent=r?'revoked':''}
+$$('#keylist li').forEach(lab);
+keys.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const li=b.closest('li');li.classList.toggle('rv');lab(li);say('Key ending '+li.dataset.k+(li.classList.contains('rv')?' revoked':' restored'))});
+$('#mk').addEventListener('click',()=>{const k=(Math.random()*65536|0).toString(16).padStart(4,'0'),li=document.createElement('li');li.dataset.k=k;li.innerHTML='<code>lk_live_••••'+k+'</code><span class="st"></span><button type="button" class="btn sm"></button>';keys.append(li);lab(li);say('Created key ending '+k)});
+const del=$('#del'),cf=$('#cf');
+function closeCf(m){cf.hidden=true;del.setAttribute('aria-expanded','false');if(m){$('#dmsg').textContent=m;say(m)}del.focus()}
+del.addEventListener('click',()=>{cf.hidden=false;del.setAttribute('aria-expanded','true');$('#dmsg').textContent='';$('#cn').focus()});
+$('#cn').addEventListener('click',()=>closeCf());
+$('#yes').addEventListener('click',()=>closeCf('Prototype only: nothing was deleted.'));
+cf.addEventListener('keydown',e=>{if(e.key==='Escape')closeCf()});
+const nav=$('.nav'),links=$$('.nav a'),secs=links.map(a=>document.getElementById(a.hash.slice(1))),calm=matchMedia('(prefers-reduced-motion: reduce)');
+function cur(a){links.forEach(x=>x===a?x.setAttribute('aria-current','true'):x.removeAttribute('aria-current'));if(nav.scrollWidth>nav.clientWidth){const l=a.offsetLeft-nav.offsetLeft;if(l<nav.scrollLeft||l+a.offsetWidth>nav.scrollLeft+nav.clientWidth)nav.scrollLeft=l-8}}
+function spy(){const line=parseFloat(getComputedStyle(root).scrollPaddingTop)+24;let i=0;secs.forEach((s,j)=>{if(s.getBoundingClientRect().top<=line)i=j});if(!links[i].hasAttribute('aria-current'))cur(links[i])}
+addEventListener('scroll',spy,{passive:true});addEventListener('resize',spy);
+links.forEach((a,i)=>a.addEventListener('click',e=>{e.preventDefault();const h=secs[i].querySelector('h2');secs[i].scrollIntoView({behavior:calm.matches?'auto':'smooth',block:'start'});cur(a);h.focus({preventScroll:true})}));
+cur(links[0]);
+</script>
+</body>
+</html>

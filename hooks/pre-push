@@ -1,0 +1,23 @@
+#!/bin/sh
+# Pre-push check: refuse the push if the secret and private-data scan or the unit tests fail.
+# Enabled per clone by scripts/install-hooks.sh (git config core.hooksPath hooks).
+set -eu
+
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT"
+
+echo "pre-push: scanning for secrets and private data"
+if ! python3 scripts/scan.py; then
+  echo "pre-push: scan failed; push refused" >&2
+  exit 1
+fi
+
+if [ -d node_modules ]; then
+  echo "pre-push: running unit tests"
+  if ! npm test --silent; then
+    echo "pre-push: tests failed; push refused" >&2
+    exit 1
+  fi
+else
+  echo "pre-push: node_modules missing, skipping unit tests (run npm ci to enable them)"
+fi

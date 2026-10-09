@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Larkspur Settings A</title>
+<style>
+:root{--bg:#fff;--sf:#f5f6f8;--tx:#1b1f24;--mu:#566070;--bd:#d6dae0;--ac:#2f5bd3;--fo:#2f5bd3;--sel:#e8eefc;--off:#878f9b;--kn:#fff;--dgb:#b42318;--dgt:#b42318;--dgs:#fdf0ef;color-scheme:light}
+[data-theme=dark]{--bg:#14171c;--sf:#1d2127;--tx:#e9ebee;--mu:#a4acb7;--bd:#363c45;--ac:#3f6be0;--fo:#8fb0ff;--sel:#252e44;--off:#6b7380;--kn:#e9ebee;--dgt:#ff9b91;--dgs:#2d1a1a;color-scheme:dark}
+*{box-sizing:border-box}
+html{font-size:15px;-webkit-text-size-adjust:100%}
+body{margin:0;font:1rem/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.55rem 1rem;border-bottom:1px solid var(--bd);background:var(--sf)}
+h1{font-size:.95rem;margin:0;font-weight:600}
+.tag{font-size:.7rem;padding:.1rem .45rem;border:1px solid var(--bd);border-radius:999px;color:var(--mu);white-space:nowrap;background:var(--bg)}
+h2{font-size:1.05rem;margin:0 0 .5rem}
+h2:focus{outline:0}
+label,.lbl{display:block;font-size:.85rem;color:var(--mu);margin:.4rem 0 .15rem}
+input[type=text],select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:.3rem .5rem;width:100%;max-width:18rem}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--bd);background:var(--bg);color:var(--tx);border-radius:6px;padding:.3rem .75rem}
+.btn.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+.btn.dg{background:var(--dgb);border-color:var(--dgb);color:#fff}
+.btn.sm{font-size:.85rem;padding:.15rem .55rem}
+:focus-visible{outline:2px solid var(--fo);outline-offset:2px}
+.prof{display:flex;gap:.8rem;align-items:flex-start}
+.av{flex:none;width:2.6rem;height:2.6rem;border-radius:50%;background:var(--ac);color:#fff;display:grid;place-items:center;font-weight:600}
+.prof>div:last-child{flex:1;min-width:0}
+.em{margin:0;overflow-wrap:anywhere}
+.row{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.4rem 0;border-bottom:1px solid var(--bd)}
+.row:last-child{border:0}
+.sw{flex:none;width:2.4rem;height:1.4rem;border-radius:999px;border:0;background:var(--off);position:relative;padding:0}
+.sw::after{content:"";position:absolute;top:.2rem;left:.2rem;width:1rem;height:1rem;border-radius:50%;background:var(--kn);transition:transform .15s}
+.sw[aria-checked=true]{background:var(--ac)}
+.sw[aria-checked=true]::after{transform:translateX(1rem);background:#fff}
+fieldset{border:0;padding:0;margin:0 0 .3rem}
+legend{font-size:.85rem;color:var(--mu);padding:0;margin-bottom:.15rem}
+.radios{display:flex;flex-wrap:wrap;gap:.2rem 1rem}
+.radios label{display:flex;align-items:center;gap:.3rem;margin:0;color:var(--tx);font-size:1rem}
+.keys{list-style:none;padding:0;margin:0 0 .7rem}
+.keys li{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.35rem 0;border-bottom:1px solid var(--bd)}
+code{font:.9rem ui-monospace,SFMono-Regular,Menlo,monospace;flex:1;min-width:0;overflow-wrap:anywhere}
+.st{font-size:.75rem;color:var(--mu)}
+.rv code{text-decoration:line-through;color:var(--mu)}
+.mu{color:var(--mu);font-size:.9rem;margin:0 0 .6rem}
+.dz h2{color:var(--dgt)}
+.confirm{margin-top:.7rem;padding:.7rem;border:1px solid var(--dgt);border-radius:8px;background:var(--dgs)}
+.confirm p{margin:0 0 .6rem}
+.acts{display:flex;gap:.5rem;flex-wrap:wrap}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.wrap{display:flex;flex-direction:column}
+.tabs{display:flex;flex-wrap:wrap;gap:.15rem;padding:.4rem .6rem;border-bottom:1px solid var(--bd)}
+.tabs button{background:none;border:0;color:var(--mu);text-align:left;padding:.4rem .6rem;border-radius:6px}
+.tabs button:hover{color:var(--tx)}
+.tabs [aria-selected=true]{background:var(--sel);color:var(--tx);font-weight:600;box-shadow:inset 0 -2px var(--ac)}
+[role=tabpanel]{padding:.9rem 1rem;flex:1;min-width:0}
+@media(min-width:440px){.wrap{flex-direction:row;min-height:calc(100vh - 2.6rem)}.tabs{flex-direction:column;flex-wrap:nowrap;width:8.75rem;flex:none;border-bottom:0;border-right:1px solid var(--bd);background:var(--sf)}.tabs [aria-selected=true]{box-shadow:inset 3px 0 var(--ac)}}
+</style>
+</head>
+<body>
+<header><h1>Larkspur Notes · Settings</h1><span class="tag">Variant A: Tabs</span></header>
+<div class="wrap">
+<div class="tabs" role="tablist" aria-label="Settings sections"><button type="button" role="tab" id="t-profile" aria-controls="p-profile" aria-selected="true">Profile</button><button type="button" role="tab" id="t-notifications" aria-controls="p-notifications" aria-selected="false" tabindex="-1">Notifications</button><button type="button" role="tab" id="t-appearance" aria-controls="p-appearance" aria-selected="false" tabindex="-1">Appearance</button><button type="button" role="tab" id="t-keys" aria-controls="p-keys" aria-selected="false" tabindex="-1">API keys</button><button type="button" role="tab" id="t-danger" aria-controls="p-danger" aria-selected="false" tabindex="-1">Danger zone</button></div>
+<section role="tabpanel" id="p-profile" aria-labelledby="t-profile" tabindex="0">
+<h2>Profile</h2>
+<div class="prof"><div class="av" role="img" aria-label="Avatar, initials JO">JO</div><div><label for="dn">Display name</label><input type="text" id="dn" value="Jordan Okafor" autocomplete="off"><p class="lbl">Email</p><p class="em">jordan@larkspur.example</p></div></div>
+</section>
+<section role="tabpanel" id="p-notifications" aria-labelledby="t-notifications" tabindex="0" hidden>
+<h2>Notifications</h2>
+<div class="row"><span id="n1">Mentions</span><button type="button" class="sw" role="switch" aria-checked="true" aria-labelledby="n1"></button></div>
+<div class="row"><span id="n2">Weekly digest</span><button type="button" class="sw" role="switch" aria-checked="false" aria-labelledby="n2"></button></div>
+<div class="row"><span id="n3">Product updates</span><button type="button" class="sw" role="switch" aria-checked="false" aria-labelledby="n3"></button></div>
+</section>
+<section role="tabpanel" id="p-appearance" aria-labelledby="t-appearance" tabindex="0" hidden>
+<h2>Appearance</h2>
+<fieldset><legend>Theme</legend><div class="radios"><label><input type="radio" name="theme" value="light" checked> Light</label><label><input type="radio" name="theme" value="dark"> Dark</label><label><input type="radio" name="theme" value="system"> System</label></div></fieldset>
+<label for="fs">Font size</label><select id="fs"><option value="13">Small</option><option value="15" selected>Medium</option><option value="17">Large</option></select>
+</section>
+<section role="tabpanel" id="p-keys" aria-labelledby="t-keys" tabindex="0" hidden>
+<h2>API keys</h2>
+<ul class="keys" id="keylist"><li data-k="3f9a"><code>lk_live_••••3f9a</code><span class="st"></span><button type="button" class="btn sm"></button></li><li data-k="77c2"><code>lk_test_••••77c2</code><span class="st"></span><button type="button" class="btn sm"></button></li></ul>
+<button type="button" class="btn pri" id="mk">Create key</button>
+</section>
+<section role="tabpanel" id="p-danger" aria-labelledby="t-danger" tabindex="0" hidden class="dz">
+<h2>Danger zone</h2>
+<p class="mu">Deletes every notebook and note for all members of this workspace.</p>
+<button type="button" class="btn dg" id="del" aria-expanded="false" aria-controls="cf">Delete workspace</button>
+<div class="confirm" id="cf" role="group" aria-labelledby="cft" hidden><p id="cft"><strong>Delete this workspace?</strong> This cannot be undone.</p><div class="acts"><button type="button" class="btn" id="cn">Cancel</button><button type="button" class="btn dg" id="yes">Yes, delete</button></div></div>
+<p class="mu" id="dmsg" style="margin-top:.6rem"></p>
+</section>
+</div>
+<p class="sr" id="live" aria-live="polite"></p>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],root=document.documentElement;
+const live=$('#live'),say=t=>{live.textContent='';setTimeout(()=>{live.textContent=t},40)};
+$$('.sw').forEach(b=>b.addEventListener('click',()=>b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true')));
+const dark=matchMedia('(prefers-color-scheme: dark)');
+function theme(){const v=$('input[name=theme]:checked').value;root.dataset.theme=v==='system'?(dark.matches?'dark':'light'):v}
+$$('input[name=theme]').forEach(r=>r.addEventListener('change',theme));dark.addEventListener('change',theme);
+$('#fs').addEventListener('change',e=>{root.style.fontSize=e.target.value+'px'});
+const keys=$('#keylist');
+function lab(li){const r=li.classList.contains('rv'),b=li.querySelector('button');b.textContent=r?'Undo':'Revoke';b.setAttribute('aria-label',(r?'Undo revoke of':'Revoke')+' key ending '+li.dataset.k);li.querySelector('.st').textContent=r?'revoked':''}
+$$('#keylist li').forEach(lab);
+keys.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const li=b.closest('li');li.classList.toggle('rv');lab(li);say('Key ending '+li.dataset.k+(li.classList.contains('rv')?' revoked':' restored'))});
+$('#mk').addEventListener('click',()=>{const k=(Math.random()*65536|0).toString(16).padStart(4,'0'),li=document.createElement('li');li.dataset.k=k;li.innerHTML='<code>lk_live_••••'+k+'</code><span class="st"></span><button type="button" class="btn sm"></button>';keys.append(li);lab(li);say('Created key ending '+k)});
+const del=$('#del'),cf=$('#cf');
+function closeCf(m){cf.hidden=true;del.setAttribute('aria-expanded','false');if(m){$('#dmsg').textContent=m;say(m)}del.focus()}
+del.addEventListener('click',()=>{cf.hidden=false;del.setAttribute('aria-expanded','true');$('#dmsg').textContent='';$('#cn').focus()});
+$('#cn').addEventListener('click',()=>closeCf());
+$('#yes').addEventListener('click',()=>closeCf('Prototype only: nothing was deleted.'));
+cf.addEventListener('keydown',e=>{if(e.key==='Escape')closeCf()});
+const tabs=$$('[role=tab]'),wide=matchMedia('(min-width:440px)'),tl=$('[role=tablist]');
+const orient=()=>tl.setAttribute('aria-orientation',wide.matches?'vertical':'horizontal');orient();wide.addEventListener('change',orient);
+function sel(t,f){tabs.forEach(x=>{const on=x===t;x.setAttribute('aria-selected',on);x.tabIndex=on?0:-1;document.getElementById(x.getAttribute('aria-controls')).hidden=!on});if(f)t.focus()}
+tabs.forEach((t,i)=>{t.addEventListener('click',()=>sel(t));t.addEventListener('keydown',e=>{const d={ArrowRight:1,ArrowDown:1,ArrowLeft:-1,ArrowUp:-1}[e.key],n=tabs.length;const j=d?(i+d+n)%n:e.key==='Home'?0:e.key==='End'?n-1:-1;if(j<0)return;e.preventDefault();sel(tabs[j],1)})});
+</script>
+</body>
+</html>
