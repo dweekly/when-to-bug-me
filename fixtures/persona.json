@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "name": "Jordan Okafor",
+  "first_name": "Jordan",
+  "pronouns": "they/them",
+  "role": "Staff engineer",
+  "company": "Larkspur",
+  "company_blurb": "a made-up company of about 120 people that makes a note-taking app, Larkspur Notes",
+  "fleet_size": 20,
+  "projects": [
+    { "id": "launch", "name": "Launch", "blurb": "the public API v2 launch: API, SDKs, docs and the settings page redesign" },
+    { "id": "billing", "name": "Billing", "blurb": "moving invoicing to a new payments provider" },
+    { "id": "platform", "name": "Platform", "blurb": "CI, dependencies, flaky tests, hiring and team housekeeping" }
+  ],
+  "how_to_work_with_me": [
+    "I'd rather answer three real questions than thirty easy ones. If my rules already settle it, don't ask.",
+    "When you bring me something, tell me what changes for our users or customers, not what changes in the code.",
+    "Show me the other side. If you have a recommendation, I want the strongest case against it too.",
+    "I review changes on a preview, not as a diff pasted into chat. Link me the preview."
+  ],
+  "how_to_work_with_me_source": "Drafted by Bug Me from Jordan's past sessions and corrected by Jordan in an onboarding interview. Synthetic, like everything here."
+}

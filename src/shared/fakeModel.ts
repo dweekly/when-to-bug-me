@@ -1,0 +1,161 @@
+// A deterministic stand-in for the two model calls, used by tests and by `wrangler dev` with
+// FAKE_MODEL=1. It reads the same inputs the real prompts do (the rules and facts as they currently
+// read, and the decision) and returns schema-valid output, so the whole app can be exercised end to
+// end without a key. It is keyword matching, not judgment; nothing it produces is shown as live.
+
+import type { Decision, Fact, FactOutput, RouteKind, RouteOutput, Rule } from "./types";
+
+/** Which written rule governs each topic tag, found by matching the rule's current text. */
+const TAG_RULES: [tag: string, rule: RegExp][] = [
+  ["public-api", /public api|sdk interface/i],
+  ["sdk", /sdk interface/i],
+  ["housekeeping", /housekeeping|formatting|merged branches/i],
+  ["tests", /flaky|test/i],
+  ["calendar", /meeting|invite|calendar/i],
+  ["money", /spends|contract|\$\d/i],
+  ["contracts", /contract/i],
+  ["customer-facing", /customers will see|emails|changelog/i],
+  ["email", /emails/i],
+  ["docs", /docs|changelog/i],
+  ["announcements", /announcement/i],
+  ["customer-data", /customer data/i],
+  ["security", /access|security/i],
+  ["people", /hiring|reviews|feedback|person/i],
+  ["task-budget", /time budget/i],
+  ["travel", /travel|flight/i],
+  ["dependencies", /dependency|dependencies/i],
+];
+
+const CLEARS = /just do it|go ahead|fine to do/i;
+const MINE = /mine|comes to me|stays with me|ask me|always/i;
+const EARLY = /early|before (?:[5-9]|8:30|nine)|morning|drop-?off|7:30|6am|6:05/i;
+const KEEP_NAMES = /renam|field name|backward|compat|break(?:s|ing)? (?:integrat|client|sdk|consumer)/i;
+
+/** A plain restatement for the one decision whose wording is the agent's private jargon. */
+const TRANSLATIONS: Record<string, string> = {
+  "reconciliation-path":
+    "Should billing recompute tax on every invoice since January and send corrected invoices to the 1.5% that change (mostly by a few cents), or keep today's tax mapping and leave past invoices alone?",
+};
+
+function rulesFor(d: Decision, rules: Rule[]): Rule[] {
+  const out: Rule[] = [];
+  for (const [tag, rx] of TAG_RULES) {
+    if (!d.tags.includes(tag)) continue;
+    for (const r of rules) if (rx.test(r.text) && !out.includes(r)) out.push(r);
+  }
+  return out;
+}
+
+function guessFor(d: Decision, favored: string, p: number) {
+  const rest = d.options.filter((o) => o.key !== favored);
+  return d.options.map((o) => ({ option: o.key, p: o.key === favored ? p : (1 - p) / rest.length }));
+}
+
+export function fakeRoute(d: Decision, rules: Rule[], facts: Fact[]): RouteOutput {
+  const governing = rulesFor(d, rules);
+  // "Patch-level" housekeeping rules do not clear a major upgrade; the real prompt reads this from the rule.
+  const clearing = /major version/i.test(d.question)
+    ? undefined
+    : governing.find((r) => CLEARS.test(r.text) && !MINE.test(r.text.replace(CLEARS, "")));
+  const owning = governing.find((r) => MINE.test(r.text) && !CLEARS.test(r.text));
+  const other = d.options.find((o) => o.key !== d.recommended)!.key;
+
+  let route: RouteKind = "check_in";
+  let favored = d.recommended;
+  let p = 0.7;
+  let rule_quoted = (owning ?? clearing ?? governing[0])?.text ?? "";
+  let fact_quoted = "";
+  let why = "No written rule settles this, so it's a quick check.";
+
+  if (clearing && !owning) {
+    route = "settle";
+    p = 0.9;
+    why = `Your rule clears it: "${clearing.text}"`;
+  } else if (owning) {
+    route = "decide";
+    why = `Your rule says this is yours: "${owning.text}"`;
+  }
+
+  const travelRule = d.tags.includes("travel") ? rules.find((r) => /travel|flight/i.test(r.text)) : undefined;
+  if (travelRule && EARLY.test(travelRule.text) && d.tags.includes("early-morning")) {
+    route = "decide";
+    favored = other;
+    p = 0.85;
+    rule_quoted = travelRule.text;
+    why = `Your travel rule now speaks to early flights: "${travelRule.text}"`;
+  }
+
+  const earlyFact = d.tags.includes("early-morning") ? facts.find((f) => EARLY.test(f.text)) : undefined;
+  if (earlyFact) {
+    route = d.tags.includes("travel") ? "decide" : "check_in";
+    favored = other;
+    p = 0.85;
+    fact_quoted = earlyFact.text;
+    why = `This touches something you told me: "${earlyFact.text}"`;
+  }
+
+  const namesFact = d.tags.includes("public-api") ? facts.find((f) => KEEP_NAMES.test(f.text)) : undefined;
+  if (namesFact) {
+    route = "decide";
+    favored = other;
+    p = 0.85;
+    fact_quoted = namesFact.text;
+    why = `Framed by what you said earlier: "${namesFact.text}"`;
+  }
+
+  const conflicts: RouteOutput["conflicts"] = [];
+  if (d.tags.includes("dependencies") && d.project === "launch") {
+    const f = facts.find((x) => /dependenc/i.test(x.text));
+    if (f) {
+      conflicts.push({ option: d.recommended, quoted: f.text });
+      fact_quoted = f.text;
+    }
+  }
+  if (d.tags.includes("honesty")) {
+    const f = facts.find((x) => /outage|chart/i.test(x.text));
+    if (f) {
+      conflicts.push({ option: d.recommended, quoted: f.text });
+      fact_quoted = f.text;
+    }
+  }
+
+  return {
+    route,
+    settle_option: route === "settle" ? favored : "",
+    reversible: d.bounds[favored]?.reversible ?? "partly",
+    cost: (d.bounds[favored]?.cost_usd ?? 0) > 100 ? "moderate" : "cheap",
+    clearing_rule: route === "settle" && clearing ? clearing.text : "",
+    rule_quoted,
+    fact_quoted,
+    why_here: why,
+    headline: TRANSLATIONS[d.id] ? "Recompute past invoices' tax and send corrections, or leave them?" : d.question,
+    in_your_terms: TRANSLATIONS[d.id] ?? d.context,
+    problem: TRANSLATIONS[d.id] ? "options_unusable" : "fine",
+    guess: guessFor(d, favored, p),
+    conflicts,
+    send_down: d.options.map((o) => ({ option: o.key, instruction: `Jordan chose "${o.label}". Proceed on that basis.` })),
+  };
+}
+
+/** Turn a stated reason into proposed guidance, the way the fact prompt would, by keyword. */
+export function fakeFact(d: Decision, reason: string, waiting: Decision[], facts: Fact[]): FactOutput {
+  const r = reason.trim();
+  if (r.length < 4 || /just this once|misclick|mis-click|by mistake|no reason/i.test(r)) {
+    return { kind: "none", replaces: "", text: "", scope: "", confirm: "Got it: no standing guidance from that one.", may_affect: [] };
+  }
+  const text = EARLY.test(r)
+    ? "No commitments before 8:30am: Jordan does school drop-off."
+    : KEEP_NAMES.test(r)
+      ? "In anything public, keep existing field names; renames break integrators."
+      : r.replace(/\s+/g, " ").slice(0, 160);
+  const dup = facts.find((f) => f.text === text);
+  const sharesTag = (x: Decision) => x.id !== d.id && x.tags.some((t) => d.tags.includes(t));
+  return {
+    kind: dup ? "replace" : "add",
+    replaces: dup ? dup.id : "",
+    text,
+    scope: d.project,
+    confirm: `So the rule of thumb is: ${text}`,
+    may_affect: waiting.filter(sharesTag).map((x) => x.id),
+  };
+}

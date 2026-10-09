@@ -8,7 +8,7 @@ Read `README.md`, then `docs/BUILD-PLAN.md` (the sequenced plan with pass/fail c
 
 ## Guardrails (non-negotiable)
 
-- This repo is public. Never commit transcripts, extracted datasets, or anything derived from them. `private/`, `data/` and `*.jsonl` are gitignored; don't weaken that.
+- This repo will be public (it starts private until David has looked it over). Never commit transcripts, extracted datasets, or anything derived from them. `private/`, `data/` and `*.jsonl` are gitignored; don't weaken that.
 - Every person, company, project and question in `fixtures/` is synthetic and written by hand. Nothing comes from a real session.
 - Treat `~/.claude/projects` as read-only source data. Never write there.
 - Run `python3 scripts/scan.py` before every push (the pre-push hook does it). It fails closed if gitleaks cannot run.

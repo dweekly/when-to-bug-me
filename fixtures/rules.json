@@ -1,0 +1,14 @@
+[
+  { "id": "R1", "text": "Changes to the public API or the SDK interfaces are mine to decide." },
+  { "id": "R2", "text": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it." },
+  { "id": "R3", "text": "Anything that spends more than $100 a month, or commits us to a contract, comes to me." },
+  { "id": "R4", "text": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out." },
+  { "id": "R5", "text": "Never delete or merge customer data without asking me." },
+  { "id": "R6", "text": "Access and security changes are always mine." },
+  { "id": "R7", "text": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test." },
+  { "id": "R8", "text": "Accept routine internal meeting invites; just do it." },
+  { "id": "R9", "text": "Anything about a person (hiring, reviews, feedback) stays with me." },
+  { "id": "R10", "text": "If a task runs past twice its time budget, stop and check in with me." },
+  { "id": "R11", "text": "Never push to main; work on a branch with a preview." },
+  { "id": "R12", "text": "Travel: book the cheapest reasonable option." }
+]
