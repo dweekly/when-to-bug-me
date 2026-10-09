@@ -77,16 +77,25 @@ test.describe("views", () => {
     await expect(page.locator(".focus-bar")).toContainText("Platform");
   });
 
-  test("Start opens the first item in the queue, and the start card names it", async ({ page }) => {
+  test("one pile is recommended, and its Start opens the first item in the queue", async ({ page }) => {
+    await expect(page.locator(".pile.rec")).toHaveCount(1);
     const first = page.locator("#agenda a.item").first();
     const href = (await first.getAttribute("href"))!;
     const text = (await first.locator(".q").innerText()).trim();
-    await expect(page.locator("#start-card h2")).toHaveText(text);
     const firstProject = (await page.locator("#agenda .pname").first().innerText()).trim();
+    await expect(page.locator("#start-card .eyebrow")).toHaveText(new RegExp(`Start with ${firstProject}`, "i"));
+    await expect(page.locator("#start-card .peek li").first()).toHaveText(text);
     await page.locator("#start").click();
     await expect(page).toHaveURL(new RegExp(`${href.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`));
     await expect(page.locator("#now-q")).toHaveText(text);
     await expect(page.locator(".focus-bar")).toContainText(new RegExp(firstProject, "i"));
+  });
+
+  test("each other pile's Start opens that pile's first item", async ({ page }) => {
+    const pile = page.locator('.pile[data-project="platform"]');
+    const firstHref = (await projectGroup(page, "Platform").locator("a.item").first().getAttribute("href"))!;
+    await pile.getByRole("button", { name: "Start Platform" }).click();
+    await expect(page).toHaveURL(new RegExp(`${firstHref.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`));
   });
 
   test("the bar's nav reaches every view, and Decided for you shows its count", async ({ page }) => {

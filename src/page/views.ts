@@ -91,7 +91,6 @@ function renderHome(view: HTMLElement): void {
   const a = agenda();
   const remaining = a.sections.reduce((m, s) => m + s.minutes, 0);
   const waiting = waitingCount();
-  const start = nextInSession(a, null);
 
   const settledCount = a.settled.filter((id) => !S.reopened.includes(id)).length;
   const hero = h(
@@ -111,25 +110,37 @@ function renderHome(view: HTMLElement): void {
   // answers unblock), decisions before quick checks, then by agents unblocked and time waiting.
   // Numbered across projects, because the order is the point.
   const queue = a.sections.map((s) => ({ s, items: [...s.decisions, ...s.check_ins] }));
-  const first = start.id ? queue.flatMap((g) => g.items).find((i) => i.id === start.id) : undefined;
-  const firstSection = first ? a.sections.find((s) => s.project.id === byId.get(first.id)!.project) : undefined;
-  const startCard =
-    first && firstSection
-      ? h(
-          "section",
-          { class: "start-card", id: "start-card", "aria-labelledby": "start-q" },
-          h("p", { class: "eyebrow" }, h("span", {}, "Start here"), h("span", { class: "route" }, `${GLYPH[first.route]} ${ROUTE_LABEL[first.route]}`)),
-          h("h2", { id: "start-q" }, headline(first.id)),
-          h("p", { class: "quiet" }, `${firstSection.project.name} · ${first.order_reason.replace(/^First here: /, "")}`),
-          h(
-            "button",
-            { type: "button", class: "primary big", id: "start", onclick: () => startSession(first.id) },
-            `Start · about ${estimateMinutes(first.route === "decide" ? 1 : 0, first.route === "check_in" ? 1 : 0)} min`,
-          ),
-        )
-      : h("p", { class: "quiet all-clear" }, "The firefly is resting; so can you.");
+  // The piles: one per project with work waiting, in agenda order. The first is the recommendation,
+  // drawn large with its reason and one Start button, for someone who just wants to begin.
+  const piles = queue.filter((g) => g.items.length);
+  const agentsLabel = (n: number) => `unblocks ${n} agent${n === 1 ? "" : "s"}`;
+  const pileCard = ({ s, items }: (typeof queue)[number], i: number) => {
+    const rec = i === 0;
+    const name = s.project.name;
+    return h(
+      "section",
+      { class: rec ? "pile rec" : "pile", id: rec ? "start-card" : undefined, "data-project": s.project.id, "aria-labelledby": `pile-${s.project.id}` },
+      rec ? h("p", { class: "eyebrow" }, `Start with ${name}`) : null,
+      h("h2", { id: `pile-${s.project.id}` }, rec ? `${items.length} question${items.length === 1 ? "" : "s"} · about ${s.minutes} min` : name),
+      h("p", { class: "quiet" }, rec ? s.section_reason : `${items.length} · about ${s.minutes} min · ${agentsLabel(s.unblocks)}`),
+      h(
+        "p",
+        { class: "tally", "aria-label": `${s.decisions.length} decisions, ${s.check_ins.length} quick checks` },
+        h("span", { "aria-hidden": "true" }, `${GLYPH.decide} ${s.decisions.length} decision${s.decisions.length === 1 ? "" : "s"}   ${GLYPH.check_in} ${s.check_ins.length} quick check${s.check_ins.length === 1 ? "" : "s"}`),
+      ),
+      rec ? h("ul", { class: "peek" }, ...items.slice(0, 3).map((it) => h("li", {}, headline(it.id)))) : null,
+      h(
+        "button",
+        { type: "button", class: rec ? "primary big" : "ghost", id: rec ? "start" : undefined, onclick: () => startSession(items[0].id) },
+        rec ? `Start ${name} →` : `Start ${name}`,
+      ),
+    );
+  };
+  const startCard = piles.length
+    ? h("div", { class: "piles" }, pileCard(piles[0], 0), piles.length > 1 ? h("div", { class: "other-piles" }, ...piles.slice(1).map((g, i) => pileCard(g, i + 1))) : null)
+    : h("p", { class: "quiet all-clear" }, "The firefly is resting; so can you.");
 
-  const agendaList = h("section", { id: "agenda", class: "agenda", "aria-label": "Your queue, in order" });
+  const agendaList = h("section", { id: "agenda", class: "agenda", "aria-labelledby": "queue-h" }, piles.length ? h("h2", { class: "section-h", id: "queue-h" }, "The whole queue, in order") : null);
   let n = 0;
   for (const { s, items } of queue) {
     if (!items.length) continue;
@@ -153,7 +164,7 @@ function renderHome(view: HTMLElement): void {
               {},
               h(
                 "a",
-                { href: hrefFor({ view: "focus", id: i.id }), class: `item${i.id === first?.id ? " first" : ""}${S.changes[i.id] ? " changed" : ""}${S.pending.includes(i.id) ? " pending" : ""}` },
+                { href: hrefFor({ view: "focus", id: i.id }), class: `item${i.id === piles[0]?.items[0]?.id ? " first" : ""}${S.changes[i.id] ? " changed" : ""}${S.pending.includes(i.id) ? " pending" : ""}` },
                 h("span", { class: "num", "aria-hidden": "true" }, String(n)),
                 h("span", { class: "glyph", "aria-label": ROUTE_LABEL[i.route] }, GLYPH[i.route]),
                 h("span", { class: "q" }, headline(i.id)),
