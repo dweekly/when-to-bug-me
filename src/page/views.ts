@@ -7,7 +7,7 @@ import { estimateMinutes, nextInSession, overnightTotals } from "../shared/agend
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
 import { editRule, resume, startSession, undo } from "./actions";
-import { markButton, renderNow, stopVoiceUnlessFor } from "./card";
+import { markButton, renderNow, stopVoiceIfMicGone, stopVoiceUnlessFor } from "./card";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
@@ -398,6 +398,7 @@ export function render(): void {
   else if (route.view === "settled") renderSettledView(view);
   else if (route.view === "rules") renderRulesView(view);
   else renderRecordView(view);
+  stopVoiceIfMicGone(); // whatever view this is, dictation never outlives its visible microphone
 }
 
 /** Replace the rule being edited (actions.ts saves or rejects a draft from outside this module). */

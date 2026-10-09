@@ -87,3 +87,40 @@ test("dictation stops when Not now opens or closes, so speech never lands in the
   await page.locator("#now").getByRole("button", { name: "Cancel" }).click();
   expect(await page.evaluate("window.__recs.length === 2 && window.__recs[1].stopped === true")).toBe(true);
 });
+
+test("dictation stops when a finished decision is opened", async ({ page }) => {
+  await page.addInitScript(() => {
+    class FakeRec {
+      onresult: ((e: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      start() {
+        (globalThis as unknown as { __rec: FakeRec }).__rec = this;
+      }
+      stop() {
+        (this as unknown as { stopped: boolean }).stopped = true;
+        this.onend?.();
+      }
+    }
+    (globalThis as unknown as { SpeechRecognition: unknown }).SpeechRecognition = FakeRec;
+  });
+  await page.reload();
+  // Finish one decision, then start dictating on another and open the finished one by its link.
+  await openDecision(page, "incident-action-items");
+  await option(page, "File all five").click();
+  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
+  await expect.poll(async () => Boolean((await stored(page))?.answered?.["incident-action-items"])).toBe(true);
+  // A later visit: the answer is kept but its in-progress card is gone, so it opens read-only.
+  await page.evaluate(() => {
+    const k = "bugme.state.v1";
+    const st = JSON.parse(localStorage.getItem(k)!);
+    delete st.flows["incident-action-items"];
+    localStorage.setItem(k, JSON.stringify(st));
+  });
+  await page.reload();
+  await openDecision(page, "api-rename");
+  await option(page, "Keep user_id").click();
+  await page.locator("#now").getByRole("button", { name: "Answer by voice" }).click();
+  await page.evaluate("location.hash = '#/d/incident-action-items'");
+  await expect(page.locator("#now .closed")).toBeVisible();
+  expect(await page.evaluate("window.__rec.stopped === true")).toBe(true);
+});
