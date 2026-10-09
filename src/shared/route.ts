@@ -59,7 +59,7 @@ export function parseRouteOutput(raw: unknown, decision: Decision): RouteOutput 
   });
   if (seen.size !== keys.length) throw new RouteParseError("guess does not cover every option");
   const total = guess.reduce((s, g) => s + g.p, 0);
-  if (Math.abs(total - 1) > SUM_TOLERANCE) throw new RouteParseError(`guess sums to ${total.toFixed(3)}`);
+  if (total < 1 - SUM_TOLERANCE || total > 1 + SUM_TOLERANCE) throw new RouteParseError(`guess sums to ${total.toFixed(3)}`);
   for (const g of guess) g.p = g.p / total;
 
   const conflictsRaw = Array.isArray(o.conflicts) ? o.conflicts : [];
@@ -74,6 +74,9 @@ export function parseRouteOutput(raw: unknown, decision: Decision): RouteOutput 
     option: oneOf(s?.option, keys, `send_down[${i}].option`),
     instruction: str(s?.instruction, `send_down[${i}].instruction`),
   }));
+  const sent = new Set(send_down.map((s) => s.option));
+  if (sent.size !== send_down.length) throw new RouteParseError("send_down repeats an option");
+  if (sent.size !== keys.length) throw new RouteParseError("send_down does not cover every option");
 
   const route = oneOf(o.route, ROUTES, "route");
   const settle_option = str(o.settle_option ?? "", "settle_option");
@@ -117,11 +120,21 @@ export function normalizeQuote(s: string): string {
  */
 export function verifyQuote(quote: string, sources: string[], minLen = 12): string {
   const q = normalizeQuote(quote);
+  if (!q) return "";
+  const whole = wholeSource(quote, sources);
+  if (whole) return whole;
   if (q.length < minLen) return "";
   for (const s of sources) {
     if (normalizeQuote(s).includes(q)) return s;
   }
   return "";
+}
+
+/** The source text a quote copies in full (up to whitespace, curly quotes, case and a final period), or "". */
+export function wholeSource(quote: string, sources: string[]): string {
+  const q = normalizeQuote(quote);
+  if (!q) return "";
+  return sources.find((s) => normalizeQuote(s) === q) ?? "";
 }
 
 export interface InvariantResult {
@@ -147,7 +160,9 @@ export function enforceSettleInvariant(out: RouteOutput, decision: Decision, rul
     if (bound.reversible !== "yes") missing.push("the action can't be fully undone");
     if (bound.cost_usd > SETTLE_MAX_COST_USD) missing.push(`it costs $${bound.cost_usd}`);
   }
-  if (!verifyQuote(out.clearing_rule, rules.map((r) => r.text))) {
+  // Settling needs a whole current rule, not a fragment of one: "formatting, lint fixes" is not the
+  // authorization "...: just do it."
+  if (!wholeSource(out.clearing_rule, rules.map((r) => r.text))) {
     missing.push("no written rule clears it");
   }
   if (missing.length === 0) return { route: "settle", settle_option: out.settle_option };
@@ -163,7 +178,7 @@ export function verifiedQuotes(out: RouteOutput, rules: Rule[], facts: Fact[]) {
   const ruleTexts = rules.map((r) => r.text);
   const factTexts = facts.map((f) => f.text);
   return {
-    clearing_rule: verifyQuote(out.clearing_rule, ruleTexts),
+    clearing_rule: wholeSource(out.clearing_rule, ruleTexts),
     rule_quoted: verifyQuote(out.rule_quoted, ruleTexts),
     fact_quoted: verifyQuote(out.fact_quoted, factTexts),
   };

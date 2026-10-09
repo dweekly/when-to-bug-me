@@ -13,7 +13,13 @@ export function topGuess(guess: Guess): { option: string; p: number } {
   return guess.reduce((best, g) => (g.p > best.p ? g : best), guess[0]);
 }
 
+/** Whether the person gave any reason at all. Drives the lifecycle: a reason is never asked for twice. */
 export function hasBasis(basis: string | undefined): boolean {
+  return (basis ?? "").trim().length > 0;
+}
+
+/** Whether a reason is substantive enough to brighten the glow (a heuristic, unlike hasBasis). */
+export function substantiveBasis(basis: string | undefined): boolean {
   return (basis ?? "").trim().length >= MIN_BASIS_CHARS;
 }
 
