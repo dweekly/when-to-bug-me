@@ -6,7 +6,7 @@
 
 import type { Decision, Fact, Persona, Rule } from "./types";
 
-export const PROMPT_VERSION = "2026-10-09.4";
+export const PROMPT_VERSION = "2026-10-09.5";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -37,6 +37,8 @@ An agent has stopped to ask ${n} something. Decide how it should be handled, one
 - check_in: bring it to ${n} as a quick check, answerable in seconds.
 - decide: bring it to ${n} as a substantive decision that needs their reasoning: costly, hard to undo, external, about a person, or covered by a rule that says it is ${n}'s.
 When unsure between two routes, choose the one that involves ${n} more. Nothing easy should reach ${n}, and nothing consequential should be settled without them.
+If something would otherwise be eligible to settle but one of ${n}'s standing facts bears on the choice, bring it as at least a quick check and quote that fact; anything that needs a substantive decision stays one.
+Accepting or scheduling a meeting on ${n}'s behalf commits them to other people: declining later is rude to the organizer, and a meeting they didn't want costs their time. Treat it as hard to undo, and settle it only if you are extremely confident ${n} would want it.
 
 Also judge the question itself, as a reviewer of the agent's work. problem is "fine" when it is necessary, clear and consistent with the rules; otherwise one of: recommendation_conflicts_with_written_rule (the recommended option or the framing goes against a written rule or standing fact), should_investigate_before_asking (the agent could have settled it by reading code, docs or history), not_enough_context_to_decide, unplanned_scope, options_unusable (opaque, indistinguishable, or written in the agent's private jargon), other.
 

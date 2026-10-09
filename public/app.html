@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bug Me</title>
+    <meta name="description" content="Bug Me: a chief of staff for people who run fleets of agents. It brings you only the decisions that need you, one at a time, and turns your reasons into guidance every agent follows. A working prototype with a synthetic persona." />
+    <meta property="og:title" content="Bug Me" />
+    <meta property="og:description" content="A chief of staff for people who run fleets of agents. Working prototype; the persona and fleet are synthetic." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/firefly.png" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="theme-color" content="#0f1226" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&display=swap"
+    />
+    <link rel="stylesheet" href="/driver.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/visuals.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Bug Me",
+        "description": "A prototype chief of staff for people who run fleets of AI agents.",
+        "applicationCategory": "ProductivityApplication",
+        "author": { "@type": "Person", "name": "David E. Weekly" }
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#view">Skip to content</a>
+    <header id="bar" class="bar"></header>
+    <main id="view" class="view" tabindex="-1"></main>
+    <div id="announce" class="sr-only" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

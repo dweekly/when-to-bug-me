@@ -53,7 +53,9 @@ export type GlowEvent =
   | { kind: "guidance_kept" }
   | { kind: "rule_edited" }
   | { kind: "correction_mark" }
-  | { kind: "shouldnt_have_come" };
+  | { kind: "shouldnt_have_come" }
+  /** Set aside with a reason: knowing what you'd need to decide is a real contribution. */
+  | { kind: "punted" };
 
 /**
  * How much each event moves the glow, from 0 (dim) to 1 (bright). Heuristics, chosen so a handful of
@@ -85,6 +87,7 @@ export function nextGlow(glow: number, e: GlowEvent): number {
   } else if (e.kind === "guidance_kept") g += GLOW_STEP.guidanceKept;
   else if (e.kind === "rule_edited") g += GLOW_STEP.ruleEdited;
   else if (e.kind === "correction_mark") g += GLOW_STEP.correction;
+  else if (e.kind === "punted") g += GLOW_STEP.basis;
   return Math.min(1, Math.max(0, g));
 }
 

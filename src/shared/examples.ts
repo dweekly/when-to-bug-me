@@ -19,4 +19,14 @@ export const EXAMPLES: Example[] = [
     choice: "B",
     reason: "Renaming a field breaks every integrator who already parses v1 responses. In anything public, keep existing names; tidiness isn't worth breaking customers.",
   },
+  {
+    id: "settings-redesign",
+    choice: "B",
+    reason: "Everything is on one page, so people scroll straight to API keys and still see what else is there; tabs would hide the other settings behind clicks.",
+  },
+  {
+    id: "reconciliation-path",
+    choice: "B",
+    reason: "Corrected invoices for a few cents would confuse customers and give finance a mess to explain. Fix the tax going forward; don't rewrite invoices people already paid.",
+  },
 ];
