@@ -56,3 +56,34 @@ test("Skip to content keeps the current view", async ({ page }) => {
   await expect(page).toHaveURL(/#\/d\/api-rename$/);
   await expect(page.locator("#now .opt")).toHaveCount(2);
 });
+
+test("dictation stops when Not now opens or closes, so speech never lands in the wrong box", async ({ page }) => {
+  await page.addInitScript(() => {
+    class FakeRec {
+      lang = "";
+      interimResults = false;
+      continuous = false;
+      onresult: ((e: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      start() {
+        (globalThis as unknown as { __recs: FakeRec[] }).__recs ??= [];
+        (globalThis as unknown as { __recs: FakeRec[] }).__recs.push(this);
+      }
+      stop() {
+        (this as unknown as { stopped: boolean }).stopped = true;
+        this.onend?.();
+      }
+    }
+    (globalThis as unknown as { SpeechRecognition: unknown }).SpeechRecognition = FakeRec;
+  });
+  await page.reload();
+  await openDecision(page, "api-rename");
+  await option(page, "Keep user_id").click();
+  await page.locator("#now").getByRole("button", { name: "Answer by voice" }).click();
+  await page.locator("#now").getByRole("button", { name: "Not now" }).click();
+  expect(await page.evaluate("window.__recs.at(-1).stopped === true")).toBe(true);
+  await page.getByRole("button", { name: "I need more information" }).click();
+  await page.locator("#now").getByRole("button", { name: "Answer by voice" }).click();
+  await page.locator("#now").getByRole("button", { name: "Cancel" }).click();
+  expect(await page.evaluate("window.__recs.length === 2 && window.__recs[1].stopped === true")).toBe(true);
+});

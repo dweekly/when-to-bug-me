@@ -213,6 +213,7 @@ function drawnOnce(id: string, fig: HTMLElement): HTMLElement {
 
 /** Open the "Not now" panel on this card, remembering where to return if the person cancels. */
 function startPunt(flow: Flow): void {
+  stopVoiceUnlessFor(""); // dictation was writing the answer; it must not carry on into the reason box
   flow.puntFrom = flow.phase === "pushback" ? "pushback" : "choose";
   flow.phase = "punting";
   flow.error = "";
@@ -267,6 +268,7 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
           type: "button",
           class: "linkish",
           onclick: () => {
+            stopVoiceUnlessFor(""); // likewise, dictation into the reason must not carry on into the answer
             flow.phase = flow.puntFrom ?? "choose";
             flow.error = "";
             save();
