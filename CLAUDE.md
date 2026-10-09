@@ -15,6 +15,14 @@ Read `README.md`, then `docs/BUILD-PLAN.md` (the sequenced plan with pass/fail c
 - Label anything simulated as simulated, in the UI and the README. Every card says whether its content is live model output, a saved run, or code.
 - The deployed Worker uses its own API key secret, never a key from a developer's keychain.
 
+## Interface principles (from David)
+
+- Simplicity and symbolism over text: one job per screen, short copy in the person's terms, explanation lives on the explainer page.
+- One accent color, reserved for the person's own agency; routes are symbols (○ ◐ ●), not colored chips.
+- Decision briefings are purpose-built visuals (timelines, clocks, before/after charts, payload diffs, comparisons, clickable prototypes), not tables or walls of text.
+- Load the frontend design skill before UI work, and check every screen in a real browser at desktop and phone widths.
+- Accepting a meeting for someone is not cheap to undo: treat it as partly reversible.
+
 ## How to work here
 
 - Verify formats and APIs against real files and docs before writing parsers; prefer short exploratory tests to assumptions.
