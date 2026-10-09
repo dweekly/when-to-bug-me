@@ -53,3 +53,27 @@ describe("a short reason still counts as a reason", () => {
     expect(hasBasis("   ")).toBe(false);
   });
 });
+
+describe("round 2: fact scopes and overrides", () => {
+  it("a fact scoped to another project does not move a decision", async () => {
+    const { fakeRoute } = await import("../../src/shared/fakeModel");
+    const { facts } = await import("./helpers");
+    const berlin = decision("berlin-sync");
+    const early = { id: "F9", text: "No commitments before 8:30am: school drop-off.", source: "test", scope: "launch" };
+    expect(fakeRoute(berlin, rules, [...facts, early]).route).toBe("settle");
+    expect(fakeRoute(berlin, rules, [...facts, { ...early, scope: "all" }]).route).toBe("check_in");
+  });
+  it("scope is part of the routing prompt (and so of the cache key)", async () => {
+    const { routePrompt } = await import("../../src/shared/prompts");
+    const { facts, persona } = await import("./helpers");
+    const one = routePrompt(persona, rules, [{ ...facts[0], scope: "launch" }], formatter);
+    const all = routePrompt(persona, rules, [{ ...facts[0], scope: "all" }], formatter);
+    expect(one).not.toBe(all);
+  });
+  it("an unexplained override does not dim the glow", async () => {
+    const { GLOW_START, moodAfter, nextGlow } = await import("../../src/shared/lifecycle");
+    const e = { kind: "answered", route: "decide", basis: false, againstRecommendation: true } as const;
+    expect(nextGlow(GLOW_START, e)).toBe(GLOW_START);
+    expect(moodAfter(e, GLOW_START, 3)).not.toBe("dim");
+  });
+});

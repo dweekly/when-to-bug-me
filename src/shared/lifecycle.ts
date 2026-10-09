@@ -79,7 +79,9 @@ export function nextGlow(glow: number, e: GlowEvent): number {
   let g = glow;
   if (e.kind === "answered") {
     if (e.basis) g += GLOW_STEP.basis + (e.againstRecommendation ? GLOW_STEP.overrideWithBasis : 0);
-    else if (e.route === "decide") g += GLOW_STEP.noBasisOnDecision;
+    // Dims only for accepting the agent's pick on a real decision with no reason; an override is a
+    // contribution even when unexplained.
+    else if (e.route === "decide" && !e.againstRecommendation) g += GLOW_STEP.noBasisOnDecision;
   } else if (e.kind === "guidance_kept") g += GLOW_STEP.guidanceKept;
   else if (e.kind === "rule_edited") g += GLOW_STEP.ruleEdited;
   else if (e.kind === "correction_mark") g += GLOW_STEP.correction;
@@ -90,7 +92,7 @@ export function nextGlow(glow: number, e: GlowEvent): number {
 export function moodAfter(e: GlowEvent | null, glow: number, waiting: number): Mood {
   if (waiting === 0) return "resting";
   if (e?.kind === "shouldnt_have_come") return "sheepish";
-  if (e?.kind === "answered" && !e.basis && e.route === "decide") return "dim";
+  if (e?.kind === "answered" && !e.basis && e.route === "decide" && !e.againstRecommendation) return "dim";
   return glow >= 0.6 ? "glowing" : "neutral";
 }
 

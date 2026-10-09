@@ -51,7 +51,9 @@ function guessFor(d: Decision, favored: string, p: number) {
   return d.options.map((o) => ({ option: o.key, p: o.key === favored ? p : (1 - p) / rest.length }));
 }
 
-export function fakeRoute(d: Decision, rules: Rule[], facts: Fact[]): RouteOutput {
+export function fakeRoute(d: Decision, rules: Rule[], allFacts: Fact[]): RouteOutput {
+  // A fact scoped to one project applies only there, as the real prompt tells the model.
+  const facts = allFacts.filter((f) => f.scope === "all" || f.scope === d.project);
   const governing = rulesFor(d, rules);
   // "Patch-level" housekeeping rules do not clear a major upgrade; the real prompt reads this from the rule.
   const clearing = /major version/i.test(d.question)
@@ -154,7 +156,7 @@ export function fakeFact(d: Decision, reason: string, waiting: Decision[], facts
     kind: dup ? "replace" : "add",
     replaces: dup ? dup.id : "",
     text,
-    scope: d.project,
+    scope: EARLY.test(r) || KEEP_NAMES.test(r) ? "all" : d.project,
     confirm: `So the rule of thumb is: ${text}`,
     may_affect: waiting.filter(sharesTag).map((x) => x.id),
   };

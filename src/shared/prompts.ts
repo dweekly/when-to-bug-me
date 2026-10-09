@@ -6,7 +6,7 @@
 
 import type { Decision, Fact, Persona, Rule } from "./types";
 
-export const PROMPT_VERSION = "2026-10-09.3";
+export const PROMPT_VERSION = "2026-10-09.4";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -16,7 +16,7 @@ function head(p: Persona): string {
 
 function guidance(p: Persona, rules: Rule[], facts: Fact[]): string {
   const r = rules.map((x) => `- ${x.text}`).join("\n") || "(none)";
-  const f = facts.map((x) => `- ${x.text} (source: ${x.source})`).join("\n") || "(none)";
+  const f = facts.map((x) => `- ${x.text} (applies to: ${x.scope === "all" ? "all projects" : `the ${x.scope} project only`}; source: ${x.source})`).join("\n") || "(none)";
   const n = p.how_to_work_with_me.map((x) => `- ${x}`).join("\n");
   return `=== ${p.first_name}'s written rules ===\n${r}\n\n=== Standing facts about how ${p.first_name} decides ===\n${f}\n\n=== ${p.first_name}'s "how to work with me" note ===\n${n}`;
 }
@@ -149,7 +149,7 @@ ${n} just answered a decision and said why. Your job: decide whether the reason 
 
 - kind: "add" for new guidance; "replace" when it updates or contradicts one of the existing standing facts listed below (put that fact's id in replaces); "none" when the reason is about this case only ("just this once", a misclick, something specific to this one decision) or says nothing durable.
 - text: the guidance as one sentence about ${n}, in the present tense, as general as the reason supports and no more. Never add preferences ${n} did not state. "" when kind is none.
-- scope: the project id it applies to, or "all".
+- scope: the project id it applies to, or "all" when it is about ${n} in general (their schedule, constraints or working style) rather than one project.
 - confirm: one short line to ${n} confirming what you understood, starting with "So".
 - may_affect: the ids of decisions, from the list below, whose handling this guidance would plausibly change. Usually zero to three.
 
