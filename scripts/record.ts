@@ -46,7 +46,8 @@ function keychain(service: string): string {
 
 const client = dryRun ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || keychain("anthropic-api-key"), maxRetries: 2 });
 
-async function ask(label: string, prompt: string, schema: object): Promise<unknown> {
+/** Ask, validating with `validate` before anything is recorded, so a bad answer is never saved. */
+async function ask(label: string, prompt: string, schema: object, validate: (raw: unknown) => unknown): Promise<unknown> {
   const key = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion: PROMPT_VERSION, schema, prompt });
   const have = recorded.entries[key] as { output: unknown } | undefined;
   if (have) return have.output;
@@ -70,6 +71,7 @@ async function ask(label: string, prompt: string, schema: object): Promise<unkno
   if (msg.stop_reason !== "end_turn") throw new Error(`${label}: stop_reason ${msg.stop_reason}`);
   const text = msg.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
   const output = JSON.parse(text);
+  validate(output); // throws on a semantically invalid answer; nothing is recorded and a rerun retries
   recorded.entries[key] = { label, output, model: MODEL, recorded_at: new Date().toISOString(), usage: { input: u.input_tokens, output: u.output_tokens }, ms: Date.now() - t0 };
   console.log(`${label}: $${cost.toFixed(4)} in ${Date.now() - t0} ms (total $${spent.toFixed(3)})`);
   return output;
@@ -85,7 +87,7 @@ async function pool<T>(items: T[], fn: (t: T) => Promise<void>): Promise<void> {
 async function routeAll(ids: string[], r: Rule[], f: Fact[], tag: string): Promise<void> {
   await pool(ids, async (id) => {
     const d = byId.get(id)!;
-    const out = await ask(`route ${id} [${tag}]`, routePrompt(persona, r, f, d), ROUTE_SCHEMA);
+    const out = await ask(`route ${id} [${tag}]`, routePrompt(persona, r, f, d), ROUTE_SCHEMA, (raw) => parseRouteOutput(raw, d));
     if (out) {
       const p = parseRouteOutput(out, d);
       const top = p.guess.reduce((a, b) => (b.p > a.p ? b : a));
@@ -99,7 +101,7 @@ async function main(): Promise<void> {
   for (const ex of EXAMPLES) {
     const d = byId.get(ex.id)!;
     const others = decisions.filter((x) => x.id !== d.id);
-    const raw = await ask(`fact ${ex.id}`, factPrompt(persona, rules, facts, d, ex.choice, ex.reason, others), FACT_SCHEMA);
+    const raw = await ask(`fact ${ex.id}`, factPrompt(persona, rules, facts, d, ex.choice, ex.reason, others), FACT_SCHEMA, (x) => parseFactOutput(x, facts));
     if (!raw) continue;
     const fo = parseFactOutput(raw, facts);
     console.log(`  fact ${ex.id}: ${fo.kind} "${fo.text}" may_affect=${fo.may_affect.join(",")}`);

@@ -171,9 +171,11 @@ async function main(): Promise<void> {
   const file = new URL(`../results/captures/eval-${new Date().toISOString().replace(/[:.]/g, "-")}.json`, import.meta.url);
   writeFileSync(file, `${JSON.stringify({ model: MODEL, effort: EFFORT, trials: TRIALS, spent_usd: spent, summary, raw }, null, 2)}\n`);
   console.log(`spent $${spent.toFixed(3)}; wrote ${file.pathname}`);
-  const canonical = summary[1];
-  if (canonical.passed < TRIALS) {
-    console.error("the canonical flight path did not behave as designed in every trial");
+  // The canonical path is a before-and-after change: Berlin settled under the default facts, then not
+  // settled (and framed by the new fact) after the flight reason. Both halves must hold every time.
+  const [before, after] = summary;
+  if (before.passed < TRIALS || after.passed < TRIALS) {
+    console.error("the canonical flight path (before and after the reason) did not behave as designed in every trial");
     process.exit(1);
   }
 }

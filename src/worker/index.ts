@@ -14,14 +14,12 @@ import type { Card, Decision, Fact, Rule } from "../shared/types";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
 import { type Env, ModelUnavailable, NeedsSession, factFor, routeFor } from "./model";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
+import { BadRequest, readLimited } from "./body";
 import { SealError, importSealKey, seal, sha256Hex, unseal } from "./seal";
 
 export { SpendCounter } from "./spend";
 
-/** Largest JSON body accepted on any POST, in bytes. Covers MAX_RULES and MAX_FACTS at their caps with room. */
-const MAX_BODY_BYTES = 32_000;
 
-class BadRequest extends Error {}
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -31,8 +29,7 @@ function json(data: unknown, status = 200): Response {
 }
 
 async function body(req: Request): Promise<Record<string, unknown>> {
-  const text = await req.text();
-  if (text.length > MAX_BODY_BYTES) throw new BadRequest("request too large");
+  const text = await readLimited(req);
   try {
     const v = JSON.parse(text);
     if (!v || typeof v !== "object") throw new Error();
