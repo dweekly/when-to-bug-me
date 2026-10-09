@@ -9,7 +9,7 @@ import { TOURS, type Tour, type TourStep } from "../shared/tours";
 import { stopVoiceUnlessFor } from "./card";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
-import { Q, S, fresh, save, setF, setS } from "./state";
+import { F, Q, S, fresh, save, setF, setS } from "./state";
 
 /** How long a step waits for its target or its expected element, in ms, before offering a retry. */
 const STEP_WAIT_MS = 12_000;
@@ -204,14 +204,25 @@ function show(r: Running, step: TourStep, el: Element): void {
 const STEP_FAILED_EVENT = "bugme:guidance-failed";
 
 /**
- * Resolve when the visitor completes the step (clicks the target selector, the element appears, or
- * they press Next) with "done", or with "failed" when the app reports that a step waiting for an
- * element can no longer get there (the reason couldn't be turned into guidance).
+ * Whether the decision in front of the person has finished its why-and-guidance steps without
+ * producing guidance to keep: the why was skipped, or Bug Me found nothing new to remember. A step
+ * waiting for guidance can then never complete.
  */
-function stepDone(r: Running, step: TourStep): Promise<"done" | "failed"> {
+function endedWithoutGuidance(): boolean {
+  return Boolean(F && (F.phase === "done" || (F.phase === "proposal" && F.proposal?.kind === "none")));
+}
+
+type StepOutcome = "done" | "failed" | "no-guidance";
+
+/**
+ * Resolve when the visitor completes the step (clicks the target selector, the element appears, or
+ * they press Next) with "done". A step waiting for an element resolves "failed" when the app reports
+ * the reason couldn't be turned into guidance, or "no-guidance" when the decision finished without any.
+ */
+function stepDone(r: Running, step: TourStep): Promise<StepOutcome> {
   return new Promise((resolve) => {
     let cleanup = () => {};
-    let outcome: "done" | "failed" = "done";
+    let outcome: StepOutcome = "done";
     r.finishStep = () => {
       cleanup();
       r.finishStep = null;
@@ -239,8 +250,22 @@ function stepDone(r: Running, step: TourStep): Promise<"done" | "failed"> {
         r.finishStep?.();
       };
       window.addEventListener(STEP_FAILED_EVENT, onFailed);
-      cleanup = () => window.removeEventListener(STEP_FAILED_EVENT, onFailed);
-      void waitFor(step.until.appear, r, Infinity).then((el) => el && r.finishStep?.());
+      // The element may appear, or the decision may finish without it (checked after the app redraws).
+      const sel = step.until.appear;
+      const check = () => {
+        if (document.querySelector(sel)) r.finishStep?.();
+        else if (endedWithoutGuidance()) {
+          outcome = "no-guidance";
+          r.finishStep?.();
+        }
+      };
+      const obs = new MutationObserver(check);
+      obs.observe(document.body, { childList: true, subtree: true });
+      cleanup = () => {
+        window.removeEventListener(STEP_FAILED_EVENT, onFailed);
+        obs.disconnect();
+      };
+      check();
     }
   });
 }
@@ -262,8 +287,9 @@ async function play(r: Running): Promise<void> {
       continue;
     }
     show(r, step, el);
-    if ((await stepDone(r, step)) === "failed") {
-      if (!r.stopped) offerRestart(r);
+    const outcome = await stepDone(r, step);
+    if (outcome !== "done") {
+      if (!r.stopped) offerRestart(r, outcome);
       return;
     }
     r.index++;
@@ -298,16 +324,18 @@ function offerRetry(r: Running, step: TourStep): Promise<boolean> {
   });
 }
 
-/** A step that can't happen any more (the reason couldn't be checked): say why, plainly, and offer a way on. */
-function offerRestart(r: Running): void {
-  const why =
-    Q.mode === "live"
+/** A step that can't happen any more: say why, plainly, and offer a way on. */
+function offerRestart(r: Running, outcome: "failed" | "no-guidance"): void {
+  const failed = outcome === "failed";
+  const why = !failed
+    ? "This tour shows a reason becoming guidance, and that one didn't: the why was skipped, or Bug Me found nothing new to remember."
+    : Q.mode === "live"
       ? "Claude couldn't be reached for that sentence just now, so it didn't become guidance."
       : "This copy of the demo has no live Claude connection, so it can only check the answers it has recorded, like Jordan's words.";
   r.drv.highlight({
     element: "#view",
     popover: {
-      title: "That reason couldn't be checked",
+      title: failed ? "That reason couldn't be checked" : "No guidance from that one",
       description: `${why} Your answer is kept. Start the tour again (and use Jordan's words), or end it and keep exploring.`,
       showButtons: ["next", "close"],
       nextBtnText: "Start again",
