@@ -133,7 +133,7 @@ describe("nextGlow", () => {
   it("dims only for a substantive decision answered without a basis", () => {
     expect(GLOW_STEP.noBasisOnDecision).toBeLessThan(0);
     expect(nextGlow(0.3, answered("decide", false))).toBeCloseTo(0.3 + GLOW_STEP.noBasisOnDecision, 12);
-    expect(nextGlow(0.3, answered("decide", false, true))).toBeCloseTo(0.3 + GLOW_STEP.noBasisOnDecision, 12);
+    expect(nextGlow(0.3, answered("decide", false, true))).toBe(0.3); // an override is a contribution, explained or not
     expect(nextGlow(0.3, answered("check_in", false))).toBe(0.3);
     expect(nextGlow(0.3, answered("check_in", false, true))).toBe(0.3);
     expect(nextGlow(0.3, answered("settle", false))).toBe(0.3);
