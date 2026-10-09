@@ -6,8 +6,9 @@ set -eu
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 
-echo "pre-push: scanning for secrets and private data"
-if ! python3 scripts/scan.py; then
+echo "pre-push: scanning the tree and the history for secrets and private data"
+# History too: a secret committed and then deleted is still in the commits being pushed.
+if ! python3 scripts/scan.py || ! python3 scripts/scan.py --history; then
   echo "pre-push: scan failed; push refused" >&2
   exit 1
 fi

@@ -104,9 +104,17 @@ def git(*args):
     return [line for line in out.stdout.splitlines() if line]
 
 
+def git_paths(*args):
+    """Paths from a NUL-separated git listing (-z), so non-ASCII names arrive verbatim, not C-quoted."""
+    out = subprocess.run(["git", "-C", str(ROOT), *args, "-z"], capture_output=True)
+    if out.returncode != 0:
+        raise SystemExit(f"FAIL: git {' '.join(args)} exited {out.returncode}: {out.stderr.decode(errors='replace').strip()}")
+    return [p for p in out.stdout.decode("utf-8", errors="surrogateescape").split("\0") if p]
+
+
 def file_set():
     """Tracked files plus untracked files that .gitignore does not exclude, as repo-relative paths."""
-    names = sorted(set(git("ls-files") + git("ls-files", "--others", "--exclude-standard")))
+    names = sorted(set(git_paths("ls-files") + git_paths("ls-files", "--others", "--exclude-standard")))
     return [n for n in names if (ROOT / n).is_file()]  # drop deletions not yet staged
 
 
