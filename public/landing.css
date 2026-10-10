@@ -1,5 +1,5 @@
 /* The explainer at "/": the app's night palette, one warm accent, the firefly as narrator.
-   Sections fade up as they scroll in; the sorter's stars travel from the sky into three piles.
+   Sections fade up as they scroll in; the night's questions land in piles, one per project.
    Under reduced motion everything shows its end state. */
 
 :root {
@@ -66,20 +66,19 @@ h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); }
 .lane .dots { color: var(--ink-3); letter-spacing: 0.3em; overflow-wrap: anywhere; }
 .note { margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--glow); color: var(--ink); max-width: 52ch; font-style: italic; }
 
-/* The sort */
-.sorter { width: 100%; height: auto; display: block; margin: 8px 0 16px; }
-.star { transform: var(--from); transition: transform 1.4s cubic-bezier(.2,.7,.2,1) var(--delay), opacity 0.6s; }
-.star.settle { fill: none; stroke: var(--ink-3); stroke-width: 1.5; }
-.star.check_in { fill: var(--ink-2); }
-.star.decide { fill: var(--glow); filter: drop-shadow(0 0 4px rgba(255, 216, 77, 0.6)); }
-.sort.shown .star { transform: var(--to); }
-.bins { list-style: none; padding: 0; margin: 0 0 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.bins li { display: grid; gap: 4px; align-content: start; text-align: center; padding: 14px 10px; }
-.glyph { font-size: 1.4rem; color: var(--ink-2); }
-[data-route="decide"] .glyph, [data-route="decide"] b { color: var(--glow); }
-.bins b { font-family: var(--display); font-size: 2.2rem; line-height: 1; }
-.bin-name { color: var(--ink-2); font-size: 0.95rem; }
-.bins q { color: var(--ink-3); font-size: 0.85rem; margin-top: 6px; }
+/* The sort: the night's questions land in piles, one per project; the first is where to start. */
+.piles { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 12px; margin: 8px 0 16px; align-items: start; }
+.pile { padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--night-2); opacity: 0; transform: translateY(14px); transition: opacity 0.6s calc(var(--i) * 180ms), transform 0.6s calc(var(--i) * 180ms); }
+.sort.shown .pile { opacity: 1; transform: none; }
+.pile.rec { border-color: var(--glow); background: linear-gradient(180deg, var(--glow-soft), transparent 70%), var(--night-2); }
+.pile-head { margin: 0 0 2px; font: 600 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.pile.rec .pile-head { color: var(--glow); }
+.pile-meta { margin: 0 0 6px; font: 700 18px/1.25 var(--display); }
+.pile.rec .pile-meta { font-size: 22px; }
+.pile-why { margin: 0 0 8px; color: var(--ink-2); font-size: 14px; }
+.pile ol { margin: 6px 0 0; padding-left: 22px; color: var(--ink-2); font-size: 14px; }
+.pile ol li { padding: 2px 0; }
+.pile ol li::marker { font-family: var(--mono); color: var(--ink-3); }
 
 /* Why */
 .loop { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: step; }
@@ -112,14 +111,13 @@ h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); }
   .hero { grid-template-columns: 1fr; min-height: auto; }
   .narrator { order: -1; width: 140px; }
   .loop, .kinds { grid-template-columns: 1fr; }
-  .bins { gap: 4px; }
-  .bins q { display: none; }
+  .piles { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal, .star, .tour-cards a { transition: none; }
+  .reveal, .pile, .tour-cards a { transition: none; }
   .reveal { opacity: 1; transform: none; }
-  .star { transform: var(--to); }
+  .pile { opacity: 1; transform: none; }
   .narrator .moving { display: none; }
   .narrator .still { display: block; }
 }
