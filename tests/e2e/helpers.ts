@@ -45,6 +45,7 @@ export interface StoredState {
   evaluated: Record<string, true>;
   punts: Record<string, { id: string; kind: string; reason: string; at: string; instruction: string }>;
   puntHistory: Record<string, { id: string; kind: string; reason: string; instruction: string }[]>;
+  flows?: Record<string, { basis: string }>;
 }
 
 export async function stored(page: Page): Promise<StoredState | null> {

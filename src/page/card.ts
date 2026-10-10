@@ -10,6 +10,7 @@ import { askQuestion, choose, chooseOther, done, finalize, glowEvent, keepFact, 
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
 import { go } from "./router";
 import { tourAfterRender } from "./tour";
+import { type VoiceTarget, setVoiceTarget } from "./voice";
 import { renderVisual } from "./visuals";
 import { type Child, $, announce, h } from "./dom";
 import { type Flow, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
@@ -21,13 +22,29 @@ export function quoteLine(c: Card): Child {
 }
 
 /**
- * Draw the decision in front of the person. Afterwards, dictation keeps running only if its
- * microphone is still on screen and lit: whichever path the draw took (a closed card, a card that
- * couldn't be evaluated, another decision), speech can never keep writing somewhere unseen.
+ * Draw the decision in front of the person, then tell the voice firefly where speech goes now
+ * (voice.ts). Whatever path the draw took (a closed card, a card that couldn't be evaluated, another
+ * decision), speech can only ever go to a box on this card.
  */
 export function renderNow(): void {
   drawNow();
-  stopVoiceIfMicGone();
+  setVoiceTarget(voiceTargetFor());
+}
+
+/** The box on this card that speech fills: the Why box, the "why?" prompt, or the set-aside reason. */
+function voiceTargetFor(): VoiceTarget | null {
+  const flow = F;
+  if (!flow || S.current !== flow.id) return null;
+  const box = flow.phase === "why" ? "why" : flow.phase === "punting" ? "punt-reason" : flow.phase === "choose" || flow.phase === "pending" ? "basis" : null;
+  if (!box || !document.getElementById(box)) return null;
+  return {
+    key: `${flow.id}:${box}`,
+    el: () => document.getElementById(box) as HTMLTextAreaElement | null,
+    write: (t) => {
+      if (box === "punt-reason") flow.puntReason = t;
+      else flow.basis = t;
+    },
+  };
 }
 
 function drawNow(): void {
@@ -51,7 +68,6 @@ function drawNow(): void {
   if (S.punts[id]) return renderClosed(root, d, "aside");
   if (!F || F.id !== id) setF((S.flows[id] ??= newFlow(id)));
   const flow = F!;
-  stopVoiceUnlessFor(flow.id);
   if (!isCard(c)) {
     root.append(h("div", { class: "card" }, h("h3", { id: "now-q" }, d.question), h("p", { class: "adjusted" }, `Couldn't evaluate this one: ${c?.unavailable ?? "no route yet"}.`)));
     return;
@@ -111,12 +127,11 @@ function drawNow(): void {
   const ta = h("textarea", { id: "basis", rows: 4, placeholder: conditionsMode ? "Yes, as long as…" : "Say it or type it. A reason becomes guidance every agent follows.", disabled: !["choose", "pending"].includes(flow.phase) }) as HTMLTextAreaElement;
   ta.value = flow.basis;
   ta.addEventListener("input", () => (flow.basis = ta.value));
-  const mic = micButton(ta, !["choose", "pending"].includes(flow.phase), flow, (t) => (flow.basis = t));
   const whyPanel = h(
     "aside",
     { class: `why-panel${conditionsMode ? " conditions" : ""}` },
     h("label", { for: "basis" }, whyLabel),
-    h("div", { class: "basis-row" }, ta, mic),
+    h("div", { class: "basis-row" }, ta),
     flow.phase === "choose" ? exampleButton(d, ta) : null,
   );
 
@@ -283,7 +298,6 @@ function drawnOnce(id: string, fig: HTMLElement): HTMLElement {
 
 /** Open the "Not now" panel on this card, remembering where to return if the person cancels. */
 function startPunt(flow: Flow): void {
-  stopVoiceUnlessFor(""); // dictation was writing the answer; it must not carry on into the reason box
   flow.puntFrom = flow.phase === "pushback" ? "pushback" : "choose";
   flow.phase = "punting";
   flow.error = "";
@@ -326,7 +340,7 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
       ),
     ),
     spec ? h("label", { for: "punt-reason" }, spec.ask) : null,
-    h("div", { class: "basis-row" }, ta, spec ? micButton(ta, false, flow, (t) => (flow.puntReason = t)) : h("span", {})),
+    h("div", { class: "basis-row" }, ta),
     flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
     h(
       "div",
@@ -338,7 +352,6 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
           type: "button",
           class: "linkish",
           onclick: () => {
-            stopVoiceUnlessFor(""); // likewise, dictation into the reason must not carry on into the answer
             flow.phase = flow.puntFrom ?? "choose";
             flow.error = "";
             save();
@@ -351,81 +364,6 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
   );
 }
 
-/** The one recognition session that may be running, and the decision whose answer it is writing. */
-let voice: { rec: SpeechRec; flowId: string } | null = null;
-
-/** Stop dictation when the card it was writing into is no longer the one in front of the person. */
-export function stopVoiceUnlessFor(flowId: string): void {
-  if (voice && voice.flowId !== flowId) {
-    voice.rec.stop();
-    voice = null;
-  }
-}
-
-/** Stop dictation when no lit microphone is on screen to show that it is listening. */
-export function stopVoiceIfMicGone(): void {
-  if (voice && !document.querySelector('.mic[aria-pressed="true"]')) {
-    voice.rec.stop();
-    voice = null;
-  }
-}
-
-/**
- * A dictation button. Transcripts are written through `write` into the flow that owned the button
- * when dictation started, and mirrored into whichever textarea with the same id is on screen now
- * (re-renders replace the element), so speech can never land in another decision's answer.
- */
-export function micButton(ta: HTMLTextAreaElement, disabled: boolean, flow: Flow, write: (text: string) => void): HTMLElement {
-  const W = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
-  const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
-  if (!Ctor) return h("span", { hidden: true });
-  const listening = voice?.flowId === flow.id;
-  const b = h("button", { type: "button", class: "mic", "aria-pressed": String(listening), "aria-label": "Answer by voice", title: "Answer by voice", disabled }, "🎙") as HTMLButtonElement;
-  b.addEventListener("click", () => {
-    if (voice) {
-      voice.rec.stop();
-      voice = null;
-      b.setAttribute("aria-pressed", "false");
-      return;
-    }
-    const rec = new Ctor();
-    rec.lang = "en-US";
-    rec.interimResults = true;
-    rec.continuous = true;
-    const base = ta.value ? `${ta.value} ` : "";
-    rec.onresult = (e: SpeechEvent) => {
-      if (voice?.rec !== rec) return;
-      let text = "";
-      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
-      write(base + text);
-      const onScreen = document.getElementById(ta.id) as HTMLTextAreaElement | null;
-      if (onScreen && F === flow) {
-        onScreen.value = base + text;
-        onScreen.dispatchEvent(new Event("input"));
-      }
-    };
-    rec.onend = () => {
-      if (voice?.rec === rec) voice = null;
-      b.setAttribute("aria-pressed", "false");
-    };
-    voice = { rec, flowId: flow.id };
-    rec.start();
-    b.setAttribute("aria-pressed", "true");
-  });
-  return b;
-}
-export interface SpeechRec {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  onresult: (e: SpeechEvent) => void;
-  onend: () => void;
-  start(): void;
-  stop(): void;
-}
-export interface SpeechEvent {
-  results: { length: number; [i: number]: { [j: number]: { transcript: string } } };
-}
 
 /**
  * A button that fills in the recorded example's reason, offered only when live calls are off and
@@ -494,7 +432,7 @@ export function followup(d: Decision, route: RouteKind): Child {
       h("p", { class: "lead" }, "I'm curious: why?"),
       h("p", {}, "Your answer surprised me. Your reason can become guidance for every agent."),
       h("label", { for: "why", class: "sr-only" }, "Why did you choose that?"),
-      h("div", { class: "basis-row" }, ta, micButton(ta, false, flow, (t) => (flow.basis = t))),
+      h("div", { class: "basis-row" }, ta),
       flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
       exampleButton(d, ta),
       h(

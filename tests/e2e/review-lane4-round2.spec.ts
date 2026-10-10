@@ -56,32 +56,6 @@ test("an open 'why?' stays reachable after opening another card", async ({ page 
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
 });
 
-test("dictation stops when its card is replaced and never writes into another answer", async ({ page }) => {
-  await page.addInitScript(() => {
-    class FakeRec {
-      lang = "";
-      interimResults = false;
-      continuous = false;
-      onresult: ((e: unknown) => void) | null = null;
-      onend: (() => void) | null = null;
-      start() {
-        (globalThis as unknown as { __rec: FakeRec }).__rec = this;
-      }
-      stop() {
-        this.onend?.();
-      }
-    }
-    (globalThis as unknown as { SpeechRecognition: unknown }).SpeechRecognition = FakeRec;
-  });
-  await page.reload();
-  await openDecision(page, "api-rename");
-  await expect(page.locator("#now-q")).toContainText("user_id");
-  await page.locator("#now").getByRole("button", { name: "Answer by voice" }).click();
-  await openFromAgenda(page, "Settings page");
-  await page.evaluate("window.__rec.onresult({ results: [[{ transcript: 'renames break integrators' }]] })");
-  await expect(page.locator("#basis")).toHaveValue("");
-});
-
 test("the explored-options card prompts a teach-back, and deciding without one still works", async ({ page }) => {
   await openFromAgenda(page, "Settings page");
   await expect(page.locator(".why-panel label")).toContainText("what happens next");

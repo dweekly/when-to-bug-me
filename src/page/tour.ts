@@ -6,7 +6,7 @@
 import { type Driver, type DriveStep, driver } from "driver.js";
 import { EXAMPLES } from "../shared/examples";
 import { TOURS, type Tour, type TourStep } from "../shared/tours";
-import { stopVoiceUnlessFor } from "./card";
+import { voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
 import { F, Q, S, fresh, save, setF, setS } from "./state";
@@ -94,7 +94,7 @@ function begin(tour: Tour): void {
   }
   setS(fresh(Q));
   setF(null);
-  stopVoiceUnlessFor("");
+  voiceOff();
   save();
   const drv = driver({
     animate: !reduceMotion(),

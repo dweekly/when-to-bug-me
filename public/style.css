@@ -205,6 +205,23 @@ textarea {
 }
 textarea:focus { border-color: var(--ink-3); outline: none; }
 textarea:disabled { opacity: 0.5; }
+/* The voice firefly, top-right on every view. Its mood shows whether it is listening. */
+.voice { position: fixed; top: 6px; right: max(10px, 2vw); z-index: 20; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
+.voice-btn { pointer-events: auto; width: 64px; height: 64px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; position: relative; }
+.voice-btn:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.voice-mood { position: absolute; inset: 0; display: none; }
+.voice[data-mood="resting"] .voice-mood[data-mood="resting"],
+.voice[data-mood="attentive"] .voice-mood[data-mood="attentive"],
+.voice[data-mood="pleased"] .voice-mood[data-mood="pleased"] { display: block; }
+.voice-clip { width: 64px; height: 64px; display: block; }
+.voice-clip.still { display: none; }
+.voice[data-state="off"] .voice-btn { opacity: 0.75; }
+.voice[data-state="listening"] .voice-btn::after { content: ""; position: absolute; right: 4px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: #ff5d5d; box-shadow: 0 0 8px #ff5d5d; }
+.voice[data-state="paused"] .voice-btn::after { content: ""; position: absolute; right: 4px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-3); }
+.voice-heard { margin: 2px 0 0; max-width: 260px; text-align: right; font-size: 14px; color: var(--ink); font-style: italic; background: var(--night-2); border-radius: 10px; padding: 0 8px; }
+.voice-heard:empty, .voice-note:empty { display: none; }
+.voice-note { margin: 2px 0 0; max-width: 240px; text-align: right; font-size: 12px; color: var(--ink-3); }
+.bar { padding-right: calc(max(10px, 2vw) + 72px); }
 .mic { flex: none; width: 56px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; background: var(--night-2); color: var(--glow); font-size: 20px; }
 .mic[aria-pressed="true"] { background: var(--glow); color: var(--glow-ink); animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: 0.7; } }
@@ -297,5 +314,7 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .actions .ghost { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .voice-clip.moving { display: none; }
+  .voice-clip.still { display: block; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
