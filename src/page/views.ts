@@ -3,7 +3,7 @@
 // change of project), and the secondary views for what Bug Me decided, the rules, and the record.
 // render() redraws the bar and the current view from state.
 
-import { estimateMinutes, nextInSession, overnightTotals } from "../shared/agenda";
+import { estimateMinutes, nextInSession } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
 import { editRule, resume, startSession, undo } from "./actions";
@@ -11,15 +11,12 @@ import { markButton, renderNow, stopVoiceIfMicGone, stopVoiceUnlessFor } from ".
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
-import { renderSky } from "./sky";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 import { openToursMenu, tourAfterRender } from "./tour";
 
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
 let ruleDraft: { id: string; text: string; error: string; focus: boolean } | null = null;
 
-/** Which agenda rows on home are expanded. Per visit only. */
-const expanded = new Set<string>();
 
 /** Glow level at which the firefly is delighted rather than pleased. Heuristic, near the top of 0..1. */
 const DELIGHTED_AT = 0.85;
@@ -92,82 +89,93 @@ function renderBar(route: Route): void {
 
 function renderHome(view: HTMLElement): void {
   const a = agenda();
-  const routes0 = Object.fromEntries(Q.cards.filter(isCard).map((c) => [c.id, c.route])) as Record<string, RouteKind>;
-  const t = overnightTotals(routes0);
   const remaining = a.sections.reduce((m, s) => m + s.minutes, 0);
   const waiting = waitingCount();
-  const start = nextInSession(a, null);
 
+  const settledCount = a.settled.filter((id) => !S.reopened.includes(id)).length;
   const hero = h(
     "section",
     { class: "hero", "aria-labelledby": "hello" },
-    renderSky(),
     h("h1", { id: "hello" }, waiting ? `Good morning, ${Q.persona.first_name}.` : "All clear."),
     h(
       "p",
       { class: "overnight", id: "overnight" },
-      `${Q.decisions.length} questions overnight`,
-      h(
-        "span",
-        { class: "tally", "aria-label": `${t.settle} settled for you, ${t.check_in} quick checks, ${t.decide} decisions` },
-        h("span", { "aria-hidden": "true" }, `  ·  ${GLYPH.settle} ${t.settle}   ${GLYPH.check_in} ${t.check_in}   ${GLYPH.decide} ${t.decide}`),
-      ),
+      waiting ? `${waiting} waiting on you · about ${remaining} min` : "Nothing is waiting on you.",
+      h("span", { class: "quiet" }, ` · ${Q.decisions.length} questions overnight, `),
+      link({ view: "settled" }, `${settledCount} decided for you`),
     ),
-    waiting
-      ? h(
-          "div",
-          { class: "start-row" },
-          h("button", { type: "button", class: "primary big", id: "start", onclick: () => start.id && startSession(start.id) }, "Start"),
-          h("span", { class: "quiet" }, `${waiting} waiting · about ${remaining} min`),
-        )
-      : h("p", { class: "quiet" }, "Nothing is waiting on you. The firefly is resting; so can you."),
   );
 
-  const agendaList = h("section", { id: "agenda", class: "agenda", "aria-label": "Your agenda" });
-  for (const s of a.sections) {
-    const items = [...s.decisions, ...s.check_ins];
-    const open = expanded.has(s.project.id);
-    const row = h(
-      "button",
-      {
-        type: "button",
-        class: "project-row",
-        "aria-expanded": String(open),
-        onclick: () => {
-          if (open) expanded.delete(s.project.id);
-          else expanded.add(s.project.id);
-          render();
-        },
-      },
-      h("span", { class: "pname" }, s.project.name),
-      h("span", { class: "pcounts", "aria-label": `${s.decisions.length} decisions, ${s.check_ins.length} quick checks` }, h("span", { "aria-hidden": "true" }, `${GLYPH.decide} ${s.decisions.length}   ${GLYPH.check_in} ${s.check_ins.length}`)),
-      h("span", { class: "quiet pmin" }, `${s.minutes} min`),
-      h("span", { class: "chev", "aria-hidden": "true" }, open ? "–" : "+"),
+  // The queue, in the order to work it: one project at a time (projects by how many agents their
+  // answers unblock), decisions before quick checks, then by agents unblocked and time waiting.
+  // Numbered across projects, because the order is the point.
+  const queue = a.sections.map((s) => ({ s, items: [...s.decisions, ...s.check_ins] }));
+  // The piles: one per project with work waiting, in agenda order. The first is the recommendation,
+  // drawn large with its reason and one Start button, for someone who just wants to begin.
+  const piles = queue.filter((g) => g.items.length);
+  const agentsLabel = (n: number) => `unblocks ${n} agent${n === 1 ? "" : "s"}`;
+  const pileCard = ({ s, items }: (typeof queue)[number], i: number) => {
+    const rec = i === 0;
+    const name = s.project.name;
+    return h(
+      "section",
+      { class: rec ? "pile rec" : "pile", id: rec ? "start-card" : undefined, "data-project": s.project.id, "aria-labelledby": `pile-${s.project.id}` },
+      rec ? h("p", { class: "eyebrow" }, `Start with ${name}`) : null,
+      h("h2", { id: `pile-${s.project.id}` }, rec ? `${items.length} question${items.length === 1 ? "" : "s"} · about ${s.minutes} min` : name),
+      h("p", { class: "quiet" }, rec ? s.section_reason : `${items.length} · about ${s.minutes} min · ${agentsLabel(s.unblocks)}`),
+      h(
+        "p",
+        { class: "tally", "aria-label": `${s.decisions.length} decisions, ${s.check_ins.length} quick checks` },
+        h("span", { "aria-hidden": "true" }, `${GLYPH.decide} ${s.decisions.length} decision${s.decisions.length === 1 ? "" : "s"}   ${GLYPH.check_in} ${s.check_ins.length} quick check${s.check_ins.length === 1 ? "" : "s"}`),
+      ),
+      rec ? h("ul", { class: "peek" }, ...items.slice(0, 3).map((it) => h("li", {}, headline(it.id)))) : null,
+      h(
+        "button",
+        { type: "button", class: rec ? "primary big" : "ghost", id: rec ? "start" : undefined, onclick: () => startSession(items[0].id) },
+        rec ? `Start ${name} →` : `Start ${name}`,
+      ),
     );
-    const block = h("div", { class: "project" }, row, h("p", { class: "preason" }, s.section_reason));
-    if (open) {
-      block.append(
+  };
+  const startCard = piles.length
+    ? h("div", { class: "piles" }, pileCard(piles[0], 0), piles.length > 1 ? h("div", { class: "other-piles" }, ...piles.slice(1).map((g, i) => pileCard(g, i + 1))) : null)
+    : h("p", { class: "quiet all-clear" }, "The firefly is resting; so can you.");
+
+  const agendaList = h("section", { id: "agenda", class: "agenda", "aria-labelledby": "queue-h" }, piles.length ? h("h2", { class: "section-h", id: "queue-h" }, "The whole queue, in order") : null);
+  let n = 0;
+  for (const { s, items } of queue) {
+    if (!items.length) continue;
+    agendaList.append(
+      h(
+        "div",
+        { class: "project" },
+        h(
+          "h2",
+          { class: "project-h" },
+          h("span", { class: "pname" }, s.project.name),
+          h("span", { class: "quiet pmeta" }, `${items.length} · about ${s.minutes} min`),
+        ),
         h(
           "ol",
-          { class: "items" },
-          ...items.map((i) =>
-            h(
+          { class: "items", start: String(n + 1) },
+          ...items.map((i) => {
+            n++;
+            return h(
               "li",
               {},
               h(
                 "a",
-                { href: hrefFor({ view: "focus", id: i.id }), class: `item${S.changes[i.id] ? " changed" : ""}${S.pending.includes(i.id) ? " pending" : ""}` },
+                { href: hrefFor({ view: "focus", id: i.id }), class: `item${i.id === piles[0]?.items[0]?.id ? " first" : ""}${S.changes[i.id] ? " changed" : ""}${S.pending.includes(i.id) ? " pending" : ""}` },
+                h("span", { class: "num", "aria-hidden": "true" }, String(n)),
                 h("span", { class: "glyph", "aria-label": ROUTE_LABEL[i.route] }, GLYPH[i.route]),
                 h("span", { class: "q" }, headline(i.id)),
                 S.changes[i.id] ? h("span", { class: "change-note" }, S.changes[i.id]) : null,
                 S.pending.includes(i.id) ? h("span", { class: "change-note" }, "re-checking…") : null,
               ),
-            ),
-          ),
+            );
+          }),
         ),
-      );
-    }
-    agendaList.append(block);
+      ),
+    );
   }
 
   // Answered decisions whose follow-up is still open, so leaving one never loses the loop.
@@ -210,15 +218,13 @@ function renderHome(view: HTMLElement): void {
       )
     : null;
 
-  const settledCount = a.settled.filter((id) => !S.reopened.includes(id)).length;
   const more = h(
     "nav",
     { class: "more-links", "aria-label": "More" },
-    link({ view: "settled" }, `${GLYPH.settle} ${settledCount} decided for you`),
     link({ view: "rules" }, "Rules and what Bug Me knows"),
     link({ view: "record" }, "Your record"),
   );
-  view.replaceChildren(hero, agendaList, unfinishedList ?? "", asideList ?? "", more);
+  view.replaceChildren(hero, startCard, agendaList, unfinishedList ?? "", asideList ?? "", more);
 }
 
 // ---------- Focus ----------

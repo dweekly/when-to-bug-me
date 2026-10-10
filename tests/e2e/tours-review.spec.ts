@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 test("a set-aside the app rejects keeps the tour on that step", async ({ page }) => {
   await page.goto("/app?tour=start-here#/");
   // Jump the tour forward by doing the steps quickly up to "What would you need?".
-  for (const t of ["Your night", "Sorted three ways", "Code said no", "See it, don't read it"]) {
+  for (const t of ["Start here", "Then, in order", "Code said no", "See it, don't read it"]) {
     await expect(title(page)).toHaveText(t);
     await page.locator(".driver-popover-next-btn").click();
   }

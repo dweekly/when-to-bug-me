@@ -3,6 +3,7 @@
 **A chief of staff for people who run fleets of agents.** Every question your agents raise flows into Bug Me instead of interrupting you. It settles what it safely can, brings you only the decisions that need you, one at a time and in your terms, asks you why, and turns your reasons into guidance every agent follows from then on.
 
 This repo is the working prototype for an Anthropic Labs take-home. Status and plan: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (fresh as of 2026-10-09).
+Stage 2 (home and focus views, Not now, tours, explainer): [`docs/STAGE-2.md`](docs/STAGE-2.md) (fresh as of 2026-10-09). Stage 3 (piles on Home, a decision card answered at a glance, always-on voice): [`docs/STAGE-3.md`](docs/STAGE-3.md) (fresh as of 2026-10-09).
 
 > **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 28 of their questions are made up. No real agent receives anything Bug Me "sends down".
 
