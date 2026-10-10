@@ -232,7 +232,7 @@ function otherPanel(flow: Flow, d: Decision, route: RouteKind): HTMLElement {
     h("label", { for: "other" }, "Something else"),
     ta,
     flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
-    h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => chooseOther(flow, d, route) }, "Send this instead")),
+    h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => void chooseOther(flow, d, route) }, "Send this instead")),
   );
 }
 
@@ -352,7 +352,7 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
     h(
       "div",
       { class: "actions" },
-      h("button", { type: "button", class: "primary", onclick: () => setAside(flow, d) }, "Set aside"),
+      h("button", { type: "button", class: "primary", onclick: () => void setAside(flow, d) }, "Set aside"),
       h(
         "button",
         {

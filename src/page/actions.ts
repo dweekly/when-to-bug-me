@@ -88,9 +88,10 @@ export function choose(flow: Flow, d: Decision, route: RouteKind, key: string): 
   pendingAnswer = {
     flow,
     timer: setTimeout(async () => {
+      const mine = pendingAnswer; // this Undo window; a later one on the same card is a different object
       // A phrase still being spoken belongs to this answer: let it finish first (voice.ts).
       await drainVoice();
-      if (pendingAnswer?.flow !== flow) return; // undone or cancelled while the phrase finished
+      if (!mine || pendingAnswer !== mine) return; // undone, cancelled or replaced while the phrase finished
       pendingAnswer = null;
       if (!alive(s0, flow) || flow.phase !== "pending") return;
       if (!showing(flow)) {
@@ -143,7 +144,10 @@ export function cancelPendingUnlessOn(id: string | null): void {
  * "Something else": the person writes their own option. It is recorded as the answer and is what the
  * agent is told (simulated). Bug Me's sealed guess stays sealed: it only ever guessed among A and B.
  */
-export function chooseOther(flow: Flow, d: Decision, route: RouteKind): void {
+export async function chooseOther(flow: Flow, d: Decision, route: RouteKind): Promise<void> {
+  const s0 = S;
+  await drainVoice(); // a reason still being spoken goes with it
+  if (!alive(s0, flow) || flow.phase !== "choose") return;
   const text = flow.other.trim().replace(/\s+/g, " ");
   if (text.length < 4) {
     flow.error = "Say what you'd like the agent to do instead.";
@@ -321,6 +325,8 @@ export function recordLateReason(d: Decision, basis: string): void {
 
 export async function propose(flow: Flow, d: Decision): Promise<void> {
   const s0 = S;
+  await drainVoice(); // the last words of a spoken reason belong to it
+  if (!alive(s0, flow)) return;
   const basis = flow.basis.trim();
   if (!hasBasis(basis)) {
     done(flow, "");
@@ -431,7 +437,10 @@ export function next(): void {
  * (including at pushback). The decision stays unanswered and its guess stays sealed; the agent is told
  * what to gather (simulated). It comes back only when the person resumes it.
  */
-export function setAside(flow: Flow, d: Decision): void {
+export async function setAside(flow: Flow, d: Decision): Promise<void> {
+  const s0 = S;
+  await drainVoice(); // a reason still being spoken goes with it
+  if (!alive(s0, flow) || flow.phase !== "punting") return;
   const problem = puntProblem(flow.puntKind, flow.puntReason);
   if (problem) {
     flow.error = problem;

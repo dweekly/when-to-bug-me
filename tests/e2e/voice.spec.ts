@@ -174,3 +174,45 @@ test("a phrase still being spoken when the Undo window ends goes with the answer
   });
   await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.conditions, { timeout: 6000 }).toBe("only if every ticket links the incident doc");
 });
+
+/** Make the latest session hold words as unfinished, delivering them as final `delay` ms after stop(). */
+async function holdPhrase(page: Page, interim: string, final: string, delay = 0): Promise<void> {
+  await page.evaluate(
+    ([i, f, ms]) => {
+      const rec = (globalThis as unknown as { __recs: { onresult: (e: unknown) => void; stop: () => void; onend: (() => void) | null }[] }).__recs.at(-1)!;
+      rec.onresult({ resultIndex: 0, results: [{ isFinal: false, 0: { transcript: i } }] });
+      rec.stop = function () {
+        setTimeout(() => {
+          this.onresult({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: f } }] });
+          this.onend?.();
+        }, ms as number);
+      };
+    },
+    [interim, final, delay] as const,
+  );
+}
+
+test("undoing and choosing again while a phrase finishes gives the new choice its own Undo window", async ({ page }) => {
+  await page.evaluate("localStorage.setItem('bugme.undoMs', '1500')");
+  await page.reload();
+  await openDecision(page, "incident-action-items");
+  await page.locator("#voice-btn").click();
+  await option(page, "File all five as drafted").click();
+  await holdPhrase(page, "the volunteers", "the volunteers agreed", 900);
+  await page.waitForTimeout(1700); // the first window has closed; its phrase is still finishing
+  await page.locator(".undo-bar").getByRole("button", { name: "Undo" }).click();
+  await option(page, "Show me the list first").click();
+  await page.waitForTimeout(700); // the first window's phrase has finished by now
+  expect((await stored(page))?.answered?.["incident-action-items"]).toBeUndefined();
+  await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.final, { timeout: 6000 }).toBe("B");
+});
+
+test("Send this instead waits for a reason still being spoken", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await page.locator("#voice-btn").click();
+  await page.getByRole("button", { name: "Something else" }).click();
+  await page.locator("#other").fill("Assign the database one to me");
+  await holdPhrase(page, "because I own", "because I own the database", 200);
+  await page.getByRole("button", { name: "Send this instead" }).click();
+  await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.basis).toBe("because I own the database");
+});
