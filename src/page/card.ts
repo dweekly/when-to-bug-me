@@ -240,7 +240,14 @@ function otherPanel(flow: Flow, d: Decision, route: RouteKind): HTMLElement {
 function askPanel(flow: Flow, d: Decision): HTMLElement {
   const ta = h("textarea", { id: "question", rows: 2, placeholder: "What would you need to know?" }) as HTMLTextAreaElement;
   ta.value = flow.question;
-  ta.addEventListener("input", () => (flow.question = ta.value));
+  ta.addEventListener("input", () => {
+    flow.question = ta.value;
+    // An answer belongs to the question that was asked; editing the question retires it.
+    if (flow.askAnswer) {
+      flow.askAnswer = null;
+      document.querySelector("#now .ask-answer")?.remove();
+    }
+  });
   const a = flow.askAnswer;
   return h(
     "div",
@@ -413,6 +420,15 @@ export function followup(d: Decision, route: RouteKind): Child {
           .map((o) => h("button", { type: "button", class: "ghost", onclick: () => void finalize(F!, d, route, o.key, "changed") }, `Change to “${o.label}”`)),
         h("button", { type: "button", class: "ghost", onclick: () => startPunt(F!) }, "Not now"),
       ),
+    );
+  }
+  if (F.phase === "done" && F.choice === "other") {
+    // "Something else": no guess was made among the options, so none is revealed.
+    return h(
+      "div",
+      { class: "followup reveal", "aria-live": "polite" },
+      h("p", { class: "senddown" }, `Sent down to ${d.agent[d.agent.length - 1]} (simulated): ${F.send_down}`),
+      h("div", { class: "after-marks" }, h("button", { type: "button", class: "primary", onclick: () => next() }, "Next decision")),
     );
   }
   if (!F.guess) return F.message ? h("div", { class: "followup" }, h("p", {}, F.message)) : null;
