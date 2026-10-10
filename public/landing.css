@@ -1,0 +1,123 @@
+/* The explainer at "/": the app's night palette, one warm accent, the firefly as narrator.
+   Sections fade up as they scroll in; the night's questions land in piles, one per project.
+   Under reduced motion everything shows its end state. */
+
+:root {
+  --night: #0f1226;
+  --night-2: #171b33;
+  --night-3: #1f2442;
+  --line: #2a2f4d;
+  --ink: #ecebf5;
+  --ink-2: #9a9cb8;
+  --ink-3: #6b6e8c;
+  --glow: #ffd84d;
+  --glow-ink: #1a1500;
+  --glow-soft: rgba(255, 216, 77, 0.14);
+  --radius: 14px;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font: 17px/1.6 var(--body);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, #1d2350 0%, transparent 60%),
+    var(--night);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+a { color: var(--glow); }
+:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; border-radius: 6px; }
+
+.skip { position: absolute; left: -9999px; }
+.skip:focus { left: 16px; top: 12px; background: var(--night-3); padding: 8px 12px; z-index: 10; }
+
+main { max-width: 980px; margin: 0 auto; padding: 0 16px 96px; }
+section { padding: 72px 0 24px; }
+h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 16px; }
+h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); }
+.say { color: var(--ink-2); max-width: 46ch; margin: 0 0 24px; }
+.aside { color: var(--ink-3); font-size: 0.92rem; max-width: 60ch; }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 24px; min-height: 86vh; padding-top: 48px; }
+.eyebrow { font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 18px; }
+.hero h1 { font-size: clamp(2.6rem, 8vw, 5.4rem); line-height: 0.98; max-width: 11ch; }
+.lede { font-size: clamp(1.1rem, 2.4vw, 1.35rem); color: var(--ink-2); max-width: 30ch; margin: 0 0 32px; }
+.lede [data-count] { color: var(--glow); font-weight: 700; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.cta a { text-decoration: none; padding: 12px 20px; border-radius: 999px; font-weight: 700; }
+.cta .primary { background: var(--glow); color: var(--glow-ink); }
+.cta .ghost { border: 1px solid var(--line); color: var(--ink); }
+.narrator { width: clamp(150px, 26vw, 280px); filter: drop-shadow(0 0 48px rgba(255, 216, 77, 0.22)); }
+.narrator video, .narrator img { display: block; width: 100%; height: auto; }
+.narrator .still { display: none; }
+
+/* Meet Jordan */
+.lanes { display: grid; gap: 10px; margin: 0 0 28px; }
+.lane { display: grid; grid-template-columns: 7rem 1fr; align-items: center; gap: 12px; padding: 10px 14px; background: var(--night-2); border: 1px solid var(--line); border-radius: var(--radius); }
+.lane span:first-child { font-family: var(--mono); font-size: 0.85rem; color: var(--ink-2); }
+.lane .dots { color: var(--ink-3); letter-spacing: 0.3em; overflow-wrap: anywhere; }
+.note { margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--glow); color: var(--ink); max-width: 52ch; font-style: italic; }
+
+/* The sort: the night's questions land in piles, one per project; the first is where to start. */
+.piles { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 12px; margin: 8px 0 16px; align-items: start; }
+.pile { padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--night-2); opacity: 0; transform: translateY(14px); transition: opacity 0.6s calc(var(--i) * 180ms), transform 0.6s calc(var(--i) * 180ms); }
+.sort.shown .pile { opacity: 1; transform: none; }
+.pile.rec { border-color: var(--glow); background: linear-gradient(180deg, var(--glow-soft), transparent 70%), var(--night-2); }
+.pile-head { margin: 0 0 2px; font: 600 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.pile.rec .pile-head { color: var(--glow); }
+.pile-meta { margin: 0 0 6px; font: 700 18px/1.25 var(--display); }
+.pile.rec .pile-meta { font-size: 22px; }
+.pile-why { margin: 0 0 8px; color: var(--ink-2); font-size: 14px; }
+.pile ol { margin: 6px 0 0; padding-left: 22px; color: var(--ink-2); font-size: 14px; }
+.pile ol li { padding: 2px 0; }
+.pile ol li::marker { font-family: var(--mono); color: var(--ink-3); }
+
+/* Why */
+.loop { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: step; }
+.loop li { position: relative; padding: 16px; background: var(--night-2); border: 1px solid var(--line); border-radius: var(--radius); display: grid; gap: 6px; }
+.loop li:last-child { border-color: var(--glow); }
+.loop b { font-family: var(--display); font-size: 1.05rem; }
+.loop span { color: var(--ink-2); font-size: 0.92rem; }
+
+/* Tours */
+.tour-cards { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tour-cards a { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto auto; column-gap: 14px; row-gap: 2px; padding: 16px; height: 100%; text-decoration: none; color: var(--ink); background: var(--night-2); border: 1px solid var(--line); border-radius: var(--radius); transition: border-color 0.2s, transform 0.2s; }
+.tour-cards a:hover { border-color: var(--glow); transform: translateY(-2px); }
+.tour-cards img { grid-row: 1 / 4; }
+.t-title { font-family: var(--display); font-weight: 700; }
+.t-blurb { color: var(--ink-2); font-size: 0.9rem; }
+.t-min { font-family: var(--mono); font-size: 0.75rem; color: var(--ink-3); }
+
+/* What's real */
+.kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 20px; }
+.kinds div { padding: 16px; border-top: 2px solid var(--line); }
+.kinds div:first-child { border-top-color: var(--glow); }
+.kinds dt { font-family: var(--display); font-weight: 700; margin-bottom: 6px; }
+.kinds dd { margin: 0; color: var(--ink-2); font-size: 0.92rem; }
+
+/* Scroll reveal */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.7s, transform 0.7s; }
+.reveal.shown { opacity: 1; transform: none; }
+
+@media (max-width: 720px) {
+  .hero { grid-template-columns: 1fr; min-height: auto; }
+  .narrator { order: -1; width: 140px; }
+  .loop, .kinds { grid-template-columns: 1fr; }
+  .piles { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .pile, .tour-cards a { transition: none; }
+  .reveal { opacity: 1; transform: none; }
+  .pile { opacity: 1; transform: none; }
+  .narrator .moving { display: none; }
+  .narrator .still { display: block; }
+}
