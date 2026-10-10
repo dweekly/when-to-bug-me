@@ -2,7 +2,7 @@
 // decides (with an Undo window), the Why panel is optional, and the other ways to answer: "Yes,
 // but…", "Something else" and "Ask a question". On the fake-model server.
 import { type Page, expect, test } from "@playwright/test";
-import { freshPage, openDecision, option, stored } from "./helpers";
+import { freshPage, goHome, hold, openDecision, option, stored } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -107,4 +107,58 @@ test("Not now is a quiet link, not a button competing with the options", async (
   const notNow = page.locator("#now .not-now");
   await expect(notNow).toBeVisible();
   await expect(notNow).toHaveClass(/linkish/);
+});
+
+test("Something else ends with what the agent was told and a Next button", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await page.getByRole("button", { name: "Something else" }).click();
+  await page.locator("#other").fill("File them, but assign the database one to me");
+  await page.getByRole("button", { name: "Send this instead" }).click();
+  await expect(page.locator("#now .senddown")).toContainText("Instead: File them");
+  await expect(page.locator("#now").getByRole("button", { name: "Next decision" })).toBeVisible();
+});
+
+test("leaving and coming back inside the Undo window does not send the answer", async ({ page }) => {
+  await undoWindow(page, 2000);
+  await openDecision(page, "incident-action-items");
+  await option(page, "File all five as drafted").click();
+  await goHome(page);
+  await openDecision(page, "incident-action-items");
+  await page.waitForTimeout(2500);
+  expect((await stored(page))?.answered?.["incident-action-items"]).toBeUndefined();
+  await expect(page.locator("#now")).toContainText("Not sent");
+});
+
+test("Yes, but… offers its conditions as guidance even when the choice matches the guess", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await page.getByRole("button", { name: "Yes, but…" }).click();
+  await page.locator("#basis").fill("as long as each ticket links the incident doc");
+  await option(page, "File all five as drafted").click();
+  await expect(page.locator("#now .followup")).toContainText(/Remember this|Got it/);
+});
+
+test("an answer to an earlier question never replaces the answer to a newer one", async ({ page }) => {
+  await openDecision(page, "onsite-flight");
+  const release = await hold(page, "/api/ask", (b) => String(b.question).includes("refundable"));
+  await page.getByRole("button", { name: "Ask a question" }).click();
+  await page.locator("#question").fill("Are these fares refundable?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await page.locator("#question").fill("Is there wifi aboard?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await expect(page.locator(".ask-answer.missing")).toBeVisible();
+  release();
+  await page.waitForTimeout(500);
+  await expect(page.locator(".ask-answer.missing")).toBeVisible();
+  await expect(page.locator(".ask-answer")).not.toContainText("refundable for 24 hours");
+});
+
+test("a reload during the Undo window brings the choice back unsent, with the reason", async ({ page }) => {
+  await undoWindow(page, 3000);
+  await openDecision(page, "incident-action-items");
+  await page.locator("#basis").fill("Volunteers already agreed.");
+  await option(page, "File all five as drafted").click();
+  await page.reload();
+  await expect(page.locator("#basis")).toHaveValue("Volunteers already agreed.");
+  await expect(page.locator("#now")).toContainText("reloaded before that answer was sent");
+  expect((await stored(page))?.answered?.["incident-action-items"]).toBeUndefined();
 });

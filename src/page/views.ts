@@ -6,7 +6,7 @@
 import { estimateMinutes, nextInSession } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
-import { editRule, resume, startSession, undo } from "./actions";
+import { cancelPendingUnlessOn, editRule, resume, startSession, undo } from "./actions";
 import { markButton, renderNow, stopVoiceIfMicGone, stopVoiceUnlessFor } from "./card";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
@@ -394,6 +394,8 @@ function renderRecordView(view: HTMLElement): void {
 
 export function render(): void {
   const route = currentRoute();
+  // Leaving a card cancels its answer if it is still in the Undo window.
+  cancelPendingUnlessOn(route.view === "focus" ? route.id : null);
   renderBar(route);
   const view = $("view");
   if (route.view !== "focus") {

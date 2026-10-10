@@ -82,6 +82,7 @@ export function choose(flow: Flow, d: Decision, route: RouteKind, key: string): 
   flow.card = card;
   flow.phase = "pending";
   flow.message = "";
+  save(); // a reload during the Undo window brings the choice back unsent, with the reason (state.ts)
   renderNow();
   pendingAnswer = {
     flow,
@@ -111,6 +112,7 @@ export function undoChoice(flow: Flow): void {
   cancelPending();
   flow.phase = "choose";
   flow.choice = null;
+  save();
   announce("Undone. Nothing was sent.");
   renderNow();
 }
@@ -124,7 +126,13 @@ export function cancelPending(): void {
   if (f.phase === "pending") {
     f.phase = "choose";
     f.message = "Not sent: you left the card before the answer went out.";
+    save();
   }
+}
+
+/** Navigation away from the card whose answer is waiting in its Undo window cancels that answer. */
+export function cancelPendingUnlessOn(id: string | null): void {
+  if (pendingAnswer && pendingAnswer.flow.id !== id) cancelPending();
 }
 
 /**
@@ -155,9 +163,14 @@ export function chooseOther(flow: Flow, d: Decision, route: RouteKind): void {
   done(flow, "");
 }
 
+/** The latest question asked on each card; a response to an earlier one is dropped. */
+const askSeq = new Map<string, number>();
+
 /** "Ask a question": Claude answers from what the agent provided, or says what is missing. */
 export async function askQuestion(flow: Flow, d: Decision): Promise<void> {
   const q = flow.question.trim();
+  const seq = (askSeq.get(flow.id) ?? 0) + 1;
+  askSeq.set(flow.id, seq);
   if (q.length < 4) {
     flow.error = "Type or say your question first.";
     renderNow();
@@ -170,12 +183,12 @@ export async function askQuestion(flow: Flow, d: Decision): Promise<void> {
   renderNow();
   try {
     const r = await api<AskOutput & { source: Source }>("/api/ask", { id: d.id, question: q });
-    if (!alive(s0, flow)) return;
+    if (!alive(s0, flow) || askSeq.get(flow.id) !== seq || flow.question.trim() !== q) return;
     flow.askAnswer = r;
     flow.message = "";
     log("question", { id: d.id, question: q, answerable: r.answerable, answer: r.answer, source: r.source });
   } catch (e) {
-    if (!alive(s0, flow)) return;
+    if (!alive(s0, flow) || askSeq.get(flow.id) !== seq) return;
     flow.askAnswer = { answerable: false, answer: `Couldn't reach Claude for that (${(e as Error).message}).`, source: "code" };
     flow.message = "";
   }
@@ -270,7 +283,8 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     }
     return;
   }
-  if (shouldProposeGuidance(choice, d.recommended, r.guess, basis)) {
+  // Conditions on an answer are new information even when the choice matches the guess.
+  if (conditions || shouldProposeGuidance(choice, d.recommended, r.guess, basis)) {
     await propose(flow, d);
     return;
   }
