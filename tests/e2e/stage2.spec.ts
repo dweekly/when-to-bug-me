@@ -117,8 +117,9 @@ test.describe("views", () => {
     await expect(nav.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("/ redirects to the app", async ({ page }) => {
+  test("/ is the explainer, and its Open the app link reaches Home", async ({ page }) => {
     await page.goto("/");
+    await page.getByRole("link", { name: "Open the app" }).click();
     await expect(page).toHaveURL(/\/app(#.*)?$/);
     await waitForHome(page);
   });
