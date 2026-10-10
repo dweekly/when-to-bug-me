@@ -1,8 +1,15 @@
 // Turning a model's routing answer into a card's public fields: validate the shape and meaning, check
 // every quote against the current rules and facts, and enforce the settle invariant in code.
 
-import { SETTLE_MAX_COST_USD } from "./constants";
-import type { Decision, Fact, Problem, RouteKind, RouteOutput, Rule } from "./types";
+import { MAX_OPTION_NOTES, SETTLE_MAX_COST_USD } from "./constants";
+import type {
+  Decision,
+  Fact,
+  Problem,
+  RouteKind,
+  RouteOutput,
+  Rule,
+} from "./types";
 
 const ROUTES: RouteKind[] = ["settle", "check_in", "decide"];
 const REVERSIBLE = ["yes", "partly", "no"] as const;
@@ -23,11 +30,16 @@ const SUM_TOLERANCE = 0.02;
 export class RouteParseError extends Error {}
 
 function str(v: unknown, field: string): string {
-  if (typeof v !== "string") throw new RouteParseError(`${field} is not a string`);
+  if (typeof v !== "string")
+    throw new RouteParseError(`${field} is not a string`);
   return v;
 }
 
-function oneOf<T extends string>(v: unknown, allowed: readonly T[], field: string): T {
+function oneOf<T extends string>(
+  v: unknown,
+  allowed: readonly T[],
+  field: string,
+): T {
   if (typeof v !== "string" || !(allowed as readonly string[]).includes(v)) {
     throw new RouteParseError(`${field} is not one of ${allowed.join(", ")}`);
   }
@@ -39,13 +51,18 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[], field: strin
  * not that the option keys exist, that every option has a probability, or that they sum to one.
  * Probabilities are renormalized after the check.
  */
-export function parseRouteOutput(raw: unknown, decision: Decision): RouteOutput {
-  if (!raw || typeof raw !== "object") throw new RouteParseError("not an object");
+export function parseRouteOutput(
+  raw: unknown,
+  decision: Decision,
+): RouteOutput {
+  if (!raw || typeof raw !== "object")
+    throw new RouteParseError("not an object");
   const o = raw as Record<string, unknown>;
   const keys = decision.options.map((x) => x.key);
 
   const guessRaw = o.guess;
-  if (!Array.isArray(guessRaw)) throw new RouteParseError("guess is not an array");
+  if (!Array.isArray(guessRaw))
+    throw new RouteParseError("guess is not an array");
   const seen = new Set<string>();
   const guess = guessRaw.map((g, i) => {
     const option = oneOf(g?.option, keys, `guess[${i}].option`);
@@ -53,13 +70,16 @@ export function parseRouteOutput(raw: unknown, decision: Decision): RouteOutput 
     if (typeof p !== "number" || !Number.isFinite(p) || p < 0 || p > 1) {
       throw new RouteParseError(`guess[${i}].p is not a probability`);
     }
-    if (seen.has(option)) throw new RouteParseError(`guess repeats option ${option}`);
+    if (seen.has(option))
+      throw new RouteParseError(`guess repeats option ${option}`);
     seen.add(option);
     return { option, p };
   });
-  if (seen.size !== keys.length) throw new RouteParseError("guess does not cover every option");
+  if (seen.size !== keys.length)
+    throw new RouteParseError("guess does not cover every option");
   const total = guess.reduce((s, g) => s + g.p, 0);
-  if (total < 1 - SUM_TOLERANCE || total > 1 + SUM_TOLERANCE) throw new RouteParseError(`guess sums to ${total.toFixed(3)}`);
+  if (total < 1 - SUM_TOLERANCE || total > 1 + SUM_TOLERANCE)
+    throw new RouteParseError(`guess sums to ${total.toFixed(3)}`);
   for (const g of guess) g.p = g.p / total;
 
   const conflictsRaw = Array.isArray(o.conflicts) ? o.conflicts : [];
@@ -69,19 +89,62 @@ export function parseRouteOutput(raw: unknown, decision: Decision): RouteOutput 
   }));
 
   const sendRaw = o.send_down;
-  if (!Array.isArray(sendRaw)) throw new RouteParseError("send_down is not an array");
+  if (!Array.isArray(sendRaw))
+    throw new RouteParseError("send_down is not an array");
   const send_down = sendRaw.map((s, i) => ({
     option: oneOf(s?.option, keys, `send_down[${i}].option`),
     instruction: str(s?.instruction, `send_down[${i}].instruction`),
   }));
   const sent = new Set(send_down.map((s) => s.option));
-  if (sent.size !== send_down.length) throw new RouteParseError("send_down repeats an option");
-  if (sent.size !== keys.length) throw new RouteParseError("send_down does not cover every option");
+  if (sent.size !== send_down.length)
+    throw new RouteParseError("send_down repeats an option");
+  if (sent.size !== keys.length)
+    throw new RouteParseError("send_down does not cover every option");
+
+  // The schema asks for an object keyed by option; an array of { option, ... } is accepted too.
+  const notesObj = o.option_notes;
+  const notesRaw = Array.isArray(notesObj)
+    ? notesObj
+    : notesObj && typeof notesObj === "object"
+      ? Object.entries(notesObj as Record<string, Record<string, unknown>>).map(
+          ([option, n]) => ({ ...n, option }),
+        )
+      : null;
+  if (!notesRaw) throw new RouteParseError("option_notes is not an object");
+  const phrases = (v: unknown, field: string) => {
+    if (!Array.isArray(v))
+      throw new RouteParseError(`${field} is not an array`);
+    if (v.length > MAX_OPTION_NOTES)
+      throw new RouteParseError(
+        `${field} has more than ${MAX_OPTION_NOTES} entries`,
+      );
+    return v.map((x, i) => {
+      const t = str(x, `${field}[${i}]`).trim();
+      if (!t) throw new RouteParseError(`${field}[${i}] is empty`);
+      return t;
+    });
+  };
+  const option_notes = notesRaw.map((n, i) => ({
+    option: oneOf(n?.option, keys, `option_notes[${i}].option`),
+    pros: phrases(n?.pros, `option_notes[${i}].pros`),
+    cons: phrases(n?.cons, `option_notes[${i}].cons`),
+    consequence: str(
+      n?.consequence ?? "",
+      `option_notes[${i}].consequence`,
+    ).trim(),
+  }));
+  const noted = new Set(option_notes.map((n) => n.option));
+  if (noted.size !== option_notes.length)
+    throw new RouteParseError("option_notes repeats an option");
+  if (noted.size !== keys.length)
+    throw new RouteParseError("option_notes does not cover every option");
 
   const route = oneOf(o.route, ROUTES, "route");
   const settle_option = str(o.settle_option ?? "", "settle_option");
   if (route === "settle" && !keys.includes(settle_option)) {
-    throw new RouteParseError("route is settle but settle_option is not an option");
+    throw new RouteParseError(
+      "route is settle but settle_option is not an option",
+    );
   }
 
   return {
@@ -95,6 +158,10 @@ export function parseRouteOutput(raw: unknown, decision: Decision): RouteOutput 
     why_here: str(o.why_here, "why_here"),
     headline: str(o.headline, "headline"),
     in_your_terms: str(o.in_your_terms, "in_your_terms"),
+    briefing: str(o.briefing, "briefing"),
+    option_notes: option_notes.sort(
+      (a, b) => keys.indexOf(a.option) - keys.indexOf(b.option),
+    ),
     problem: oneOf(o.problem, PROBLEMS, "problem"),
     guess,
     conflicts,
@@ -118,7 +185,11 @@ export function normalizeQuote(s: string): string {
  * at least `minLen` characters long), or "" when it occurs nowhere. A quote that does not occur is
  * dropped rather than shown, so the page never attributes invented words to the person.
  */
-export function verifyQuote(quote: string, sources: string[], minLen = 12): string {
+export function verifyQuote(
+  quote: string,
+  sources: string[],
+  minLen = 12,
+): string {
   const q = normalizeQuote(quote);
   if (!q) return "";
   const whole = wholeSource(quote, sources);
@@ -151,26 +222,44 @@ export interface InvariantResult {
  * downgrades the route to a check-in, with the reason. This checks exactly these conditions; it does
  * not prove that a natural-language rule really authorizes the action.
  */
-export function enforceSettleInvariant(out: RouteOutput, decision: Decision, rules: Rule[], facts: Fact[] = []): InvariantResult {
+export function enforceSettleInvariant(
+  out: RouteOutput,
+  decision: Decision,
+  rules: Rule[],
+  facts: Fact[] = [],
+): InvariantResult {
   if (out.route !== "settle") return { route: out.route, settle_option: "" };
   const missing: string[] = [];
   const bound = decision.bounds[out.settle_option];
   if (!bound) missing.push("the option it picked has no bounds");
   else {
-    if (bound.reversible !== "yes") missing.push("the action can't be fully undone");
-    if (bound.cost_usd > SETTLE_MAX_COST_USD) missing.push(`it costs $${bound.cost_usd}`);
+    if (bound.reversible !== "yes")
+      missing.push("the action can't be fully undone");
+    if (bound.cost_usd > SETTLE_MAX_COST_USD)
+      missing.push(`it costs $${bound.cost_usd}`);
   }
   // Settling needs a whole current rule, not a fragment of one: "formatting, lint fixes" is not the
   // authorization "...: just do it."
-  if (!wholeSource(out.clearing_rule, rules.map((r) => r.text))) {
+  if (
+    !wholeSource(
+      out.clearing_rule,
+      rules.map((r) => r.text),
+    )
+  ) {
     missing.push("no written rule clears it");
   }
   // Precedence: a standing preference that bears on the choice outranks a rule that would let Bug Me
   // settle it, so a verified quoted fact always brings it to the person (at least as a check-in).
-  if (verifyQuote(out.fact_quoted, facts.map((f) => f.text))) {
+  if (
+    verifyQuote(
+      out.fact_quoted,
+      facts.map((f) => f.text),
+    )
+  ) {
     missing.push("one of your standing preferences bears on it");
   }
-  if (missing.length === 0) return { route: "settle", settle_option: out.settle_option };
+  if (missing.length === 0)
+    return { route: "settle", settle_option: out.settle_option };
   return {
     route: "check_in",
     settle_option: "",
@@ -193,7 +282,13 @@ export function verifiedQuotes(out: RouteOutput, rules: Rule[], facts: Fact[]) {
  * Pushback quotes the person's own record, so a conflict whose quote occurs in no current rule or
  * fact is dropped, and a faithful one carries the exact source text.
  */
-export function verifiedConflicts(out: RouteOutput, rules: Rule[], facts: Fact[]): RouteOutput["conflicts"] {
+export function verifiedConflicts(
+  out: RouteOutput,
+  rules: Rule[],
+  facts: Fact[],
+): RouteOutput["conflicts"] {
   const record = [...rules.map((r) => r.text), ...facts.map((f) => f.text)];
-  return out.conflicts.map((c) => ({ option: c.option, quoted: verifyQuote(c.quoted, record) })).filter((c) => c.quoted);
+  return out.conflicts
+    .map((c) => ({ option: c.option, quoted: verifyQuote(c.quoted, record) }))
+    .filter((c) => c.quoted);
 }

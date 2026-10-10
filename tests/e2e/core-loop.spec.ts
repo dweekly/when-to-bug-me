@@ -26,7 +26,6 @@ test("flight -> why -> kept fact -> Berlin sync re-checked and reframed, formatt
   await openDecision(page, "onsite-flight");
   await expect(page.locator("#now-q")).toContainText("6:05am flight");
   await option(page, "9:40am flight").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
 
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
   await expect(page.getByText("hidden until now")).toHaveCount(0);

@@ -113,6 +113,10 @@ export interface RouteOutput {
   headline: string;
   /** A short neutral briefing: what changes under each option, in the person's terms. */
   in_your_terms: string;
+  /** Two plain sentences on what is going on, shown before the question. */
+  briefing: string;
+  /** Per option, exactly one entry each: up to two pros, up to two cons, and a one-line consequence or "". */
+  option_notes: OptionNote[];
   problem: Problem;
   /** A probability per option key, summing to about 1. */
   guess: { option: string; p: number }[];
@@ -120,6 +124,15 @@ export interface RouteOutput {
   conflicts: { option: string; quoted: string }[];
   /** What each option tells the asking agent, in its own terms. */
   send_down: { option: string; instruction: string }[];
+}
+
+/** What the card shows under an option: its pros and cons, and what it costs, in the person's terms. */
+export interface OptionNote {
+  option: string;
+  pros: string[];
+  cons: string[];
+  /** Money, time or work for the agents, from facts in the decision; "" when there is none to state. */
+  consequence: string;
 }
 
 /** The hidden part of a routed card: sealed by the Worker, opened only after the answer. */
@@ -148,9 +161,18 @@ export interface Card {
   why_here: string;
   headline: string;
   in_your_terms: string;
+  /** Absent on cards saved before these fields existed; the page renders without them. */
+  briefing?: string;
+  option_notes?: OptionNote[];
   problem: Problem;
   source: Source;
   sealed: string;
+}
+
+/** What /api/ask returns: an answer from what the agent provided, or what is missing from it. */
+export interface AskOutput {
+  answerable: boolean;
+  answer: string;
 }
 
 /**

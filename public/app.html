@@ -35,6 +35,8 @@
   <body>
     <a class="skip" href="#view">Skip to content</a>
     <header id="bar" class="bar"></header>
+    <!-- The voice firefly: outside the bar, so re-renders never restart its loop (src/page/voice.ts). -->
+    <div id="voice" class="voice"></div>
     <main id="view" class="view" tabindex="-1"></main>
     <div id="announce" class="sr-only" aria-live="polite"></div>
     <script type="module" src="/app.js"></script>

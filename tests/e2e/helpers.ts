@@ -13,6 +13,8 @@ export const STORE_KEY = "bugme.state.v1";
 export async function freshPage(page: Page): Promise<void> {
   await page.goto("/app#/");
   await page.evaluate("localStorage.clear()");
+  // Clicking an option decides after an Undo window; tests skip the wait (tests/e2e/stage3.spec.ts covers Undo itself).
+  await page.evaluate("localStorage.setItem('bugme.undoMs', '0')");
   await page.reload();
   await waitForHome(page);
 }
@@ -31,7 +33,7 @@ export async function waitForHome(page: Page): Promise<void> {
 
 /** The persisted state, as state.ts writes it to localStorage. */
 export interface StoredState {
-  answered: Record<string, { initial: string; final: string; basis: string; marks: string[]; pushback: string | null; guess?: { option: string; p: number }[] }>;
+  answered: Record<string, { initial: string; final: string; basis: string; marks: string[]; pushback: string | null; guess?: { option: string; p: number }[]; send_down: string; conditions?: string; other?: string }>;
   settledMarks: Record<string, string[]>;
   reopened: string[];
   record: { kind: string; id?: string; [k: string]: unknown }[];
@@ -43,6 +45,7 @@ export interface StoredState {
   evaluated: Record<string, true>;
   punts: Record<string, { id: string; kind: string; reason: string; at: string; instruction: string }>;
   puntHistory: Record<string, { id: string; kind: string; reason: string; instruction: string }[]>;
+  flows?: Record<string, { basis: string }>;
 }
 
 export async function stored(page: Page): Promise<StoredState | null> {
@@ -101,7 +104,8 @@ export async function openFromAgenda(page: Page, text: string): Promise<void> {
 
 /** An option button on the card in front of the person, by its label. */
 export function option(page: Page, label: string) {
-  return page.locator("#now").getByRole("button", { name: new RegExp(`^[A-Z]\\. ${escape(label)}`) });
+  // An option's accessible name starts with its label (the letter badge is decorative).
+  return page.locator("#now .options").getByRole("button", { name: new RegExp(`^(?:[A-Z]\\. )?${escape(label)}`) });
 }
 
 /** Edit a written rule on the rules view (going there first if needed) and save it. */

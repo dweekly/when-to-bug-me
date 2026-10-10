@@ -17,7 +17,6 @@ const R10_CLEARS = "If a task runs past twice its time budget, just do it.";
 async function flightToWhy(page: import("@playwright/test").Page) {
   await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
 }
 
@@ -38,7 +37,6 @@ test("an answer given while a re-check is out is not overwritten by it", async (
   await expect.poll(async () => (await state(page)).pending).toEqual([BUDGET]);
   await openDecision(page, BUDGET);
   await option(page, "Keep going").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await expect.poll(async () => (await state(page)).answered[BUDGET]?.final).toBe("B");
   release();
   await expect.poll(async () => (await state(page)).pending.length).toBe(0);

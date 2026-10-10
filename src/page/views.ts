@@ -6,8 +6,9 @@
 import { estimateMinutes, nextInSession } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
-import { editRule, resume, startSession, undo } from "./actions";
-import { markButton, renderNow, stopVoiceIfMicGone, stopVoiceUnlessFor } from "./card";
+import { cancelPendingUnlessOn, editRule, resume, startSession, undo } from "./actions";
+import { markButton, renderNow } from "./card";
+import { setVoiceTarget } from "./voice";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
@@ -394,10 +395,12 @@ function renderRecordView(view: HTMLElement): void {
 
 export function render(): void {
   const route = currentRoute();
+  // Leaving a card cancels its answer if it is still in the Undo window.
+  cancelPendingUnlessOn(route.view === "focus" ? route.id : null);
   renderBar(route);
   const view = $("view");
   if (route.view !== "focus") {
-    stopVoiceUnlessFor("");
+    setVoiceTarget(null); // only a decision card has a box for speech
     if (F) setF(null);
   }
   if (route.view === "home") renderHome(view);
@@ -406,7 +409,6 @@ export function render(): void {
   else if (route.view === "settled") renderSettledView(view);
   else if (route.view === "rules") renderRulesView(view);
   else renderRecordView(view);
-  stopVoiceIfMicGone(); // whatever view this is, dictation never outlives its visible microphone
   tourAfterRender();
 }
 

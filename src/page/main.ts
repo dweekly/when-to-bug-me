@@ -8,7 +8,7 @@
 // actions.ts (what clicks do). This file only boots it.
 
 import { api } from "./api";
-import { stopVoiceUnlessFor } from "./card";
+import { initVoice, voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
 import { type Queue, Q, S, fresh, load, save, setById, setF, setQ, setS } from "./state";
@@ -19,6 +19,7 @@ async function boot(): Promise<void> {
   setQ(await api<Queue>("/api/queue"));
   setById(new Map(Q.decisions.map((d) => [d.id, d])));
   setS(load(Q));
+  initVoice();
   // The record view's buttons are redrawn with it, so their clicks are handled here, once.
   document.addEventListener("click", (e) => {
     const t = (e.target as HTMLElement | null)?.closest("button");
@@ -32,7 +33,7 @@ async function boot(): Promise<void> {
     } else if (t.id === "reset") {
       setS(fresh(Q));
       setF(null);
-      stopVoiceUnlessFor("");
+      voiceOff();
       save();
       announce("Started the morning over.");
       go({ view: "home" });

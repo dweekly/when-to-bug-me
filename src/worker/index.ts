@@ -4,6 +4,7 @@
 //   POST /api/route   route one decision under the visitor's current rules and facts
 //   POST /api/answer  check a choice for pushback, or finalize it and open the sealed guess
 //   POST /api/fact    turn a stated reason into proposed guidance and the decisions to re-route
+//   POST /api/ask     answer a clarifying question from what the agent provided, or say what is missing
 //
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
@@ -12,7 +13,7 @@ import { MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
-import { type Env, ModelUnavailable, NeedsSession, factFor, routeFor } from "./model";
+import { type Env, ModelUnavailable, NeedsSession, askFor, factFor, routeFor } from "./model";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
 import { SealError, importSealKey, seal, sha256Hex, unseal } from "./seal";
@@ -97,6 +98,8 @@ async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, ru
     why_here: out.why_here,
     headline: out.headline,
     in_your_terms: out.in_your_terms,
+    briefing: out.briefing,
+    option_notes: out.option_notes,
     problem: out.problem,
     source,
     sealed,
@@ -186,6 +189,13 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
     const suggested = out.may_affect.filter((id) => known.has(id));
     const reroute = out.kind === "none" ? [] : [...new Set([...suggested, ...byTag])].slice(0, MAX_REROUTES_PER_FACT);
     return json({ ...out, may_affect: suggested, reroute, source });
+  }
+
+  if (path === "/api/ask") {
+    const d = decisionOf(b.id);
+    const question = cleanText(b.question, MAX_REASON_CHARS, "question");
+    const { out, source } = await askFor(env, canSpend, d, question);
+    return json({ ...out, source });
   }
 
   return json({ error: "not found" }, 404);

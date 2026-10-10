@@ -14,6 +14,8 @@ async function popoverTitle(page: Page): Promise<string | null> {
 async function act(page: Page, step: TourStep): Promise<void> {
   const example = page.locator(".driver-popover .bm-example");
   if (step.until === "next") {
+    // A step that offers Jordan's words before the deciding click: use them, then go on.
+    if (await example.count()) await example.click();
     await page.locator(".driver-popover-next-btn").click();
     return;
   }
@@ -31,7 +33,11 @@ async function act(page: Page, step: TourStep): Promise<void> {
     await page.locator(step.until.click).first().click();
     return;
   }
-  // Steps that finish when something appears: the why prompt, keeping guidance, setting aside.
+  // Steps that finish when something appears: the Undo window (just wait), the why prompt, keeping guidance.
+  if (step.target.includes(".undo-bar")) {
+    await expect.poll(() => popoverTitle(page), { timeout: 20_000 }).not.toBe(step.title);
+    return;
+  }
   if (step.until.appear === "#fact-text") {
     await example.click();
     await page.locator("#now .followup .primary").first().click();

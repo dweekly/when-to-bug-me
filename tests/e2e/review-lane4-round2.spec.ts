@@ -22,7 +22,6 @@ test("an answer uses the card it started on, even if a re-route replaces it mid-
   const release = await hold(page, "/api/answer", (b) => b.id === "onsite-flight" && b.stage === "check");
   await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await editRule(page, "R12", "Travel: never book flights that leave before 8am.");
   await expect.poll(async () => (await state(page)).cards["onsite-flight"].rule_quoted).toContain("never book flights");
   release();
@@ -38,7 +37,6 @@ test("starting over discards a response that arrives afterwards", async ({ page 
   const release = await hold(page, "/api/answer", (b) => b.id === "onsite-flight");
   await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await goRecord(page);
   await page.getByRole("button", { name: "Start the morning over" }).click();
   release();
@@ -49,7 +47,6 @@ test("starting over discards a response that arrives afterwards", async ({ page 
 test("an open 'why?' stays reachable after opening another card", async ({ page }) => {
   await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();
-  await page.locator("#now").getByRole("button", { name: "Decide", exact: true }).click();
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
   await openFromAgenda(page, "File the five action items");
   await goHome(page);
@@ -59,40 +56,9 @@ test("an open 'why?' stays reachable after opening another card", async ({ page 
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
 });
 
-test("dictation stops when its card is replaced and never writes into another answer", async ({ page }) => {
-  await page.addInitScript(() => {
-    class FakeRec {
-      lang = "";
-      interimResults = false;
-      continuous = false;
-      onresult: ((e: unknown) => void) | null = null;
-      onend: (() => void) | null = null;
-      start() {
-        (globalThis as unknown as { __rec: FakeRec }).__rec = this;
-      }
-      stop() {
-        this.onend?.();
-      }
-    }
-    (globalThis as unknown as { SpeechRecognition: unknown }).SpeechRecognition = FakeRec;
-  });
-  await page.reload();
-  await openDecision(page, "api-rename");
-  await expect(page.locator("#now-q")).toContainText("user_id");
-  await option(page, "Keep user_id").click();
-  await page.getByRole("button", { name: "Answer by voice" }).click();
+test("the explored-options card prompts a teach-back, and deciding without one still works", async ({ page }) => {
   await openFromAgenda(page, "Settings page");
-  await page.evaluate("window.__rec.onresult({ results: [[{ transcript: 'renames break integrators' }]] })");
-  await option(page, "Tabs").click();
-  await expect(page.locator("#basis")).toHaveValue("");
-});
-
-test("the explored-options card asks for its teach-back even as a quick check-in", async ({ page }) => {
-  await openFromAgenda(page, "Settings page");
+  await expect(page.locator(".why-panel label")).toContainText("what happens next");
   await option(page, "One page").click();
-  await expect(page.getByText("In a sentence: what happens next if you choose One page?")).toBeVisible();
-  const decide = page.locator("#now").getByRole("button", { name: "Decide", exact: true });
-  await expect(decide).toBeDisabled();
-  await page.locator("#basis").fill("Everything is on one page, so people scroll to API keys.");
-  await expect(decide).toBeEnabled();
+  await expect.poll(async () => (await state(page))?.answered?.["settings-redesign"]?.final).toBe("B");
 });
