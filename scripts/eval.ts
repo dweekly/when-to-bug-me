@@ -14,7 +14,7 @@ import { EFFORT, MAX_TOKENS, MODEL, PRICE_PER_MTOK } from "../src/shared/constan
 import { EXAMPLES } from "../src/shared/examples";
 import { parseFactOutput } from "../src/shared/fact";
 import { keptFact, topGuess, withFact } from "../src/shared/lifecycle";
-import { FACT_SCHEMA, routeSchema, factPrompt, routePrompt } from "../src/shared/prompts";
+import { FACT_SCHEMA, PROMPT_VERSION, factPrompt, routePrompt, routeSchema } from "../src/shared/prompts";
 import { enforceSettleInvariant, parseRouteOutput, verifiedQuotes } from "../src/shared/route";
 import type { Decision, Fact, Persona, RouteOutput, Rule } from "../src/shared/types";
 
@@ -169,13 +169,15 @@ async function main(): Promise<void> {
   }
   mkdirSync(new URL("../results/captures/", import.meta.url), { recursive: true });
   const file = new URL(`../results/captures/eval-${new Date().toISOString().replace(/[:.]/g, "-")}.json`, import.meta.url);
-  writeFileSync(file, `${JSON.stringify({ model: MODEL, effort: EFFORT, trials: TRIALS, spent_usd: spent, summary, raw }, null, 2)}\n`);
+  writeFileSync(file, `${JSON.stringify({ model: MODEL, effort: EFFORT, prompt_version: PROMPT_VERSION, trials: TRIALS, spent_usd: spent, summary, raw }, null, 2)}\n`);
   console.log(`spent $${spent.toFixed(3)}; wrote ${file.pathname}`);
-  // The canonical path is a before-and-after change: Berlin a check-in leaning accept under the default
-  // facts, then leaning decline and framed by the new fact after the flight reason. Both halves must hold.
+  // Every condition must hold in every trial; the canonical flight path (the first two checks: Berlin
+  // before and after the reason) is named separately because the demo's story depends on it.
   const [before, after] = summary;
-  if (before.passed < TRIALS || after.passed < TRIALS) {
-    console.error("the canonical flight path (before and after the reason) did not behave as designed in every trial");
+  if (before.passed < TRIALS || after.passed < TRIALS) console.error("the canonical flight path (before and after the reason) did not behave as designed in every trial");
+  const short = summary.filter((c) => c.passed < c.trials);
+  if (short.length) {
+    console.error(`${short.length} condition(s) did not pass every trial: ${short.map((c) => `${c.name} ${c.passed}/${c.trials}`).join("; ")}`);
     process.exit(1);
   }
 }
