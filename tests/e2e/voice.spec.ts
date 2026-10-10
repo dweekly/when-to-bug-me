@@ -134,3 +134,24 @@ test("a finished decision opened later has no box for speech, so listening pause
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "paused");
   expect(await recStopped(page, 0)).toBe(true);
 });
+
+test("speech-service failures back off, then stop and say so", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await page.locator("#voice-btn").click();
+  for (let i = 0; i < 3; i++) {
+    await expect.poll(() => recCount(page), { timeout: 5000 }).toBe(i + 1);
+    await page.evaluate("globalThis.__recs.at(-1).onerror({ error: 'network' }); globalThis.__recs.at(-1).onend()");
+  }
+  await expect(page.locator("#voice")).toHaveAttribute("data-state", "blocked");
+  await expect(page.locator("#voice-note")).toContainText("isn't responding");
+  await page.waitForTimeout(1500);
+  expect(await recCount(page)).toBe(3); // no further retries once it has given up
+});
+
+test("silence is not a failure: the session restarts right away", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await page.locator("#voice-btn").click();
+  for (let i = 0; i < 4; i++) await page.evaluate("globalThis.__recs.at(-1).onerror({ error: 'no-speech' }); globalThis.__recs.at(-1).onend()");
+  expect(await recCount(page)).toBe(5);
+  await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
+});

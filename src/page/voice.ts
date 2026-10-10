@@ -11,6 +11,7 @@
 // appended to the box's current text, so typing is never overwritten; unfinished words show only
 // beside the firefly.
 
+import { VOICE_MAX_FAILURES, VOICE_RETRY_BASE_MS } from "../shared/constants";
 import { h } from "./dom";
 
 /** Where recognized speech is written. `key` identifies the box (decision and field). */
@@ -50,7 +51,10 @@ type Mood = "resting" | "attentive" | "pleased";
 
 let enabled = false;
 let target: VoiceTarget | null = null;
-let session: { rec: SpeechRec; key: string; gen: number } | null = null;
+let session: { rec: SpeechRec; key: string; gen: number; failed: boolean } | null = null;
+/** Speech-service failures in a row; reset by any recognized speech. */
+let failures = 0;
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
 let generation = 0;
 let blocked = "";
 let heardTimer: ReturnType<typeof setTimeout> | undefined;
@@ -131,6 +135,7 @@ function toggle(): void {
   } else {
     enabled = true;
     blocked = "";
+    failures = 0;
     sync();
   }
   paint();
@@ -152,6 +157,7 @@ export function voiceOff(): void {
 }
 
 function stopSession(): void {
+  clearTimeout(retryTimer);
   if (!session) return;
   generation++; // results still in flight from this session are dropped
   const s = session;
@@ -177,6 +183,7 @@ function sync(): void {
   const key = target.key;
   rec.onresult = (e) => {
     if (gen !== generation || !target || target.key !== key) return;
+    failures = 0;
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const r = e.results[i];
@@ -189,20 +196,34 @@ function sync(): void {
   };
   rec.onerror = (e) => {
     if (gen !== generation) return;
+    // Silence and our own stop end a session normally; the service just needs restarting.
+    if (e.error === "no-speech" || e.error === "aborted") return;
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
       blocked = "permission was not given";
+      stopSession();
+      paint();
+      return;
+    }
+    failures++;
+    if (session) session.failed = true;
+    if (failures >= VOICE_MAX_FAILURES) {
+      blocked = `the speech service isn't responding (${e.error})`;
       stopSession();
       paint();
     }
   };
   rec.onend = () => {
     // The speech service ends sessions on its own after silence; pick up again if nothing changed.
+    // After a failure, wait a little longer each time before trying again.
     if (gen !== generation || !session) return;
+    const failed = session.failed;
     session = null;
-    sync();
+    clearTimeout(retryTimer);
+    if (failed) retryTimer = setTimeout(() => (sync(), paint()), VOICE_RETRY_BASE_MS * failures);
+    else sync();
     paint();
   };
-  session = { rec, key, gen };
+  session = { rec, key, gen, failed: false };
   try {
     rec.start();
   } catch {

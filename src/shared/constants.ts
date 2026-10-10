@@ -66,3 +66,9 @@ export const MAX_OPTION_NOTES = 2;
 /** How long the Undo bar stays after clicking an option, before the answer is sent. Long enough to
  *  catch a misclick, short enough that the next card isn't kept waiting. Heuristic. */
 export const UNDO_WINDOW_MS = 4000;
+
+/** Consecutive speech-service failures (network and the like) before voice stops and says so. Heuristic. */
+export const VOICE_MAX_FAILURES = 3;
+
+/** Wait before retrying after a speech-service failure, in ms, multiplied by the failure count. Heuristic. */
+export const VOICE_RETRY_BASE_MS = 1000;
