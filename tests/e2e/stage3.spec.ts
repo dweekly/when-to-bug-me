@@ -162,3 +162,26 @@ test("a reload during the Undo window brings the choice back unsent, with the re
   await expect(page.locator("#now")).toContainText("reloaded before that answer was sent");
   expect((await stored(page))?.answered?.["incident-action-items"]).toBeUndefined();
 });
+
+test("a short accepted question can be sent back to the agent", async ({ page }) => {
+  await openDecision(page, "onsite-flight");
+  await page.getByRole("button", { name: "Ask a question" }).click();
+  await page.locator("#question").fill("Wi-Fi?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await page.getByRole("button", { name: "Ask the agent, and set this aside" }).click();
+  await expect.poll(async () => (await stored(page))?.punts?.["onsite-flight"]?.reason).toBe("Wi-Fi?");
+});
+
+test("a failed question never attaches its error to an edited question", async ({ page }) => {
+  await openDecision(page, "onsite-flight");
+  await page.route("**/api/ask", async (route) => {
+    await new Promise((r) => setTimeout(r, 800));
+    await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "question is longer than 600 characters" }) });
+  });
+  await page.getByRole("button", { name: "Ask a question" }).click();
+  await page.locator("#question").fill("x".repeat(601));
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await page.locator("#question").fill("Is there wifi aboard?");
+  await page.waitForTimeout(1200);
+  await expect(page.locator(".ask-answer")).toHaveCount(0);
+});
