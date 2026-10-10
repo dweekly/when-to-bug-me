@@ -188,7 +188,7 @@ export async function askQuestion(flow: Flow, d: Decision): Promise<void> {
     flow.message = "";
     log("question", { id: d.id, question: q, answerable: r.answerable, answer: r.answer, source: r.source });
   } catch (e) {
-    if (!alive(s0, flow) || askSeq.get(flow.id) !== seq) return;
+    if (!alive(s0, flow) || askSeq.get(flow.id) !== seq || flow.question.trim() !== q) return;
     flow.askAnswer = { answerable: false, answer: `Couldn't reach Claude for that (${(e as Error).message}).`, source: "code" };
     flow.message = "";
   }
@@ -198,10 +198,17 @@ export async function askQuestion(flow: Flow, d: Decision): Promise<void> {
 
 /** An unanswered question goes back to the asking agent, and the decision waits for the answer. */
 export function sendQuestionToAgent(flow: Flow, d: Decision): void {
-  flow.puntKind = "info";
-  flow.puntReason = flow.question;
-  flow.puntFrom = "choose";
-  setAside(flow, d);
+  // The question was already accepted by Ask, so it is forwarded as is: the set-aside minimum
+  // (MIN_PUNT_CHARS, for a reason typed from scratch) does not apply to it.
+  const question = flow.question.trim().replace(/\s+/g, " ");
+  const punt: Punt = { id: d.id, kind: "info", reason: question, at: new Date().toISOString(), instruction: puntInstruction("info", question, Q.persona.first_name) };
+  S.punts[d.id] = punt;
+  log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: "ask" });
+  glowEvent({ kind: "punted" });
+  delete S.flows[d.id];
+  announce(`Set aside. The agent was asked: ${punt.instruction}`);
+  window.dispatchEvent(new CustomEvent("bugme:set-aside", { detail: { id: d.id } }));
+  next();
 }
 
 export async function answer(d: Decision, route: RouteKind): Promise<void> {
