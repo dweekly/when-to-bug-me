@@ -21,6 +21,7 @@ import {
 } from "../shared/lifecycle";
 import type { AskOutput, Card, Decision, FactOutput, RouteKind, Source } from "../shared/types";
 import { api } from "./api";
+import { drainVoice } from "./voice";
 import { renderNow } from "./card";
 import { ROUTE_LABEL, agenda, routeOf, waitingIds } from "./derive";
 import { announce } from "./dom";
@@ -86,7 +87,10 @@ export function choose(flow: Flow, d: Decision, route: RouteKind, key: string): 
   renderNow();
   pendingAnswer = {
     flow,
-    timer: setTimeout(() => {
+    timer: setTimeout(async () => {
+      // A phrase still being spoken belongs to this answer: let it finish first (voice.ts).
+      await drainVoice();
+      if (pendingAnswer?.flow !== flow) return; // undone or cancelled while the phrase finished
       pendingAnswer = null;
       if (!alive(s0, flow) || flow.phase !== "pending") return;
       if (!showing(flow)) {

@@ -11,7 +11,7 @@
 // appended to the box's current text, so typing is never overwritten; unfinished words show only
 // beside the firefly.
 
-import { VOICE_MAX_FAILURES, VOICE_RETRY_BASE_MS } from "../shared/constants";
+import { VOICE_DRAIN_MS, VOICE_MAX_FAILURES, VOICE_RETRY_BASE_MS } from "../shared/constants";
 import { h } from "./dom";
 
 /** Where recognized speech is written. `key` identifies the box (decision and field). */
@@ -55,6 +55,37 @@ let session: { rec: SpeechRec; key: string; gen: number; failed: boolean } | nul
 /** Speech-service failures in a row; reset by any recognized speech. */
 let failures = 0;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
+/** Words heard but not yet final in the running session, and who is waiting for them to finish. */
+let interimPending = false;
+let drainWaiters: (() => void)[] = [];
+
+function releaseDrain(): void {
+  const w = drainWaiters;
+  drainWaiters = [];
+  for (const f of w) f();
+}
+
+/**
+ * Before an answer is sent: if a phrase is still being heard, ask the service to finish it (stop()
+ * still delivers the captured words) and wait for it, at most VOICE_DRAIN_MS, so the last words of a
+ * reason or condition reach the box before the answer goes out.
+ */
+export function drainVoice(): Promise<void> {
+  if (!session || !interimPending) return Promise.resolve();
+  const s = session;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      drainWaiters = drainWaiters.filter((f) => f !== done);
+      resolve();
+    }, VOICE_DRAIN_MS);
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    drainWaiters.push(done);
+    s.rec.stop();
+  });
+}
 let generation = 0;
 let blocked = "";
 let heardTimer: ReturnType<typeof setTimeout> | undefined;
@@ -158,6 +189,8 @@ export function voiceOff(): void {
 
 function stopSession(): void {
   clearTimeout(retryTimer);
+  interimPending = false;
+  releaseDrain();
   if (!session) return;
   generation++; // results still in flight from this session are dropped
   const s = session;
@@ -192,7 +225,9 @@ function sync(): void {
       if (r.isFinal) append(target, words);
       else interim += `${words} `;
     }
+    interimPending = Boolean(interim.trim());
     heard(interim.trim() || lastFinal);
+    if (!interimPending) releaseDrain();
   };
   rec.onerror = (e) => {
     if (gen !== generation) return;
@@ -216,6 +251,8 @@ function sync(): void {
     // The speech service ends sessions on its own after silence; pick up again if nothing changed.
     // After a failure, wait a little longer each time before trying again.
     if (gen !== generation || !session) return;
+    interimPending = false;
+    releaseDrain();
     const failed = session.failed;
     session = null;
     clearTimeout(retryTimer);

@@ -72,3 +72,7 @@ export const VOICE_MAX_FAILURES = 3;
 
 /** Wait before retrying after a speech-service failure, in ms, multiplied by the failure count. Heuristic. */
 export const VOICE_RETRY_BASE_MS = 1000;
+
+/** Longest wait for a phrase in progress to finish before an answer is sent, in ms. Heuristic: the
+ *  speech service usually delivers its final words well within this after being asked to stop. */
+export const VOICE_DRAIN_MS = 1500;

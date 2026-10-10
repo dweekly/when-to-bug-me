@@ -155,3 +155,22 @@ test("silence is not a failure: the session restarts right away", async ({ page 
   expect(await recCount(page)).toBe(5);
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
 });
+
+test("a phrase still being spoken when the Undo window ends goes with the answer", async ({ page }) => {
+  await page.evaluate("localStorage.setItem('bugme.undoMs', '1200')");
+  await page.reload();
+  await openDecision(page, "incident-action-items");
+  await page.locator("#voice-btn").click();
+  await page.getByRole("button", { name: "Yes, but…" }).click();
+  await option(page, "File all five as drafted").click();
+  // Words heard but not final yet; the stand-in delivers them as final when asked to stop.
+  await page.evaluate(() => {
+    const rec = (globalThis as unknown as { __recs: { onresult: (e: unknown) => void; stop: () => void; onend: (() => void) | null }[] }).__recs.at(-1)!;
+    rec.onresult({ resultIndex: 0, results: [{ isFinal: false, 0: { transcript: "only if every ticket links" } }] });
+    rec.stop = function () {
+      this.onresult({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: "only if every ticket links the incident doc" } }] });
+      this.onend?.();
+    };
+  });
+  await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.conditions, { timeout: 6000 }).toBe("only if every ticket links the incident doc");
+});
