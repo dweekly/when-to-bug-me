@@ -216,3 +216,35 @@ test("Send this instead waits for a reason still being spoken", async ({ page })
   await page.getByRole("button", { name: "Send this instead" }).click();
   await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.basis).toBe("because I own the database");
 });
+
+test("skip while a spoken reason finishes: nothing is sent, and a second click sends nothing twice", async ({ page }) => {
+  const facts: string[] = [];
+  page.on("request", (r) => r.url().includes("/api/fact") && facts.push(r.url()));
+  await openDecision(page, "onsite-flight");
+  await page.locator("#voice-btn").click();
+  await option(page, "9:40am flight").click();
+  const push = page.locator("#now .followup.push .primary");
+  await expect(page.locator("#now .followup.push .primary, #why").first()).toBeVisible();
+  if (await push.count()) await push.click();
+  await expect(page.locator("#why")).toBeVisible();
+  await holdPhrase(page, "school drop", "school drop-off is at 7:45", 800);
+  await page.locator("#now .followup").getByRole("button", { name: "Tell Bug Me" }).click();
+  await page.locator("#now .followup").getByRole("button", { name: "skip" }).click();
+  await page.waitForTimeout(1200);
+  expect(facts).toHaveLength(0);
+  await expect(page.locator("#fact-text")).toHaveCount(0);
+});
+
+test("leaving the card while a set-aside reason finishes does not set it aside or pull you back", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await page.locator("#voice-btn").click();
+  await page.locator("#now .not-now").click();
+  await page.locator(".chip-btn").first().click();
+  await page.locator("#punt-reason").fill("What the SDK owners think of renames.");
+  await holdPhrase(page, "and the", "and the docs team", 800);
+  await page.locator("#now .punt").getByRole("button", { name: "Set aside" }).click();
+  await goHome(page);
+  await page.waitForTimeout(1200);
+  await expect(page).toHaveURL(/#\/$/);
+  expect((await stored(page))?.punts?.["api-rename"]).toBeUndefined();
+});

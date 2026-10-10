@@ -147,7 +147,7 @@ export function cancelPendingUnlessOn(id: string | null): void {
 export async function chooseOther(flow: Flow, d: Decision, route: RouteKind): Promise<void> {
   const s0 = S;
   await drainVoice(); // a reason still being spoken goes with it
-  if (!alive(s0, flow) || flow.phase !== "choose") return;
+  if (!alive(s0, flow) || flow.phase !== "choose" || !showing(flow)) return;
   const text = flow.other.trim().replace(/\s+/g, " ");
   if (text.length < 4) {
     flow.error = "Say what you'd like the agent to do instead.";
@@ -325,8 +325,10 @@ export function recordLateReason(d: Decision, basis: string): void {
 
 export async function propose(flow: Flow, d: Decision): Promise<void> {
   const s0 = S;
+  const phase0 = flow.phase;
   await drainVoice(); // the last words of a spoken reason belong to it
-  if (!alive(s0, flow)) return;
+  // Skipped, or already sent by an earlier click, while the phrase finished: nothing more to do.
+  if (!alive(s0, flow) || flow.phase !== phase0) return;
   const basis = flow.basis.trim();
   if (!hasBasis(basis)) {
     done(flow, "");
@@ -440,7 +442,8 @@ export function next(): void {
 export async function setAside(flow: Flow, d: Decision): Promise<void> {
   const s0 = S;
   await drainVoice(); // a reason still being spoken goes with it
-  if (!alive(s0, flow) || flow.phase !== "punting") return;
+  // Left the card while the phrase finished: the set-aside is not made, and Next must not pull them back.
+  if (!alive(s0, flow) || flow.phase !== "punting" || !showing(flow)) return;
   const problem = puntProblem(flow.puntKind, flow.puntReason);
   if (problem) {
     flow.error = problem;
