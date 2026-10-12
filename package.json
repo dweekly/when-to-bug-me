@@ -12,6 +12,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "deploy:staging": "npm run build && wrangler deploy --env staging",
+    "deploy:production": "npm run build && wrangler deploy --env=\"\"",
     "record": "esbuild scripts/record.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/record.mjs --log-level=warning && node dist/record.mjs",
     "eval": "esbuild scripts/eval.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/eval.mjs --log-level=warning && node dist/eval.mjs",
     "preview:visuals": "node scripts/build-visuals-preview.mjs"

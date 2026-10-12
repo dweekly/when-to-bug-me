@@ -1,12 +1,10 @@
 # Roadmap
 
-fresh as of 2026-10-09 · stack-ranked; the top is the current work. The prototype's own stages are in `docs/BUILD-PLAN.md`; this file holds what comes after, and concerns raised in review that belong outside the current effort.
+fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototype's own stages are in `docs/BUILD-PLAN.md`; this file holds what comes after, and concerns raised in review that belong outside the current effort.
 
-## Prototype, before October 13
+## Prototype, before submission (October 16)
 
-- **Stage 3** ([`docs/STAGE-3.md`](docs/STAGE-3.md)): piles on Home with one recommended pile; a decision card that briefs before it asks, answered by clicking an option (with Undo), with "Yes, but…", "Something else" and "Ask a question"; per-option pros, cons and consequences from Claude; always-on voice shown by the clay firefly.
-- **The explainer page at `/`** (branch `stage/2f-explainer`), with the overnight sort redrawn as a queue forming, to match Home.
-- The readiness eval (`npm run eval`): three fresh provider calls per condition on each designed pair, against hand-written expected outcomes, plus one paraphrased reason through the whole loop.
+- A real-microphone check of the voice firefly in Chrome and Safari (the tests use a stand-in recognizer).
 - A keyboard-only and screen-reader pass; Lighthouse at desktop and phone widths.
 - Production on `bugme.weekly.org`, on David's go.
 

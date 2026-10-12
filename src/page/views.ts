@@ -8,7 +8,7 @@ import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
 import { cancelPendingUnlessOn, editRule, resume, startSession, undo } from "./actions";
 import { markButton, renderNow } from "./card";
-import { setVoiceTarget } from "./voice";
+import { type Mood as Mood6, setGlowMood, setVoiceTarget } from "./voice";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
@@ -22,7 +22,7 @@ let ruleDraft: { id: string; text: string; error: string; focus: boolean } | nul
 /** Glow level at which the firefly is delighted rather than pleased. Heuristic, near the top of 0..1. */
 const DELIGHTED_AT = 0.85;
 
-/** The firefly's six drawn moods (public/firefly/*.svg), picked from the glow state. */
+/** The firefly's six moods (clay loops in public/firefly/clay/), picked from the glow state. */
 export function moodAsset(mood: Mood, glow: number, waiting: number): string {
   if (waiting === 0) return "resting";
   if (mood === "sheepish") return "sheepish";
@@ -66,11 +66,12 @@ function renderBar(route: Route): void {
   const settledCount = agenda().settled.filter((id) => !S.reopened.includes(id)).length;
   const nav = (r: Route, label: string) =>
     h("a", { href: hrefFor(r), class: "nav", "aria-current": route.view === r.view ? "page" : null }, label);
+  // The one firefly is the clay one in the corner (voice.ts): off, it shows the morning's glow.
+  setGlowMood(asset as Mood6, status[asset]);
   $("bar").replaceChildren(
     h(
       "a",
-      { href: "#/", class: "brand", title: status[asset] },
-      h("img", { src: `/firefly/${asset}.svg`, alt: `Bug Me's firefly. ${status[asset]}`, width: 40, height: 40, class: "firefly", "data-mood": asset }),
+      { href: "#/", class: "brand" },
       h("span", { class: "wordmark" }, "Bug Me"),
     ),
     h(

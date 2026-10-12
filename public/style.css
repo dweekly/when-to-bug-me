@@ -46,7 +46,6 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
   padding: 14px max(16px, 4vw); border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.firefly { width: 40px; height: 40px; }
 .wordmark { font: 700 20px/1 var(--display); }
 .bar nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .nav { padding: 6px 10px; border-radius: 8px; text-decoration: none; color: var(--ink-2); font-size: 15px; }
@@ -209,13 +208,11 @@ textarea:disabled { opacity: 0.5; }
 .voice { position: fixed; top: 6px; right: max(10px, 2vw); z-index: 20; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
 .voice-btn { pointer-events: auto; width: 64px; height: 64px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; position: relative; }
 .voice-btn:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
-.voice-mood { position: absolute; inset: 0; display: none; }
-.voice[data-mood="resting"] .voice-mood[data-mood="resting"],
-.voice[data-mood="attentive"] .voice-mood[data-mood="attentive"],
-.voice[data-mood="pleased"] .voice-mood[data-mood="pleased"] { display: block; }
+.voice-mood { position: absolute; inset: 0; display: block; }
 .voice-clip { width: 64px; height: 64px; display: block; }
 .voice-clip.still { display: none; }
-.voice[data-state="off"] .voice-btn { opacity: 0.75; }
+/* Off: a small microphone badge says the firefly is also the way to talk. */
+.voice[data-state="off"] .voice-btn::after { content: "🎙"; position: absolute; right: 0; bottom: 2px; font-size: 13px; line-height: 1; background: var(--night-3); border: 1px solid var(--line); border-radius: 999px; padding: 3px 4px; }
 .voice[data-state="listening"] .voice-btn::after { content: ""; position: absolute; right: 4px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: #ff5d5d; box-shadow: 0 0 8px #ff5d5d; }
 .voice[data-state="paused"] .voice-btn::after { content: ""; position: absolute; right: 4px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-3); }
 .voice-heard { margin: 2px 0 0; max-width: 260px; text-align: right; font-size: 14px; color: var(--ink); font-style: italic; background: var(--night-2); border-radius: 10px; padding: 0 8px; }

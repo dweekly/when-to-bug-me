@@ -17,10 +17,13 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SpendCounter"] }],
   "observability": { "enabled": true },
+  // Production serves bugme.weekly.org (weekly.org's DNS is on Cloudflare); staging keeps workers.dev only.
+  "routes": [{ "pattern": "bugme.weekly.org", "custom_domain": true }],
   "env": {
     "staging": {
       "name": "when-to-bug-me-staging",
       "workers_dev": true,
+      "routes": [],
       "durable_objects": {
         "bindings": [{ "name": "SPEND", "class_name": "SpendCounter" }]
       }

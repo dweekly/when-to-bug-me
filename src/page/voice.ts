@@ -47,7 +47,9 @@ const HEARD_GLOW_MS = 1500;
 /** How long the last heard words stay beside the firefly after speech stops, in ms. Heuristic. */
 const HEARD_TEXT_MS = 4000;
 
-type Mood = "resting" | "attentive" | "pleased";
+/** The six clay moods (docs/brand). Listening shows attentive, or pleased while it hears speech;
+ *  off, the firefly shows the morning's glow, which views.ts sets from the person's reasons. */
+export type Mood = "resting" | "attentive" | "pleased" | "delighted" | "disappointed" | "sheepish";
 
 let enabled = false;
 let target: VoiceTarget | null = null;
@@ -91,6 +93,8 @@ let blocked = "";
 let heardTimer: ReturnType<typeof setTimeout> | undefined;
 let textTimer: ReturnType<typeof setTimeout> | undefined;
 let pleased = false;
+let glowMood: Mood = "attentive";
+let glowLabel = "";
 
 function recognizer(): (new () => SpeechRec) | null {
   const W = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
@@ -108,7 +112,7 @@ export function initVoice(): void {
   const btn = h(
     "button",
     { type: "button", class: "voice-btn", id: "voice-btn", "aria-pressed": "false", "aria-label": "Listen: say why at any time", onclick: () => toggle() },
-    ...(["resting", "attentive", "pleased"] as Mood[]).map((m) => clip(m)),
+    clip(),
   );
   const heard = h("p", { class: "voice-heard", id: "voice-heard", "aria-live": "polite" });
   const note = h("p", { class: "voice-note", id: "voice-note" });
@@ -117,21 +121,43 @@ export function initVoice(): void {
   paint();
 }
 
-/** One mood's clay loop, with its still for reduced motion (the README's recipe: Safari's file first). */
-function clip(m: Mood): HTMLElement {
-  const v = h(
-    "video",
-    { class: `voice-clip moving`, "data-mood": m, autoplay: true, loop: true, muted: true, playsinline: true, poster: `/firefly/clay/${m}.png`, width: 64, height: 64, "aria-hidden": "true" },
+/** The firefly's clay loop, one element whose source follows the mood, with a still for reduced motion
+ *  (the brand README's recipe: Safari's HEVC file first, then VP9). */
+function clip(): HTMLElement {
+  const v = h("video", { class: "voice-clip moving", autoplay: true, loop: true, muted: true, playsinline: true, width: 64, height: 64, "aria-hidden": "true" }) as HTMLVideoElement;
+  v.muted = true; // the attribute alone does not satisfy every browser's autoplay rule
+  const still = h("img", { class: "voice-clip still", alt: "", width: 64, height: 64 });
+  return h("span", { class: "voice-mood" }, v, still);
+}
+
+let shownMood: Mood | null = null;
+
+/** Point the clip at a mood's files, only when the mood changes (so the loop does not restart). */
+function showMood(m: Mood): void {
+  if (shownMood === m) return;
+  shownMood = m;
+  const v = document.querySelector<HTMLVideoElement>("#voice video.voice-clip");
+  const still = document.querySelector<HTMLImageElement>("#voice img.voice-clip");
+  if (still) still.src = `/firefly/clay/${m}.png`;
+  if (!v) return;
+  v.poster = `/firefly/clay/${m}.png`;
+  v.replaceChildren(
     h("source", { src: `/firefly/clay/${m}_safari.mp4`, type: 'video/mp4; codecs="hvc1"' }),
     h("source", { src: `/firefly/clay/${m}.webm`, type: "video/webm" }),
-  ) as HTMLVideoElement;
-  v.muted = true; // the attribute alone does not satisfy every browser's autoplay rule
-  const still = h("img", { class: "voice-clip still", "data-mood": m, src: `/firefly/clay/${m}.png`, alt: "", width: 64, height: 64 });
-  return h("span", { class: "voice-mood", "data-mood": m }, v, still);
+  );
+  v.load();
+  void v.play?.().catch(() => {});
+}
+
+/** The morning's glow, shown while not listening (views.ts calls this on every render). */
+export function setGlowMood(m: Mood, label: string): void {
+  glowMood = m;
+  glowLabel = label;
+  paint();
 }
 
 function mood(): Mood {
-  if (!enabled || blocked) return "resting";
+  if (!enabled || blocked) return glowMood;
   return pleased ? "pleased" : "attentive";
 }
 
@@ -141,13 +167,14 @@ function paint(): void {
   if (!root || root.hidden) return;
   const m = mood();
   root.dataset.mood = m;
+  showMood(m);
   root.dataset.state = !enabled ? "off" : blocked ? "blocked" : session ? "listening" : "paused";
   const btn = document.getElementById("voice-btn");
   btn?.setAttribute("aria-pressed", String(enabled && !blocked));
-  btn?.setAttribute(
-    "aria-label",
-    !enabled ? "Listen: say why at any time" : blocked ? `Microphone unavailable: ${blocked}` : session ? "Listening. Click to stop." : "Listening paused here. Click to stop.",
-  );
+  const label =
+    !enabled ? `Bug Me's firefly. ${glowLabel} Click to listen: say why at any time.` : blocked ? `Microphone unavailable: ${blocked}` : session ? "Listening. Click to stop." : "Listening paused here. Click to stop.";
+  btn?.setAttribute("aria-label", label);
+  btn?.setAttribute("title", label);
   const note = document.getElementById("voice-note");
   if (note) {
     note.textContent = blocked

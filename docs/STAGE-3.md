@@ -1,5 +1,7 @@
 # Stage 3: piles on Home, and a decision card you can answer at a glance
 
+~~Home piles~~ (#13), ~~the decision card, answer types and always-on voice~~ (#14, #15): merged 2026-10-11. What remains is in `ROADMAP.md`.
+
 ## Why
 
 David's review of the stage 2 app (2026-10-09):
