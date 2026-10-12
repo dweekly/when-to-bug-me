@@ -70,7 +70,7 @@ export const TOURS: Tour[] = [
       { decision: "berlin-sync", setAside: true },
     ],
     steps: [
-      { go: "#/", target: "#start-card", title: "Start here", text: "Bug Me sorted last night's questions into piles, one per project. Start with this one; it says why.", until: "next" },
+      { go: "#/", target: "#start-card", title: "Start here", text: "Bug Me sorted last night's questions into piles, one per project. It suggests this one first, and says why.", until: "next" },
       { target: "#agenda", title: "Then, in order", text: "Every waiting question in the order to work it. ● a real decision, ◐ a quick check.", until: "next" },
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have booked the cheap 6:05am itself. Code stopped it: $212 and only partly refundable.", until: "next" },
       { target: "#now .viz", title: "See it, don't read it", text: "A picture of the trade-off: the 6:05 lands before the 10:00 start. Each option lists its pros, cons and cost.", until: "next" },
@@ -80,7 +80,7 @@ export const TOURS: Tour[] = [
       { target: "#now .followup", title: "I'm curious: why?", text: "You gave no reason, and your answer surprised it. Say why, or use Jordan's words.", until: { appear: "#fact-text" }, example: { textarea: "#why", decision: "onsite-flight" } },
       { target: "#now .followup", title: "A reason becomes guidance", text: "Keep it (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The 7:30am Berlin invite was checked again under your new guidance.", until: { click: "#now .rerouted button" } },
-      { target: "#now .not-now", title: "Not now", text: "Not ready to decide? Set it aside, and say what you'd need.", until: { click: "#now .not-now" } },
+      { target: "#now .skip-q", title: "Skip", text: "Not ready to decide? Set it aside, and say what you'd need.", until: { click: "#now .skip-q" } },
       { target: "#now .punt", title: "What would you need?", text: "Pick one and say it in a sentence. The agent is told exactly that.", until: { event: "bugme:set-aside" }, example: { textarea: "#punt-reason", text: "Ask the Berlin team whether 9:30am Pacific works; that's still 18:30 for them." } },
       { go: "#/", target: "#aside", title: "Set aside, not lost", text: "Back on the overview, it waits here with your reason until you resume it.", until: "next" },
     ],

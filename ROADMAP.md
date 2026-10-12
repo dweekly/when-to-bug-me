@@ -27,4 +27,5 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 
 ## Tech debt to schedule
 
+- Seven formatting decisions have an option labeled "Skip" (leave the code as is), the same word as the card's set-aside link. Those cards reach Jordan only after a rule change. Relabel them ("Leave as is") at the next re-recording, since the label is part of the recorded routing prompt.
 - Re-routing candidates come from topic tags plus the model's suggestions; a rule edit re-checks everything waiting. A cheaper, more complete dependency signal would help.

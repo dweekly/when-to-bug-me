@@ -76,7 +76,7 @@ export interface State {
   newFacts: string[];
   /** Bumped on every rule or fact change; answers from an older version are ignored. */
   version: number;
-  /** Decisions set aside with "Not now", by id. Removed on Resume; the record keeps the history. */
+  /** Decisions set aside with "Skip", by id. Removed on Resume; the record keeps the history. */
   punts: Record<string, Punt>;
   /** The project the person is working through in focus, so Next finishes it before moving on. */
   sessionProject: string | null;

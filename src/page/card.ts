@@ -148,18 +148,10 @@ function drawNow(): void {
       h("span", { class: "route-label" }, ROUTE_LABEL[route]),
       h("span", { class: "chain" }, d.agent.join(" › ")),
     ),
-    // Brief first, then why it is the person's, then the question.
+    // Brief first, then why it is the person's, then any more context, then the question; the
+    // conversation starts below the options.
     h("p", { class: "briefing" }, c.briefing || c.in_your_terms),
     why,
-    h("h3", { id: "now-q" }, c.headline || d.question),
-    lastPunt
-      ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
-      : null,
-    S.changes[id] ? h("p", { class: "change-note" }, S.changes[id]) : null,
-    shared,
-    opts,
-    reach,
-    flow.phase === "punting" ? puntPanel(flow, d) : thinkArea(flow, d, route),
     h(
       "details",
       { class: "more" },
@@ -170,6 +162,15 @@ function drawNow(): void {
       c.adjusted ? h("p", { class: "quiet" }, "Claude's own reasoning: ", c.why_here) : null,
       h("p", { class: "quiet" }, `Routing, briefing and notes: ${SOURCE_LABEL[c.source]}.`),
     ),
+    h("h3", { id: "now-q" }, c.headline || d.question),
+    lastPunt
+      ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
+      : null,
+    S.changes[id] ? h("p", { class: "change-note" }, S.changes[id]) : null,
+    shared,
+    opts,
+    reach,
+    flow.phase === "punting" ? puntPanel(flow, d) : thinkArea(flow, d, route),
     flow.phase === "punting" ? null : followup(d, route),
   );
   arrived.add(id);
@@ -217,7 +218,7 @@ function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nul
     h(
       "div",
       { class: "think-actions" },
-      h("button", { type: "button", class: "primary send", onclick: () => void send(flow, d, route) }, "Send"),
+      h("button", { type: "button", class: "linkish skip-q", onclick: () => startPunt(flow) }, "Skip"),
       ex && Q.mode !== "live"
         ? h(
             "p",
@@ -238,7 +239,7 @@ function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nul
             " (recorded; live calls are off)",
           )
         : null,
-      h("button", { type: "button", class: "linkish not-now", onclick: () => startPunt(flow) }, "Not now"),
+      h("button", { type: "button", class: "primary send", onclick: () => void send(flow, d, route) }, "Send"),
     ),
   );
   thinkNodes.set(flow.id, { el, route, flow });
@@ -301,9 +302,9 @@ export function paintThink(): void {
   const msg = area.querySelector(".think-msg")!;
   const failed = flow.parseError && flow.parseError.rev === flow.rev ? `Couldn't read that just now (${flow.parseError.message}). Pick an option, or read it again.` : "";
   msg.textContent = flow.error || (choosing ? flow.message || failed : "");
-  for (const el of area.querySelectorAll<HTMLElement>(".example, .not-now")) el.hidden = !choosing;
+  for (const el of area.querySelectorAll<HTMLElement>(".example, .skip-q")) el.hidden = !choosing;
   // While a Send is out, setting the card aside would leave it armed behind the panel.
-  const notNow = area.querySelector<HTMLButtonElement>(".not-now");
+  const notNow = area.querySelector<HTMLButtonElement>(".skip-q");
   if (notNow) notNow.disabled = isSending(flow);
 
   // A figure that colours the picked option follows the pick.
@@ -350,7 +351,7 @@ function drawnOnce(id: string, fig: HTMLElement): HTMLElement {
   return fig;
 }
 
-/** Open the "Not now" panel on this card, remembering where to return if the person cancels. */
+/** Open the "Skip" panel on this card, remembering where to return if the person cancels. */
 function startPunt(flow: Flow): void {
   if (isSending(flow)) return; // a Send in progress is finished first
   flow.puntFrom = flow.phase === "pushback" ? "pushback" : "choose";
@@ -400,7 +401,6 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
     h(
       "div",
       { class: "actions" },
-      h("button", { type: "button", class: "primary", onclick: () => void setAside(flow, d) }, "Set aside"),
       h(
         "button",
         {
@@ -415,6 +415,7 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
         },
         "Cancel",
       ),
+      h("button", { type: "button", class: "primary", onclick: () => void setAside(flow, d) }, "Set aside"),
     ),
   );
 }
@@ -462,11 +463,11 @@ export function followup(d: Decision, route: RouteKind): Child {
       h(
         "div",
         { class: "actions" },
-        h("button", { type: "button", class: "primary", onclick: () => void finalize(F!, d, route, F!.choice!, "kept") }, "Yes, this one is an exception"),
+        h("button", { type: "button", class: "linkish skip-q", onclick: () => startPunt(F!) }, "Skip"),
         ...d.options
           .filter((o) => o.key !== F!.choice)
           .map((o) => h("button", { type: "button", class: "ghost", onclick: () => void finalize(F!, d, route, o.key, "changed") }, `Change to “${o.label}”`)),
-        h("button", { type: "button", class: "ghost", onclick: () => startPunt(F!) }, "Not now"),
+        h("button", { type: "button", class: "primary", onclick: () => void finalize(F!, d, route, F!.choice!, "kept") }, "Yes, this one is an exception"),
       ),
     );
   }
@@ -502,8 +503,8 @@ export function followup(d: Decision, route: RouteKind): Child {
       h(
         "div",
         { class: "actions" },
+        h("button", { type: "button", class: "linkish", onclick: () => done(flow, "Skipped the why.") }, "Skip"),
         h("button", { type: "button", class: "primary", onclick: () => { flow.basis = ta.value; void propose(flow, d); } }, "Tell Bug Me"),
-        h("button", { type: "button", class: "linkish", onclick: () => done(flow, "Skipped the why.") }, "skip"),
       ),
     );
   }
@@ -527,8 +528,8 @@ export function followup(d: Decision, route: RouteKind): Child {
         h(
           "div",
           { class: "actions" },
-          h("button", { type: "button", class: "primary", onclick: () => void keepFact(flow, d, input.value, p) }, "Keep it"),
           h("button", { type: "button", class: "ghost", onclick: () => { log("guidance_discarded", { id: d.id, text: p.text }); done(flow, "Discarded."); } }, "Don't keep"),
+          h("button", { type: "button", class: "primary", onclick: () => void keepFact(flow, d, input.value, p) }, "Keep it"),
         ),
       );
     }

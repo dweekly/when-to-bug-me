@@ -32,7 +32,7 @@ test("a set-aside the app rejects keeps the tour on that step", async ({ page })
   await page.locator("#now .followup .primary").first().click();
   await page.locator("#now .followup .actions .primary").first().click();
   await page.locator("#now .rerouted button").click();
-  await page.locator("#now .not-now").click();
+  await page.locator("#now .skip-q").click();
   await expect(title(page)).toHaveText("What would you need?");
   await page.locator("#now .punt .primary").click(); // no kind chosen: rejected
   await expect(page.locator("#now .punt [role=alert]")).toBeVisible();

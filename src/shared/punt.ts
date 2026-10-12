@@ -1,4 +1,4 @@
-// "Not now": the person sets a decision aside, and says what they would need to decide it. The
+// "Skip": the person sets a decision aside, and says what they would need to decide it. The
 // reason is required; each kind of reason asks a pointed question so the agent can act on it. The
 // instruction to the agent is a template (no model call), and it is simulated: nothing is gathered.
 

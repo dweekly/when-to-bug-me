@@ -559,7 +559,7 @@ export function next(): void {
 }
 
 /**
- * "Not now": set the decision aside with the person's reason. Allowed before an answer is final
+ * "Skip": set the decision aside with the person's reason. Allowed before an answer is final
  * (including at pushback). The decision stays unanswered and its guess stays sealed; the agent is told
  * what to gather (simulated). It comes back only when the person resumes it.
  */
