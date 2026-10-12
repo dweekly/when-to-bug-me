@@ -5,8 +5,7 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 ## Prototype, before submission (October 16)
 
 - A real-microphone check of the voice firefly in Chrome and Safari (the tests use a stand-in recognizer).
-- A keyboard-only and screen-reader pass; Lighthouse at desktop and phone widths.
-- Production on `bugme.weekly.org`, on David's go.
+- A keyboard-only and screen-reader pass (Lighthouse at phone width: explainer 100, app 100 after the contrast fix).
 
 ## After the prototype (from the plan review)
 

@@ -127,8 +127,9 @@ function renderHome(view: HTMLElement): void {
       h("p", { class: "quiet" }, rec ? s.section_reason : `${items.length} · about ${s.minutes} min · ${agentsLabel(s.unblocks)}`),
       h(
         "p",
-        { class: "tally", "aria-label": `${s.decisions.length} decisions, ${s.check_ins.length} quick checks` },
+        { class: "tally" },
         h("span", { "aria-hidden": "true" }, `${GLYPH.decide} ${s.decisions.length} decision${s.decisions.length === 1 ? "" : "s"}   ${GLYPH.check_in} ${s.check_ins.length} quick check${s.check_ins.length === 1 ? "" : "s"}`),
+        h("span", { class: "sr-only" }, `${s.decisions.length} decisions, ${s.check_ins.length} quick checks`),
       ),
       rec ? h("ul", { class: "peek" }, ...items.slice(0, 3).map((it) => h("li", {}, headline(it.id)))) : null,
       h(

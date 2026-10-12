@@ -9,7 +9,7 @@
   --line: #2a2f4d;
   --ink: #ecebf5;
   --ink-2: #9a9cb8;
-  --ink-3: #6b6e8c;
+  --ink-3: #8a8eae; /* at least 4.5:1 on every background shade (WCAG AA for small text) */
   --glow: #ffd84d;
   --glow-ink: #1a1500;
   --glow-soft: rgba(255, 216, 77, 0.14);
