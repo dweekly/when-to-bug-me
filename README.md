@@ -4,7 +4,7 @@
 
 **Try it:** [bugme.weekly.org](https://bugme.weekly.org), live Claude behind a daily spend cap. This repo is the working prototype for an Anthropic Labs take-home.
 
-Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the prototype's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11).
+Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the prototype's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11), [`docs/STAGE-4.md`](docs/STAGE-4.md) (think out loud: one place to talk a decision through, marked up as Bug Me reads it; fresh as of 2026-10-12).
 
 > **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 28 of their questions are made up. No real agent receives anything Bug Me "sends down".
 
