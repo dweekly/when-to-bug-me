@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Think out loud</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&display=swap" />
+<style>
+/* Mockup only: the card as one column of meaning. Two option units side by side, each holding its
+   own picture, pros and cons; then one place to think out loud, where what you say is marked up as
+   you say it. One accent (firefly yellow) marks only the choice. */
+:root {
+  --night: #0f1226; --night-2: #171b33; --night-3: #1f2442; --line: #2a2f4d;
+  --ink: #ecebf5; --ink-2: #9a9cb8; --ink-3: #8a8eae;
+  --glow: #ffd84d; --glow-ink: #1a1500; --glow-soft: rgba(255, 216, 77, 0.14);
+  --plus: #7fd1a3; --minus: #f08a8a;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.55 var(--body); color: var(--ink); background: var(--night); overflow-x: hidden; }
+.bar { display: flex; align-items: center; gap: 18px; padding: 14px max(16px, 4vw); border-bottom: 1px solid var(--line); }
+.wordmark { font: 700 20px/1 var(--display); }
+.bar nav { display: flex; gap: 14px; color: var(--ink-2); font-size: 15px; }
+.fly { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; position: relative;
+  background: radial-gradient(circle at 50% 60%, #ffe98a 0 18%, rgba(255,216,77,.35) 19% 40%, transparent 41%); }
+.fly.on { animation: breathe 1.6s ease-in-out infinite; }
+@keyframes breathe { 50% { filter: drop-shadow(0 0 10px var(--glow)); } }
+
+.view { max-width: 920px; margin: 0 auto; padding: 22px max(16px, 4vw) 80px; }
+.crumbs { display: flex; justify-content: space-between; color: var(--ink-2); font-size: 14px; }
+.from { font-size: 13px; color: var(--ink-2); margin: 18px 0 6px; }
+.from code { font: 12px var(--mono); color: var(--ink-3); }
+.brief { font-size: 17px; max-width: 66ch; margin: 0 0 6px; }
+.rule { font-size: 14px; color: var(--ink-2); max-width: 66ch; margin: 0; }
+h1 { font: 700 clamp(26px, 4vw, 36px)/1.15 var(--display); letter-spacing: -0.01em; margin: 18px 0 18px; max-width: 24ch; }
+
+/* Options: one unit each, side by side; everything about A lives in A. */
+.options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.opt { position: relative; text-align: left; background: var(--night-2); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 16px 14px; cursor: pointer; color: inherit; font: inherit; transition: border-color .25s, box-shadow .25s; }
+.opt:hover { border-color: var(--ink-3); }
+.opt .key { position: absolute; top: 14px; right: 14px; font: 600 12px var(--mono); color: var(--ink-3); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; }
+.opt h2 { font: 700 19px/1.25 var(--display); margin: 0 40px 12px 0; }
+.payload { font: 12.5px/1.65 var(--mono); color: var(--ink-3); background: var(--night); border: 1px solid var(--line); border-radius: 10px; padding: 8px 0; margin: 0 0 12px; white-space: pre; overflow: hidden; }
+.payload span { display: block; padding: 0 12px; }
+.payload .hit { color: var(--ink); background: var(--night-3); }
+.payload .hit b { font-weight: 600; }
+.procon { list-style: none; margin: 0; padding: 0; font-size: 14px; color: var(--ink-2); }
+.procon li { padding-left: 18px; position: relative; margin: 3px 0; }
+.procon li::before { position: absolute; left: 0; font-weight: 700; }
+.procon .p::before { content: "+"; color: var(--plus); }
+.procon .m::before { content: "−"; color: var(--minus); }
+.tag { display: inline-block; margin-top: 10px; font: 11px var(--mono); color: var(--ink-3); }
+.lean { position: absolute; top: -11px; left: 14px; font: 600 11px var(--mono); background: var(--glow); color: var(--glow-ink); border-radius: 6px; padding: 2px 8px; opacity: 0; transform: translateY(4px); transition: .3s; }
+.opt.leaning { border-color: var(--glow); box-shadow: 0 0 0 4px var(--glow-soft); }
+.opt.leaning .lean { opacity: 1; transform: none; }
+.opt.faded { opacity: .55; }
+.reach { font-size: 13px; color: var(--ink-3); margin: 10px 0 0; }
+
+/* Think out loud. */
+.think { margin-top: 26px; border: 1px solid var(--line); border-radius: 16px; background: var(--night-2); padding: 18px 18px 16px; }
+.think-head { display: flex; align-items: center; gap: 10px; }
+.think-head h3 { font: 600 17px var(--display); margin: 0; }
+.think-head .hint { color: var(--ink-3); font-size: 14px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--glow); box-shadow: 0 0 8px var(--glow); animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.transcript { font-size: 19px; line-height: 2.05; min-height: 4.2em; margin: 12px 0 6px; color: var(--ink); }
+.transcript .fresh { color: var(--ink-2); }
+.caret { display: inline-block; width: 2px; height: 1.1em; background: var(--ink-2); vertical-align: -3px; margin-left: 2px; animation: blink 1s infinite; }
+.transcript.empty::before { content: "Talk it through, or pick one."; color: var(--ink-3); font-size: 17px; }
+
+/* Marks: shape, not colour. The choice is the one lit thing. */
+.mk { position: relative; transition: background .4s, text-decoration-color .4s; text-decoration-color: transparent; text-underline-offset: 6px; text-decoration-thickness: 2px; }
+.mk::after { content: attr(data-k); position: absolute; left: 0; top: -1.2em; font: 600 10px/1 var(--mono); letter-spacing: .04em; color: var(--ink-3); opacity: 0; transition: opacity .4s; white-space: nowrap; }
+.mk.on::after { opacity: 1; }
+.mk.choice.on { background: var(--glow-soft); box-shadow: 0 0 0 2px var(--glow-soft); border-radius: 4px; color: #fff; }
+.mk.choice.on::after { color: var(--glow); }
+.mk.why.on { text-decoration-line: underline; text-decoration-style: solid; text-decoration-color: var(--ink-2); }
+.mk.but.on { text-decoration-line: underline; text-decoration-style: dashed; text-decoration-color: var(--ink-2); }
+.mk.ask.on { text-decoration-line: underline; text-decoration-style: dotted; text-decoration-color: var(--ink-2); }
+
+/* What Bug Me heard: the answer it will send, built as you talk. */
+.heard { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 12px; display: grid; grid-template-columns: 92px 1fr; gap: 6px 14px; font-size: 15px; }
+.heard dt { font: 600 11px/2 var(--mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; }
+.heard dd { margin: 0; color: var(--ink-2); min-height: 1.4em; }
+.heard dd.set { color: var(--ink); animation: settle .4s; }
+.heard dd.choice.set { color: var(--glow); font-weight: 700; }
+@keyframes settle { from { opacity: 0; transform: translateX(-4px); } }
+.heard .ans { color: var(--ink-2); font-size: 14px; display: block; margin-top: 2px; }
+.actions { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.send { background: var(--glow); color: var(--glow-ink); border: 0; border-radius: 10px; padding: 10px 16px; font: 700 15px var(--body); cursor: pointer; opacity: .35; transition: opacity .3s; }
+.send.ready { opacity: 1; }
+.ghost { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; color: var(--ink-2); cursor: pointer; font: inherit; font-size: 14px; }
+.notnow { margin-left: auto; color: var(--ink-3); font-size: 14px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); margin-top: 14px; }
+.legend span { text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.lg-why { text-decoration: underline solid var(--ink-2); }
+.lg-but { text-decoration: underline dashed var(--ink-2); }
+.lg-ask { text-decoration: underline dotted var(--ink-2); }
+.lg-choice { background: var(--glow-soft); color: var(--glow); border-radius: 3px; padding: 0 4px; }
+.note { max-width: 920px; margin: 0 auto 40px; padding: 0 max(16px, 4vw); color: var(--ink-3); font-size: 13px; }
+
+/* Minimal pass: the marked-up words are the summary. */
+.think { border: 0; background: none; padding: 0; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px; }
+.mk::after { display: none; }
+.answer { display: block; font-size: 15px; line-height: 1.5; color: var(--ink-2); margin: 2px 0 6px; padding-left: 14px; border-left: 2px solid var(--line); opacity: 0; transition: opacity .4s; }
+.answer.on { opacity: 1; }
+.payload { padding: 6px 0; }
+.send:disabled { cursor: default; }
+.opt { display: flex; flex-direction: column; justify-content: flex-start; }
+.think { border-radius: 0; }
+.mk.why.on, .mk.but.on, .mk.ask.on { text-decoration-thickness: 1px; text-decoration-color: var(--ink-3); }
+@media (max-width: 640px) {
+  .options { grid-template-columns: 1fr; }
+  .transcript { font-size: 17px; }
+  .heard { grid-template-columns: 1fr; gap: 0; }
+  .heard dt { margin-top: 6px; }
+  .bar nav { display: none; }
+  .think-head .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="bar"><span class="wordmark">Bug Me</span><nav><span>Home</span><span>Decided for you · 4</span><span>Rules</span><span>Record</span></nav><span class="fly on" aria-label="Listening"></span></header>
+<main class="view">
+  <div class="crumbs"><span>← Home</span><span>Launch · 1 of 11</span></div>
+  <p class="from">● Your decision &nbsp;<code>api-lead › schema-migrator</code></p>
+  <p class="brief">The v2 API spec is being regenerated, and one step renames the user field to match the new account-based naming. Six agents working on the SDKs, docs, examples, tests and changelog are waiting on the final field name.</p>
+  <p class="rule">Your rule covers it: “Changes to the public API or the SDK interfaces are mine to decide.”</p>
+  <h1>Call the v2 user field “account_id”, or keep “user_id” from v1?</h1>
+
+  <div class="options">
+    <button class="opt" id="optA"><span class="key">A</span>
+      <h2>Rename to account_id</h2>
+      <div class="payload"><span class="hit"><b>"account_id"</b>: "usr_41aa"</span></div>
+      <ul class="procon"><li class="p">Matches the internal account naming</li><li class="p">v2 is a natural break point</li><li class="m">Every v1 integration must update</li><li class="m">Can't be undone once v2 ships</li></ul>
+      <span class="tag">the agent's pick</span>
+    </button>
+    <button class="opt" id="optB"><span class="key">B</span>
+      <h2>Keep user_id</h2>
+      <div class="payload"><span class="hit"><b>"user_id"</b>: "usr_41aa"</span></div>
+      <ul class="procon"><li class="p">Same name as v1</li><li class="p">SDKs and integrations keep working</li><li class="m">Public name differs from internal model</li><li class="m">Renaming later is a breaking change</li></ul>
+    </button>
+  </div>
+  <p class="reach">Reaches every SDK, example and integration that reads v1 responses.</p>
+
+  <section class="think" aria-label="Think out loud">
+    <p class="transcript empty" id="tx" aria-live="polite"></p>
+    <div class="actions">
+      <button class="send" id="send" disabled>Send</button>
+      <span class="notnow">Not now</span>
+    </div>
+  </section>
+</main>
+<p class="note"><button class="ghost" id="replay">Replay</button> Mockup: the words stream in as speech recognition finishes each phrase; a beat later live Claude returns the marks (choice, why, but, question) and the summary. Nothing here calls a model.</p>
+
+<script>
+// Each phrase arrives as speech recognition finalizes it; marks land ~0.9 s later, as a parse call would.
+const script = [
+  { t: "Hmm. Honestly, " },
+  { t: "I'd keep user_id.", k: "choice", label: "choice · B", lean: "B" },
+  { t: " " },
+  { t: "Every integration already reads that name, and renaming it is a one-way door once v2 ships.", k: "why", label: "why" },
+  { t: " " },
+  { t: "But put account_id in the docs as the internal name, so the mapping isn't lost.", k: "but", label: "but…", send: "Send: keep user_id, with one condition" },
+  { t: " " },
+  { t: "Do we know how many integrations read that field directly?", k: "ask", label: "question → agent", answer: "Agent: not measured. The SDKs and three public examples read it." },
+];
+const tx = document.getElementById("tx");
+let timers = [];
+function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+function reset() {
+  timers.forEach(clearTimeout); timers = [];
+  tx.innerHTML = ""; tx.classList.add("empty");
+  const b = document.getElementById("send"); b.textContent = "Send"; b.disabled = true;
+  for (const o of ["optA", "optB"]) document.getElementById(o).classList.remove("leaning", "faded");
+  document.getElementById("send").classList.remove("ready");
+}
+function play() {
+  reset();
+  let ms = 900;
+  for (const seg of script) {
+    const words = seg.t.split(/(\s+)/).filter(Boolean);
+    const span = document.createElement("span");
+    if (seg.k) { span.className = "mk " + seg.k; span.dataset.k = seg.label; }
+    at(ms, () => { tx.classList.remove("empty"); span.classList.add("fresh"); tx.appendChild(span); });
+    for (const w of words) { at(ms, () => { span.textContent += w; }); ms += /\s/.test(w) ? 0 : 150; }
+    at(ms, () => span.classList.remove("fresh"));
+    if (seg.k) {
+      at(ms + 900, () => {
+        span.classList.add("on");
+        if (seg.answer) { const a = document.createElement("span"); a.className = "answer"; a.textContent = seg.answer; tx.appendChild(a); requestAnimationFrame(() => a.classList.add("on")); }
+        if (seg.send) { const b = document.getElementById("send"); b.textContent = seg.send; b.disabled = false; }
+        if (seg.lean) {
+          document.getElementById("opt" + seg.lean).classList.add("leaning");
+          document.getElementById(seg.lean === "A" ? "optB" : "optA").classList.add("faded");
+          const b = document.getElementById("send"); b.classList.add("ready"); b.disabled = false; if (!b.dataset.set) b.textContent = "Send: keep user_id";
+        }
+      });
+      ms += 500;
+    }
+  }
+}
+document.getElementById("replay").onclick = play;
+play();
+</script>
+</body>
+</html>
