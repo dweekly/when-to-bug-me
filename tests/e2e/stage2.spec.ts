@@ -101,7 +101,7 @@ test.describe("views", () => {
     await expect(nav.getByRole("link", { name: "Decided for you · 31" })).toBeVisible();
     await nav.getByRole("link", { name: /^Decided for you/ }).click();
     await expect(page).toHaveURL(/#\/settled$/);
-    await expect(page.locator("#settled > li")).toHaveCount(31);
+    await expect(page.locator("#settled li.drow")).toHaveCount(31);
     await nav.getByRole("link", { name: "Rules" }).click();
     await expect(page).toHaveURL(/#\/rules$/);
     await expect(page.locator("#rules > li")).toHaveCount(12);
