@@ -22,6 +22,8 @@ export interface Delivery {
   instruction?: string;
   guidance?: string;
   kind?: string;
+  /** A follow-up to the answer it names: refused by the Worker if that answer has since changed. */
+  update?: boolean;
 }
 
 /**
@@ -79,5 +81,7 @@ export async function saveContext(rules: typeof S.rules, facts: typeof S.facts):
 
 /** Why a delivery failed, in words for the card. */
 export function deliveryProblem(e: unknown): string {
-  return `Couldn't reach the asking session (${(e as Error).message}). Nothing was sent; press again to retry.`;
+  const msg = (e as Error).message;
+  if (/has changed/.test(msg)) return "Your answer to this was changed elsewhere since, so this wasn't added to it. Reload to see the answer that stands.";
+  return `Couldn't reach the asking session (${msg}). Nothing was sent; press again to retry.`;
 }

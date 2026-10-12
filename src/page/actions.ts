@@ -501,7 +501,7 @@ async function proposeNow(flow: Flow, d: Decision): Promise<void> {
   flow.error = "";
   if (basis && S.answered[d.id]?.outcome !== "other" && S.answered[d.id]?.outcome !== "rejected") {
     // Live queue only: a reason given after the answer joins what the asking session has; if it can't, the why stays open.
-    if (phase0 === "why" && flow.choice && !(await delivered(flow, d.id, { outcome: "option", choice: flow.choice, reason: basis }, "error"))) return;
+    if (phase0 === "why" && flow.choice && !(await delivered(flow, d.id, { outcome: "option", choice: flow.choice, reason: basis, update: true }, "error"))) return;
     if (!alive(s0, flow)) return;
     recordLateReason(d, basis);
     // Skipped while the reason was on its way: the session has it (and so does the record), but no guidance is proposed.
@@ -593,11 +593,13 @@ async function keepFactNow(flow: Flow, d: Decision, text: string, p: FactOutput 
   }
   if (OWNER_PAGE) {
     const a = S.answered[d.id];
-    const update: Delivery = a?.outcome === "other" || a?.outcome === "rejected" ? { outcome: a.outcome, course: a.other, guidance: t } : { outcome: "option", choice: flow.choice!, guidance: t };
+    const update: Delivery = a?.outcome === "other" || a?.outcome === "rejected" ? { outcome: a.outcome, course: a.other, guidance: t, update: true } : { outcome: "option", choice: flow.choice!, guidance: t, update: true };
     try {
       await deliver(d.id, update);
     } catch (e) {
-      flow.error = `The guidance is saved, but couldn't be added to the asking session's answer (${(e as Error).message}). Press Keep it again to retry.`;
+      flow.error = /has changed/.test((e as Error).message)
+        ? `The guidance is saved for future asks, but ${deliveryProblem(e).charAt(0).toLowerCase()}${deliveryProblem(e).slice(1)}`
+        : `The guidance is saved, but couldn't be added to the asking session's answer (${(e as Error).message}). Press Keep it again to retry.`;
       if (showing(flow)) renderNow();
       return;
     }
@@ -728,7 +730,20 @@ async function resumeNow(id: string): Promise<void> {
   startSession(id);
 }
 
+/** Tickets with an Undo out (live queue only): a second press does nothing. */
+const undoing = new Set<string>();
+
 export async function undo(id: string): Promise<void> {
+  if (undoing.has(id) || S.reopened.includes(id)) return;
+  undoing.add(id);
+  try {
+    await undoNow(id);
+  } finally {
+    undoing.delete(id);
+  }
+}
+
+async function undoNow(id: string): Promise<void> {
   // Live queue only: the session is told to hold off; if that fails, nothing changes.
   if (OWNER_PAGE) {
     try {

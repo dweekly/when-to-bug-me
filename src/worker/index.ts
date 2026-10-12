@@ -467,12 +467,16 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
   if (path === "/api/me/resolve") {
     const t = await q.ticket(String(b.id ?? ""));
     if (!t) throw new BadRequest("unknown ticket");
+    let r;
     try {
-      return json(reply(await q.resolve(t.decision.id, parseResolution(b, t.decision))));
+      r = parseResolution(b, t.decision);
     } catch (e) {
       if (e instanceof AskError) throw new BadRequest(e.message);
       throw e;
     }
+    const out = await q.resolve(t.decision.id, r);
+    if ("refused" in out) throw new BadRequest(out.refused);
+    return json(reply(out.ticket));
   }
 
   if (path === "/api/me/context") {

@@ -111,7 +111,11 @@ async function failGuidance(page: import("@playwright/test").Page): Promise<{ st
   return { stop: () => (failing = false) };
 }
 
-async function resetOwner(request: APIRequestContext): Promise<void> {
+/** Resets of the one owner queue, by project, in this worker (the tests below check who resets it). */
+const resets: Record<string, number> = {};
+
+async function resetOwner(request: APIRequestContext, project: string): Promise<void> {
+  resets[project] = (resets[project] ?? 0) + 1;
   await request.post("/api/me/context", { headers: bearer, data: { rules: OWNER_RULES, facts: [] } });
 }
 
@@ -119,9 +123,12 @@ async function resetOwner(request: APIRequestContext): Promise<void> {
 test.describe("kept guidance on /me", () => {
   test.beforeEach(async ({ request }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "changes the shared owner queue's facts");
-    await resetOwner(request);
+    await resetOwner(request, testInfo.project.name);
   });
-  test.afterEach(async ({ request }) => resetOwner(request));
+  // Playwright runs afterEach even for a test its beforeEach skipped: check the project here too.
+  test.afterEach(async ({ request }, testInfo) => {
+    if (testInfo.project.name === "desktop") await resetOwner(request, testInfo.project.name);
+  });
 
   test("a retry after a failed answer update also re-checks the decisions the guidance affects", async ({ page, request }) => {
     const id = await ask(request, `Rename the billing exports ${Date.now()}?`);
@@ -148,6 +155,19 @@ test.describe("kept guidance on /me", () => {
     expect((await told(request, id)).guidance).toBeTruthy();
   });
 
+  test("guidance kept on an older page can't reverse an answer changed since on another device", async ({ page, request }) => {
+    const id = await ask(request, `Retire the old status page ${Date.now()}?`);
+    await open(page, id);
+    await toProposal(page); // this page answered "Hold for review" (B)
+    // Another device changes the answer to "Ship it now" (A).
+    expect((await request.post("/api/me/resolve", { headers: bearer, data: { id, outcome: "option", choice: "A" } })).ok()).toBe(true);
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await expect(page.locator("#now")).toContainText("changed");
+    const now = await told(request, id);
+    expect(now.choice).toBe("A");
+    expect(now.guidance).toBeUndefined();
+  });
+
   test("with 30 facts, retrying the 30th's answer update updates rather than hitting the cap", async ({ page, request }) => {
     const seed = Array.from({ length: 29 }, (_, i) => ({ id: `S${i + 1}`, text: `Seed fact ${i + 1}.`, source: "e2e", scope: "all" }));
     expect((await request.post("/api/me/context", { headers: bearer, data: { rules: OWNER_RULES, facts: seed } })).ok()).toBe(true);
@@ -162,6 +182,45 @@ test.describe("kept guidance on /me", () => {
     await expect(page.locator("#now")).toContainText("Kept for future asks");
     expect((await told(request, id)).guidance).toBeTruthy();
   });
+});
+
+test("the guidance tests' cleanup runs only where they run (desktop), never under another project's tests", async ({}, testInfo) => {
+  for (const [project, n] of Object.entries(resets)) if (project !== "desktop") expect(n, `${project} reset the shared queue`).toBe(0);
+  expect(testInfo.project.name).toBeTruthy();
+});
+
+test("a double-pressed Undo on /me reopens once", async ({ page, request }) => {
+  // A free, reversible staging deploy is settled by the staging rule (on the stand-in too).
+  const r = await request.post("/api/me/tickets", {
+    headers: bearer,
+    data: {
+      question: `Deploy the docs site to staging from main (${Date.now()})?`,
+      options: [
+        { label: "Deploy to staging", reversible: "yes", cost_usd: 0 },
+        { label: "Wait", reversible: "yes", cost_usd: 0 },
+      ],
+      recommended: "Deploy to staging",
+      context: "main is green.",
+      project: "e2e",
+    },
+  });
+  const t = (await r.json()) as { status: string; ticket: string };
+  expect(t.status).toBe("settled");
+  const reopens: unknown[] = [];
+  page.on("request", (q) => {
+    if (q.url().endsWith("/api/me/resolve") && (q.postDataJSON() ?? {}).outcome === "reopened") reopens.push(q.postDataJSON());
+  });
+  await page.goto(`/me#k=${encodeURIComponent(LIVE_KEY)}`);
+  await page.goto("/me#/settled");
+  const release = await hold(page, "/api/me/resolve");
+  await page.locator("#settled .dgroup:not([open]) > summary").first().click().catch(() => {});
+  const row = page.locator(`#settled .drow[data-id="${t.ticket}"]`);
+  await row.locator(".dundo").click();
+  await row.locator(".dundo").click();
+  release();
+  await expect.poll(async () => (await told(request, t.ticket)).status, { timeout: 15_000 }).toBe("reopened");
+  await page.waitForTimeout(500);
+  expect(reopens).toHaveLength(1);
 });
 
 test("setting aside on /me doesn't pull you back if you've moved on while the session was told", async ({ page, request }) => {
