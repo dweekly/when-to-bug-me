@@ -64,6 +64,13 @@ export async function goHome(page: Page): Promise<void> {
 export async function goSettled(page: Page): Promise<void> {
   await navLink(page, /^Decided for you/).click();
   await expect(page.locator("#settled")).toBeVisible();
+  await openSettledGroups(page);
+}
+
+/** Open every group on Decided for you (they start closed), as a person would to reach a job's actions. */
+export async function openSettledGroups(page: Page): Promise<void> {
+  const closed = page.locator("#settled .dgroup:not([open]) > summary");
+  while (await closed.count()) await closed.first().click();
 }
 
 export async function goRules(page: Page): Promise<void> {
