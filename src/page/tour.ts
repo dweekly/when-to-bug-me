@@ -371,7 +371,7 @@ export function openToursMenu(): void {
         h(
           "button",
           { type: "button", class: "tour-item", "data-tour": t.id },
-          h("img", { src: `/firefly/${t.mood}.svg`, alt: "", width: 32, height: 32 }),
+          h("img", { src: `/firefly/clay/${t.mood}_icon.png`, alt: "", width: 32, height: 32 }),
           h("span", {}, h("b", {}, t.title), h("span", { class: "quiet" }, ` · ${t.minutes} min`), h("span", { class: "tour-blurb" }, t.blurb)),
         ),
       ),

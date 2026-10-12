@@ -1,22 +1,24 @@
 # Bug Me
 
-**A chief of staff for people who run fleets of agents.** Every question your agents raise flows into Bug Me instead of interrupting you. It settles what it safely can, brings you only the decisions that need you, one at a time and in your terms, asks you why, and turns your reasons into guidance every agent follows from then on.
+**A chief of staff for people who run fleets of agents.** Every question your agents raise flows into Bug Me instead of interrupting you. It settles what your written rules already cover (and only if it is reversible and cheap), puts the rest in the order to work them, briefs you before it asks, takes your answer in one click or one sentence, asks you why when your answer surprises it, and turns your reasons into guidance every agent follows from then on.
 
-This repo is the working prototype for an Anthropic Labs take-home. Status and plan: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (fresh as of 2026-10-09).
-Stage 2 (home and focus views, Not now, tours, explainer): [`docs/STAGE-2.md`](docs/STAGE-2.md) (fresh as of 2026-10-09). Stage 3 (piles on Home, a decision card answered at a glance, always-on voice): [`docs/STAGE-3.md`](docs/STAGE-3.md) (fresh as of 2026-10-09).
+**Try it:** [bugme.weekly.org](https://bugme.weekly.org), live Claude behind a daily spend cap. This repo is the working prototype for an Anthropic Labs take-home.
+
+Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the prototype's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11).
 
 > **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 28 of their questions are made up. No real agent receives anything Bug Me "sends down".
 
 ## Try it in two minutes
 
-You play Jordan, a staff engineer, on a morning when the fleet raised 28 questions overnight.
+The front page is a short explainer; each tour card opens a guided tour of the real app that points and lets you click. Or open the app and play Jordan, a staff engineer whose fleet raised 28 questions overnight:
 
-1. Look at the agenda: each question is routed one of three ways (**settled for you**, **quick check-in**, **your decision**), with the reason and the rule it turned on. The order is code: projects whose answers unblock the most agents come first.
-2. Follow the hint and answer the 6:05am flight question the way you actually would. Bug Me's guess stays sealed until you answer.
-3. If your answer surprises it, Bug Me asks **"I'm curious: why?"**
-4. Your reason becomes proposed guidance. Keep it, and watch the waiting decisions it touches re-route, with the cause shown (the 7:30am Berlin sync that Bug Me had accepted for you comes back to you).
+1. **Home** shows the night as piles, one per project, and recommends where to start ("Start with Launch: 11 questions, about 23 minutes, because answers here unblock the most agents"). Four were settled for Jordan without asking, each reversible, cheap and cleared by a written rule.
+2. **A decision card** briefs you first (what is going on, and why it is yours, quoting the rule), then asks. Each option is a button with its pros, cons and cost. **Clicking an option decides**, with a few seconds to undo. Bug Me's guess stays sealed until you do.
+3. Prefer not to pick A or B? **Yes, but…** adds conditions, **Something else** sends your own option, and **Ask a question** has Claude answer from what the agent provided, or send the question back to the agent.
+4. If your answer surprises it, Bug Me asks **"I'm curious: why?"** Your reason becomes proposed guidance; keep it, and the waiting decisions it touches are re-checked with the cause shown (the 7:30am Berlin invite is reframed by a reason given on the flight).
+5. **The clay firefly** in the corner shows the morning's glow (brighter as you give real reasons). Click it to talk: it listens across cards, shows the words it hears, and puts them in the card's Why box.
 
-Also worth a click: edit a written rule and watch decisions re-route; undo something in **Decisions made for you**, or mark it "you should have asked me" or "right to decide, wrong call"; the settings redesign card, where both options are clickable prototypes; the firefly, whose glow tracks the reasons you give.
+Also worth a click: edit a written rule and watch decisions re-route; undo something in **Decided for you**, or mark it "this shouldn't have come to me"; the settings redesign card, where both options are clickable prototypes.
 
 ## What is live, what is recorded, what is code
 
@@ -26,10 +28,10 @@ Every card carries a badge saying where its routing came from.
 | --- | --- |
 | **live Claude** | A call to `claude-opus-5-5` (low effort, JSON-schema output) made just now. |
 | **cached Claude** | An earlier live answer to the byte-identical request. |
-| **recorded Claude run** | A live answer recorded with `npm run record` and packaged with the Worker. Replayed only on an exact request match. The default morning and two scripted examples are recorded. |
+| **recorded Claude run** | A live answer recorded with `npm run record` and packaged with the Worker. Replayed only on an exact request match. The opening morning (all 28 routes, briefings and option notes) and the tours' scripted reasons are recorded, so the first view is fast and costs nothing; everything a visitor types or edits goes to live Claude. |
 | **code stand-in** | The deterministic keyword-matching fake (`src/shared/fakeModel.ts`), used for tests and when `FAKE_MODEL` is set. Not judgment. |
 
-Plain code, never the model, decides: the agenda order and grouping; whether a "settle" is allowed (see below); when to push back, ask why, or propose guidance (`src/shared/lifecycle.ts`); and which decisions to re-route.
+Plain code, never the model, decides: the piles, their order and the recommended one; whether a "settle" is allowed (see below); when to push back, ask why, or propose guidance (`src/shared/lifecycle.ts`); and which decisions to re-route.
 
 When live calls are off (no key, or the daily budget is spent), only recorded answers can be evaluated. Anything else shows "couldn't evaluate", and the scripted examples offer their recorded reason behind a clearly labeled button. Nothing is silently substituted.
 
@@ -42,10 +44,12 @@ When live calls are off (no key, or the daily budget is spent), only recorded an
  (state in localStorage)        ── /api/route ──▶  routePrompt ─▶ model.ts: fake │ recorded │ cache │ live
                                 ── /api/answer ─▶  unseal guess (AES-GCM, bound to decision + options + context)
                                 ── /api/fact ───▶  factPrompt ─▶ proposed guidance + decisions to re-route
+                                ── /api/ask ────▶  askPrompt ─▶ an answer from the agent's context, or what is missing
                                                    SpendCounter Durable Object: reserve before each live call
 ```
 
-- **Two prompts** (`src/shared/prompts.ts`), ported from the question critic and person model in the research behind the proposal. *Route* returns the route, a short headline and briefing in the person's terms, the rule or fact it turned on (quoted exactly), a calibrated guess per option, options that contradict the person's record, and what each option tells the asking agent. *Fact* turns a stated reason into new guidance, a replacement for an existing fact, or "nothing durable".
+- **Three prompts** (`src/shared/prompts.ts`), ported from the question critic and person model in the research behind the proposal. *Route* returns the route, a headline, a two-sentence briefing and, per option, up to two pros, two cons and a consequence, all in the person's terms; the rule or fact it turned on (quoted exactly); a calibrated guess per option; options that contradict the person's record; and what each option tells the asking agent. *Fact* turns a stated reason into new guidance, a replacement for an existing fact, or "nothing durable". *Ask* answers a clarifying question only from what the agent provided, or says what is missing.
+- **Structured output, constrained per decision.** Each routing request carries a JSON schema built for that decision: every field that names an option is an enum of its keys, and the per-option notes are an object with a required entry for each option. With free strings, about one live answer in seven named options by their label or skipped an option; the schema makes both impossible. Code then validates every answer before it is shown, cached or recorded.
 - **The settle invariant is code.** Bug Me settles alone only what is reversible, cheap, and cleared by a written rule. Each decision carries hand-authored, conservative bounds per option; code accepts the model's "settle" only when the chosen option is within them and the clearing rule is the exact text of a current rule, and otherwise brings the decision to the person, saying why. In the recorded run Claude tried to settle the $212 6:05am flight under "book the cheapest reasonable option"; code brought it back. Every quote is checked against the current rules and facts, and a quote that doesn't occur is dropped.
 - **Hidden guesses.** The guess, conflicts and send-down text are sealed with AES-GCM (fresh nonce, bound to the decision id, its options and the rules/facts version) before they reach the page. `/api/answer` opens them only for a valid choice. This prevents disclosure before the answer in ordinary use; with a public repo and a stateless endpoint it is not an adversarially blind experiment.
 - **Cost controls.** Exact-match recorded runs and a response cache first; then a Durable Object that atomically reserves a worst-case charge per live call against a daily cap (`DAILY_SPEND_CAP_USD`), reconciled to actual usage; explicit `max_tokens`, a timeout and no automatic retries; only known decision ids; bounded request sizes and re-route fan-out. Every number is in `src/shared/constants.ts` with its source.
@@ -81,7 +85,7 @@ Checks:
 
 ```bash
 npm run typecheck && npm test   # unit tests
-npm run e2e                     # Playwright against wrangler dev with the stand-in, desktop and phone
+npm run e2e                     # Playwright: desktop, phone and 320px on the stand-in, plus every tour on a keyless server with the recorded run
 python3 scripts/scan.py         # secrets, private-data denylist, data-file rule, gitleaks (fails closed)
 npm run record -- --dry-run     # what re-recording would call; drop --dry-run to record (costs money)
 sh scripts/install-hooks.sh     # pre-push hook: scan + tests
@@ -93,10 +97,11 @@ sh scripts/install-hooks.sh     # pre-push hook: scan + tests
 - One synthetic persona and a fixed set of 28 decisions; no real agents, intake or send-down.
 - Visitor state lives in the browser only. The record can be exported as JSON.
 - Re-routing after kept guidance checks decisions that share a topic tag with the answered one plus the model's suggestions, capped; it can miss a decision that shares neither.
-- Voice uses the browser's speech recognition where it exists (Chrome, Safari); typing always works.
+- Voice uses the browser's speech recognition (Chrome, Safari); in Chrome the audio goes to the browser's speech service, which the page says beside the firefly. Typing always works.
+- Answers, guidance and set-asides are simulated: nothing reaches a real agent, and "Ask the agent" gathers nothing new.
 
 ## How this was built
 
-Designed by David E. Weekly, built with Claude Code (Claude Opus 5.5) as the implementing agent, from a written product proposal and plan. The plan was reviewed once by OpenAI Codex before building; diffs are reviewed by Codex before merge. Claude Code wrote the code, fixtures and tests; subagents built the two settings prototypes, the secret scanner and CI, and the test suites in parallel. The recorded run was made against the live API for under a dollar per pass.
+Designed by David E. Weekly, built with Claude Code (Claude Opus 5.5) as the implementing agent, from a written product proposal and a plan per stage. Each plan was reviewed once by OpenAI Codex before building, and every diff by Codex before merge. Design changes went through quick mockups first (two versions each of Home and the decision card, picked by David) before any code. Claude Code wrote the code, fixtures and tests; subagents built the two settings prototypes, the secret scanner and CI, and test suites in parallel. Each recorded run was made against the live API for about a dollar.
 
-See also: [`ROADMAP.md`](ROADMAP.md) (fresh as of 2026-10-09), [`CHANGELOG.md`](CHANGELOG.md) (fresh as of 2026-10-09), [`CLAUDE.md`](CLAUDE.md) (guardrails for agents working here).
+See also: [`ROADMAP.md`](ROADMAP.md) (fresh as of 2026-10-11), [`CHANGELOG.md`](CHANGELOG.md) (fresh as of 2026-10-11), [`CLAUDE.md`](CLAUDE.md) (guardrails for agents working here).

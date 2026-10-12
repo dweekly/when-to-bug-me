@@ -248,3 +248,13 @@ test("leaving the card while a set-aside reason finishes does not set it aside o
   await expect(page).toHaveURL(/#\/$/);
   expect((await stored(page))?.punts?.["api-rename"]).toBeUndefined();
 });
+
+test("there is one firefly: off, the corner firefly shows the morning's glow, not a second logo", async ({ page }) => {
+  await expect(page.locator(".brand img")).toHaveCount(0);
+  await expect(page.locator("#voice")).toHaveAttribute("data-state", "off");
+  await expect(page.locator("#voice")).toHaveAttribute("data-mood", "attentive");
+  await expect(page.locator("#voice video source").first()).toHaveAttribute("src", "/firefly/clay/attentive_safari.mp4");
+  await page.locator("#voice-btn").click();
+  await openDecision(page, "api-rename");
+  await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
+});
