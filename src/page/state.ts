@@ -5,6 +5,7 @@
 
 import { GLOW_START, type Guess, type Mood } from "../shared/lifecycle";
 import type { Punt, PuntKind } from "../shared/punt";
+import type { BugTurn, JordanTurn, Ledger } from "../shared/converse";
 import type { Card, Decision, Fact, FactOutput, Mark, Persona, RouteKind, Rule, Source } from "../shared/types";
 
 export type Unavailable = { id: string; unavailable: string };
@@ -38,6 +39,18 @@ export interface Answer {
   /** Everything the person said or typed thinking it through, and what Bug Me picked out of it. */
   narration?: string;
   narrationMarks?: Mark[];
+  /** How the conversation ended: a listed option, a course of the person's own, or the question rejected. */
+  outcome?: "option" | "other" | "rejected";
+  /** The conversation that led here, as it was shown, and what Bug Me heard (docs/STAGE-6.md). */
+  thread?: Thread;
+}
+
+/** A Bug Me turn as the page keeps it: what the Worker returned, plus where the words came from. */
+export type ShownBugTurn = BugTurn & { source?: Source };
+export type ShownTurn = JordanTurn | ShownBugTurn;
+export interface Thread {
+  turns: ShownTurn[];
+  ledger: Ledger;
 }
 
 /** One entry in the record: every guess made before an answer, the answer, the basis and the marks. */
@@ -87,49 +100,38 @@ export interface State {
 /** Bumped whenever a saved morning can no longer be read faithfully, and the old one starts fresh:
  *  v2 when thinking out loud replaced stage 3's drafts; v3 when stage 5 rebuilt the morning (a saved
  *  answer or set-aside could name a question that no longer exists). */
-export const STORE_KEY = "bugme.state.v3";
-const OLD_STORE_KEYS = ["bugme.state.v1", "bugme.state.v2"];
+export const STORE_KEY = "bugme.state.v4";
+const OLD_STORE_KEYS = ["bugme.state.v1", "bugme.state.v2", "bugme.state.v3"];
 export let Q: Queue;
 export let S: State;
 export let byId = new Map<string, Decision>();
 
-/** What Bug Me made of the person's words: for one exact revision of the text. */
-export interface Parsed {
-  rev: number;
-  choice: string;
-  marks: Mark[];
-  source: Source;
-}
-
-/** A question picked out of the person's words, asked once of what the agent provided. */
-export interface Asked {
-  status: "pending" | "answered" | "missing" | "failed";
-  answer: string;
-  source: Source | null;
-}
-
 /** The in-progress answer on the card in front of the person. */
 export interface Flow {
   id: string;
-  /** The option picked so far (a click or the person's words), or "other". Nothing is sent until Send. */
+  /** The option lit on the card: a click not yet sent, else what Bug Me heard. Set to the answer once sent. */
   choice: string | null;
-  /** Where the pick came from: a click stays until another click or a newly stated choice. */
-  choiceBy: "click" | "words" | null;
+  /** An option clicked since Jordan's last turn; it travels with the next turn. */
+  pick: string | null;
   /** The reason given to the answer path; in the "why?" phase, the text of that box. */
   basis: string;
   phase: "choose" | "busy" | "pushback" | "why" | "proposal" | "done" | "punting";
-  /** Thinking out loud: the words, their revision (bumped on every edit), and the latest parse of them. */
+  /** The conversation so far, and what Bug Me last said it heard. */
+  turns: ShownTurn[];
+  ledger: Ledger | null;
+  /** The words in the composer, not yet sent, and their revision (bumped on every edit). */
   think: string;
   rev: number;
-  parsed: Parsed | null;
-  /** Questions from the words, by exact quote. */
-  asks: Record<string, Asked>;
+  /** From the confirmed thread, for the close path: the guidance evidence (why, conditions and
+   *  feedback quotes), and what the "why?" backstop and the guidance offer need to know. */
+  evidence: string;
+  whyAsked: boolean;
+  noMoreQuestions: boolean;
+  hasFeedback: boolean;
   /** The person's "but…" phrases as sent with the answer. */
   conditions: string;
-  /** The words as submitted with the answer (kept across a reload, so an unparsed draft still goes down whole). */
+  /** All of the person's turns, as submitted with the answer. */
   narration: { narration: string; narrationMarks: Mark[]; unparsed: boolean } | null;
-  /** The last parse of these words failed: which revision, and why. Send then offers to read them again. */
-  parseError: { rev: number; message: string } | null;
   /** While setting the decision aside: the kind chosen and the sentence so far. */
   puntKind: PuntKind | null;
   puntReason: string;
@@ -152,7 +154,13 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, choiceBy: null, basis: "", phase: "choose", think: "", rev: 0, parsed: null, asks: {}, conditions: "", narration: null, parseError: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, evidence: "", whyAsked: false, noMoreQuestions: false, hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+}
+
+/** A conversation has started on this decision and isn't finished: it stays with the person. */
+export function talking(id: string): boolean {
+  const f = S.flows[id];
+  return Boolean(f && f.turns.length && !S.answered[id]);
 }
 
 /** A follow-up still waiting on the person after they answered (or while a request is out). */
@@ -216,10 +224,7 @@ export function load(q: Queue): State {
         const flows: Record<string, Flow> = {};
         for (const [id, saved] of Object.entries(s.flows ?? {})) {
           const f = { ...newFlow(id), ...saved }; // fields added since this morning was saved get defaults
-          // A question that was out when the page reloaded is asked again when the words are next read.
-          // (card.ts asks them again when the card is next shown.)
-          for (const [q, a] of Object.entries(f.asks)) if (a.status === "pending") delete f.asks[q];
-          f.parseError = null;
+          // A turn that was out when the page reloaded keeps its words; the card offers "Send again".
           if (f.phase === "punting") flows[id] = { ...f, phase: f.puntFrom ?? "choose" };
           else if (f.phase !== "busy") flows[id] = f;
           else if (!s.answered[id]) flows[id] = { ...f, phase: "choose", message: "The page reloaded before that was sent; send it again." };

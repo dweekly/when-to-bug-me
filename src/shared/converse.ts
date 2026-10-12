@@ -205,7 +205,7 @@ export function readBack(d: Decision, l: Ledger): string {
   const o = outcomeOf(d, l);
   if (o.kind === "option") {
     const label = lowerFirst(d.options.find((x) => x.key === o.key)!.label);
-    const conds = l.conditions.map((c) => sentence(c.quote)).join("; ");
+    const conds = l.conditions.map((c) => lowerFirst(sentence(c.quote))).join("; ");
     return `So: ${label}${conds ? `, ${conds}` : ""}. Right?`;
   }
   if (o.kind === "other") return `So: not either option. ${sentence(l.course!.quote)}. Right?`;

@@ -2,7 +2,7 @@
 // recorded example for the same decision and choice, so a tour never leaves the recorded path when
 // live calls are off. (tests/unit/recorded.test.ts checks the recording covers every example.)
 import { describe, expect, it } from "vitest";
-import { EXAMPLES } from "../../src/shared/examples";
+import { CONVERSATIONS, EXAMPLES } from "../../src/shared/examples";
 import { TOURS, TOUR_IDS } from "../../src/shared/tours";
 import { decisions } from "./helpers";
 
@@ -21,7 +21,9 @@ describe("tour catalog", () => {
         }
       }
       for (const s of t.steps) {
-        if (s.example?.decision) expect(EXAMPLES.some((e) => e.id === s.example!.decision), `${t.id} step ${s.title}`).toBe(true);
+        // The conversation box offers the decision's scripted turns; the "why?" box, its recorded reason.
+        if (s.example?.decision && s.example.textarea === "#think") expect(CONVERSATIONS.some((c) => c.id === s.example!.decision), `${t.id} step ${s.title}`).toBe(true);
+        else if (s.example?.decision) expect(EXAMPLES.some((e) => e.id === s.example!.decision), `${t.id} step ${s.title}`).toBe(true);
         if (s.go?.startsWith("#/d/")) expect(ids.has(s.go.slice(4)), s.go).toBe(true);
       }
       expect(t.steps.length).toBeGreaterThan(0);

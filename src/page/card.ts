@@ -2,11 +2,12 @@
 // and the follow-up after an answer (pushback, "why?", proposed guidance, what was sent down). The
 // work each button starts lives in actions.ts; this module only draws and wires it.
 
-import { EXAMPLES } from "../shared/examples";
+import { CONVERSATIONS, EXAMPLES } from "../shared/examples";
+import { type JordanTurn, type Quote, jordanTurns, primaryLabel } from "../shared/converse";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
-import type { Card, Decision, RouteKind } from "../shared/types";
+import type { Card, Decision, Mark, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { currentMarks, done, finalize, glowEvent, isSending, keepFact, needsReread, next, pick, planFor, propose, resume, resumeAsks, send, setAside, thinkEdited } from "./actions";
+import { confirmThread, done, finalize, glowEvent, isSending, keepFact, next, pick, propose, readyToConfirm, resume, sendTurn, setAside, thinkEdited, unanswered } from "./actions";
 import { drawableMarks } from "../shared/parse";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import { payloadLine } from "./visuals-layout";
@@ -16,7 +17,7 @@ import { tourAfterRender } from "./tour";
 import { type VoiceTarget, setVoiceTarget } from "./voice";
 import { renderVisual } from "./visuals";
 import { type Child, $, announce, h } from "./dom";
-import { type Flow, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
+import { type Flow, type ShownBugTurn, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
 import { render } from "./views";
 
 export function quoteLine(c: Card): Child {
@@ -41,13 +42,13 @@ function voiceTargetFor(): VoiceTarget | null {
   // While Send is finishing, the words still go to the think box: the last phrase belongs to the answer.
   const box = flow.phase === "why" ? "why" : flow.phase === "punting" ? "punt-reason" : flow.phase === "choose" ? "think" : null;
   if (!box || !document.getElementById(box)) return null;
-  const d = byId.get(flow.id)!;
   return {
-    key: `${flow.id}:${box}`,
+    // The turn number is part of the key, so late words can't land in the next turn.
+    key: `${flow.id}:${box}:${flow.turns.length}`,
     el: () => document.getElementById(box) as HTMLTextAreaElement | null,
     write: (t) => {
       if (box === "punt-reason") flow.puntReason = t;
-      else if (box === "think") thinkEdited(flow, d, t, "voice");
+      else if (box === "think") thinkEdited(flow, t);
       else flow.basis = t;
     },
   };
@@ -170,7 +171,7 @@ function drawNow(): void {
     shared,
     opts,
     reach,
-    flow.phase === "punting" ? puntPanel(flow, d) : thinkArea(flow, d, route),
+    flow.phase === "punting" ? puntPanel(flow, d) : threadArea(flow, d, route),
     flow.phase === "punting" ? null : followup(d, route),
   );
   arrived.add(id);
@@ -182,44 +183,50 @@ function drawNow(): void {
     focused.focus();
     focused.setSelectionRange(sel[0], sel[1]);
   }
-  resumeAsks(flow, d);
-  paintThink();
+  paintThread();
   tourAfterRender();
 }
 
-/** The think-out-loud area, kept per decision so a re-render moves it rather than rebuilding it. */
-const thinkNodes = new Map<string, { el: HTMLElement; route: RouteKind; flow: Flow }>();
+/** The conversation area, kept per decision so a re-render moves it rather than rebuilding it: the
+ *  composer keeps its focus, caret and undo history while Bug Me replies. */
+const threadNodes = new Map<string, { el: HTMLElement; route: RouteKind; flow: Flow }>();
 
-function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | null {
-  if (flow.phase !== "choose" && !flow.think.trim()) return null;
-  const kept = thinkNodes.get(flow.id);
+function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | null {
+  if (flow.phase !== "choose" && !flow.turns.length) return null;
+  const kept = threadNodes.get(flow.id);
   // Only this very flow's element: its handlers belong to it (a reset morning has a new flow).
-  if (kept && kept.flow === flow && kept.route === route && (kept.el.querySelector("textarea") as HTMLTextAreaElement).value === flow.think) return kept.el;
+  if (kept && kept.flow === flow && kept.route === route) return kept.el;
   const ta = h("textarea", {
     id: "think",
     rows: 2,
     maxlength: MAX_REASON_CHARS,
     // On explored options, the prompt asks for a teach-back: what happens next on the one you pick.
     placeholder: d.explore ? "Talk it through: in a sentence, what happens next on the one you pick?" : "Talk it through, or pick one.",
-    "aria-label": "Think out loud: which way you lean, why, any conditions, and any questions",
+    "aria-label": "Your turn: which way you lean, why, any conditions, any questions",
   }) as HTMLTextAreaElement;
   ta.value = flow.think;
   ta.addEventListener("input", () => {
-    thinkEdited(flow, d, ta.value, "typing");
+    thinkEdited(flow, ta.value);
     fit(ta);
   });
-  const ex = EXAMPLES.find((e) => e.id === d.id);
+  // Enter sends (Shift+Enter for a new line), as in any chat.
+  ta.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    primary(flow, d, route);
+  });
+  const script = CONVERSATIONS.find((c) => c.id === d.id);
   const el = h(
     "section",
-    { class: "think", "aria-label": "Think out loud" },
-    h("div", { class: "think-field" }, h("div", { class: "think-marks", "aria-hidden": "true" }), ta),
-    h("ul", { class: "answers", "aria-live": "polite" }),
+    { class: "think thread", "aria-label": "Conversation with Bug Me" },
+    h("ol", { class: "turns" }),
+    h("div", { class: "think-field composer" }, ta),
     h("p", { class: "think-msg adjusted", role: "status" }),
     h(
       "div",
       { class: "think-actions" },
       h("button", { type: "button", class: "linkish skip-q", onclick: () => startPunt(flow) }, "Skip"),
-      ex && Q.mode !== "live"
+      script && Q.mode !== "live"
         ? h(
             "p",
             { class: "example" },
@@ -229,83 +236,137 @@ function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nul
                 type: "button",
                 class: "linkish",
                 onclick: () => {
-                  ta.value = ex.narration;
-                  thinkEdited(flow, d, ex.narration, "voice");
+                  const t = script.turns[jordanTurns(flow.turns).length];
+                  if (!t) return;
+                  if (t.pick) pick(flow, t.pick);
+                  ta.value = t.text;
+                  thinkEdited(flow, t.text);
                   fit(ta);
                 },
               },
               "Use Jordan's words",
             ),
-            " (recorded; live calls are off)",
+            " (recorded)",
           )
         : null,
-      h("button", { type: "button", class: "primary send", onclick: () => void send(flow, d, route) }, "Send"),
+      h("button", { type: "button", class: "primary send", onclick: () => primary(flow, d, route) }, "Send"),
     ),
   );
-  thinkNodes.set(flow.id, { el, route, flow });
+  threadNodes.set(flow.id, { el, route, flow });
   return el;
 }
 
-/** Grow the textarea with its words, so the marks layer behind it always lines up. */
+/** The primary button (and Enter): confirm what Bug Me read back, or send this turn. */
+function primary(flow: Flow, d: Decision, route: RouteKind): void {
+  if (readyToConfirm(flow)) void confirmThread(flow, d, route);
+  else void sendTurn(flow, d, route);
+}
+
+/** Grow the textarea with its words. */
 function fit(ta: HTMLTextAreaElement): void {
   ta.style.height = "auto";
   ta.style.height = `${ta.scrollHeight}px`;
 }
 
+/** What Bug Me heard in one of Jordan's turns, as marks on its words (from the latest reading). */
+function marksFor(flow: Flow, turn: number): { kind: string; quote: string }[] {
+  const l = flow.ledger;
+  if (!l) return [];
+  const at = (q: Quote | null | undefined) => (q && q.turn === turn ? [q.quote] : []);
+  return [
+    ...[...at(l.choice_quote), ...at(l.course)].map((quote) => ({ kind: "choice", quote })),
+    ...l.why.flatMap(at).map((quote) => ({ kind: "why", quote })),
+    ...l.conditions.flatMap(at).map((quote) => ({ kind: "but", quote })),
+    ...l.questions.flatMap((x) => at(x.quote)).map((quote) => ({ kind: "ask", quote })),
+    ...l.feedback.flatMap((x) => at(x.quote)).map((quote) => ({ kind: "fb", quote })),
+  ];
+}
+
+/** One of Jordan's turns: the words with what Bug Me heard marked, and any option clicked with them. */
+function jordanTurn(d: Decision, flow: Flow, t: JordanTurn, n: number): HTMLElement {
+  const parts: Child[] = [];
+  let at = 0;
+  for (const m of drawableMarks(t.text, marksFor(flow, n) as Mark[])) {
+    parts.push(t.text.slice(at, m.start), h("mark", { class: `m-${m.kind}` }, t.text.slice(m.start, m.end)));
+    at = m.end;
+  }
+  parts.push(t.text.slice(at));
+  const picked = t.pick ? d.options.find((o) => o.key === t.pick) : undefined;
+  return h(
+    "li",
+    { class: "turn mine" },
+    h("span", { class: "sr-only" }, `${Q.persona.first_name}: `),
+    picked ? h("span", { class: "picked-chip" }, `${picked.key} · ${picked.label}`) : null,
+    t.text ? h("p", {}, ...parts) : null,
+  );
+}
+
+const face = () => h("img", { class: "bug-face", src: "/firefly/clay/attentive.png", alt: "", width: 28, height: 28 });
+
+function bugTurn(t: ShownBugTurn): HTMLElement {
+  return h(
+    "li",
+    { class: `turn bug${t.next === "confirm" ? " readback" : ""}` },
+    face(),
+    h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), t.text),
+    t.source && t.source !== "live" ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "recorded" ? "recorded" : "stand-in") : null,
+  );
+}
+
+/** A read-only list of a finished conversation's turns. */
+export function threadList(d: Decision, flow: Pick<Flow, "turns" | "ledger">): HTMLElement {
+  let n = 0;
+  return h("ol", { class: "turns" }, ...flow.turns.map((t) => (t.who === "jordan" ? jordanTurn(d, flow as Flow, t, n++) : bugTurn(t))));
+}
+
 /**
- * Bring the card in front of the person up to date in place: the lit option, the marks behind the
- * words, the answers to questions, the Send label, any message. No element is replaced, so typing
- * and voice carry on undisturbed.
+ * Bring the conversation in front of the person up to date in place: the turns, the lit option, the
+ * primary button (Send, or the decision itself once Bug Me has read it back), any message. The
+ * composer is never replaced, so typing and voice carry on undisturbed.
  */
-export function paintThink(): void {
+export function paintThread(): void {
   const flow = F;
-  const area = document.querySelector<HTMLElement>("#now .think");
+  const area = document.querySelector<HTMLElement>("#now .thread");
   if (!flow || !area || S.current !== flow.id) return;
   const d = byId.get(flow.id)!;
   for (const b of document.querySelectorAll<HTMLButtonElement>("#now .opt")) b.setAttribute("aria-pressed", String(flow.choice === b.dataset.key));
-  const ta = area.querySelector("textarea")!;
   const choosing = flow.phase === "choose";
+  const busy = isSending(flow);
+
+  const list = area.querySelector(".turns")!;
+  let n = 0;
+  const items = flow.turns.map((t) => (t.who === "jordan" ? jordanTurn(d, flow, t, n++) : bugTurn(t)));
+  if (busy && flow.turns.at(-1)?.who === "jordan") items.push(h("li", { class: "turn bug typing", "aria-hidden": "true" }, face(), h("p", {}, h("span", { class: "dots" }, "…"))));
+  const grew = items.length !== list.childElementCount;
+  list.replaceChildren(...items);
+  // Follow the newest turn only if the person was already near the bottom.
+  if (grew && window.innerHeight + window.scrollY > document.body.scrollHeight - 320) list.lastElementChild?.scrollIntoView({ block: "nearest" });
+
+  const composer = area.querySelector<HTMLElement>(".composer")!;
+  const ta = composer.querySelector("textarea")!;
+  composer.hidden = !choosing;
   ta.disabled = !choosing;
+  if (ta.value !== flow.think) ta.value = flow.think;
   fit(ta);
 
-  // The marks: the same text, transparent, with the marked phrases wrapped.
-  const layer = area.querySelector(".think-marks")!;
-  const text = flow.think;
-  const parts: Child[] = [];
-  let at = 0;
-  for (const m of drawableMarks(text, currentMarks(flow))) {
-    parts.push(text.slice(at, m.start), h("mark", { class: `m-${m.kind}` }, text.slice(m.start, m.end)));
-    at = m.end;
-  }
-  parts.push(text.slice(at), "\n");
-  layer.replaceChildren(...parts.map((p) => (typeof p === "string" ? document.createTextNode(p) : (p as Node))));
-
-  // Answers to the questions still in the words, in reading order.
-  const answers = area.querySelector(".answers")!;
-  const asks = currentMarks(flow).filter((m) => m.kind === "ask" && flow.asks[m.quote]);
-  answers.replaceChildren(
-    ...asks.map((m) => {
-      const a = flow.asks[m.quote];
-      const words = a.status === "pending" ? "Looking at what the agent provided…" : a.answer;
-      return h("li", { class: a.status, title: a.source ? SOURCE_LABEL[a.source] : "" }, words);
-    }),
-  );
-
-  const plan = planFor(flow, d);
-  const reread = needsReread(flow);
   const btn = area.querySelector<HTMLButtonElement>(".send");
   if (btn) {
     btn.hidden = !choosing;
-    btn.textContent = reread ? "Read it again" : plan.label;
-    btn.disabled = (plan.kind === "nothing" && !reread) || isSending(flow);
+    const confirm = readyToConfirm(flow);
+    btn.textContent = confirm ? primaryLabel(d, flow.ledger!) : unanswered(flow) ? "Send again" : "Send";
+    btn.classList.toggle("decide", confirm);
+    btn.disabled = busy || (!confirm && !unanswered(flow) && !flow.think.trim() && !flow.pick);
   }
   const msg = area.querySelector(".think-msg")!;
-  const failed = flow.parseError && flow.parseError.rev === flow.rev ? `Couldn't read that just now (${flow.parseError.message}). Pick an option, or read it again.` : "";
-  msg.textContent = flow.error || (choosing ? flow.message || failed : "");
-  for (const el of area.querySelectorAll<HTMLElement>(".example, .skip-q")) el.hidden = !choosing;
-  // While a Send is out, setting the card aside would leave it armed behind the panel.
-  const notNow = area.querySelector<HTMLButtonElement>(".skip-q");
-  if (notNow) notNow.disabled = isSending(flow);
+  msg.textContent = flow.error || (choosing ? flow.message : "");
+  const ex = area.querySelector<HTMLElement>(".example");
+  if (ex) ex.hidden = !choosing || !CONVERSATIONS.find((c) => c.id === d.id)?.turns[jordanTurns(flow.turns).length];
+  const skip = area.querySelector<HTMLButtonElement>(".skip-q");
+  if (skip) {
+    skip.hidden = !choosing;
+    // While a turn is out, setting the card aside would leave it armed behind the panel.
+    skip.disabled = busy;
+  }
 
   // A figure that colours the picked option follows the pick.
   const fig = document.querySelector<HTMLElement>("#now .viz");
@@ -324,9 +385,12 @@ function renderClosed(root: HTMLElement, d: Decision, why: "answered" | "aside")
   if (why === "answered") {
     const a = S.answered[d.id];
     const chosen = d.options.find((o) => o.key === a.final);
+    const lead = a.outcome === "rejected" ? "You rejected the question: " : a.other ? "You chose something else: " : "You decided: ";
     body.push(
-      h("p", {}, h("span", { class: "quiet" }, a.other ? "You chose something else: " : "You decided: "), a.other ?? chosen?.label ?? a.final),
-      a.conditions ? h("p", { class: "quiet" }, "With conditions: “", a.conditions, "”") : a.basis ? h("p", { class: "quiet" }, "“", a.basis, "”") : null,
+      // The conversation as it happened, read-only, then the outcome.
+      a.thread ? threadList(d, a.thread) : null,
+      h("p", {}, h("span", { class: "quiet" }, lead), a.other ?? chosen?.label ?? a.final),
+      a.thread ? null : a.conditions ? h("p", { class: "quiet" }, "With conditions: “", a.conditions, "”") : a.basis ? h("p", { class: "quiet" }, "“", a.basis, "”") : null,
     );
   } else {
     const p = S.punts[d.id];
@@ -352,7 +416,7 @@ function drawnOnce(id: string, fig: HTMLElement): HTMLElement {
 }
 
 /** Open the "Skip" panel on this card, remembering where to return if the person cancels. */
-function startPunt(flow: Flow): void {
+export function startPunt(flow: Flow): void {
   if (isSending(flow)) return; // a Send in progress is finished first
   flow.puntFrom = flow.phase === "pushback" ? "pushback" : "choose";
   flow.phase = "punting";
@@ -471,8 +535,9 @@ export function followup(d: Decision, route: RouteKind): Child {
       ),
     );
   }
-  if (F.phase === "done" && F.choice === "other") {
-    // "Something else": no guess was made among the options, so none is revealed.
+  const outside = F.choice === "other" || F.choice === "rejected";
+  if (F.phase === "done" && outside) {
+    // A course of the person's own, or a rejected question: no guess was made among those, so none is revealed.
     return h(
       "div",
       { class: "followup reveal", "aria-live": "polite" },
@@ -480,12 +545,12 @@ export function followup(d: Decision, route: RouteKind): Child {
       h("div", { class: "after-marks" }, h("button", { type: "button", class: "primary", onclick: () => next() }, "Next decision")),
     );
   }
-  if (!F.guess) return F.message ? h("div", { class: "followup" }, h("p", {}, F.message)) : null;
+  if (!F.guess && !(outside && F.phase === "proposal")) return F.message ? h("div", { class: "followup" }, h("p", {}, F.message)) : null;
 
-  const top = topGuess(F.guess);
-  const guessed = d.options.find((o) => o.key === top.option)!;
+  const top = F.guess ? topGuess(F.guess) : null;
+  const guessed = top ? d.options.find((o) => o.key === top.option)! : null;
   const parts: Child[] =
-    F.phase === "why"
+    F.phase === "why" || !top || !guessed
       ? []
       : [h("p", {}, h("b", {}, "Bug Me's guess, hidden until now: "), `${guessed.label} (${Math.round(top.p * 100)}%).`, top.option === F.choice ? " You agreed." : " You went the other way.")];
   if (F.phase === "why") {

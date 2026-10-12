@@ -3,7 +3,7 @@
 // gets its own recognition session, and late results from an earlier one are dropped. Speech
 // recognition is replaced by a stand-in the test drives.
 import { type Page, expect, test } from "@playwright/test";
-import { freshPage, goHome, openDecision, option, stored, decide } from "./helpers";
+import { freshPage, goHome, openDecision, option, stored, decide, decideQuietly } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -43,7 +43,7 @@ const recCount = (page: Page) => page.evaluate("(globalThis.__recs ?? []).length
 const recStopped = (page: Page, n: number) => page.evaluate(`globalThis.__recs.at(${n}).stopped`) as Promise<boolean>;
 const state = (page: Page) => page.locator("#voice").getAttribute("data-state");
 
-test("off until clicked; then speech is appended to the think box after what was typed, and read at once", async ({ page }) => {
+test("off until clicked; then speech is appended to the box after what was typed", async ({ page }) => {
   await openDecision(page, "api-rename");
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "off");
   expect(await recCount(page)).toBe(0);
@@ -52,7 +52,6 @@ test("off until clicked; then speech is appended to the think box after what was
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
   await say(page, "then keep user_id.");
   await expect(page.locator("#think")).toHaveValue("Typed first. then keep user_id.");
-  await expect(page.locator(".think-marks .m-choice")).toHaveText("then keep user_id.");
   await expect(page.locator("#voice-heard")).toContainText("then keep user_id.");
 });
 
@@ -88,12 +87,13 @@ test("in Skip, speech goes to the reason, not the answer", async ({ page }) => {
   expect((await stored(page))?.flows?.["api-rename"]?.think ?? "").toBe("");
 });
 
-test("a spoken choice and reason pick and go with the answer on Send", async ({ page }) => {
+test("a spoken choice and reason go as a turn; Bug Me reads it back, and the reason goes with the answer", async ({ page }) => {
   await openDecision(page, "incident-action-items");
   await page.locator("#voice-btn").click();
   await say(page, "File all five as drafted because the volunteers already agreed.");
-  await expect(option(page, "File all five as drafted")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#now .send").click();
+  await expect(option(page, "File all five as drafted")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#now .send.decide").click();
   await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.basis, { timeout: 5000 }).toBe("because the volunteers already agreed.");
 });
 
@@ -121,7 +121,7 @@ test("a finished decision opened later has no box for speech, so listening pause
   await decide(page, "File all five as drafted");
   await expect.poll(async () => Boolean((await stored(page))?.answered?.["incident-action-items"])).toBe(true);
   await page.evaluate(() => {
-    const k = "bugme.state.v3";
+    const k = "bugme.state.v4";
     const st = JSON.parse(localStorage.getItem(k)!);
     delete st.flows["incident-action-items"];
     localStorage.setItem(k, JSON.stringify(st));
@@ -156,7 +156,7 @@ test("silence is not a failure: the session restarts right away", async ({ page 
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
 });
 
-test("a phrase still being spoken when Send is pressed goes with the answer", async ({ page }) => {
+test("a phrase still being spoken when Send is pressed goes with the turn", async ({ page }) => {
   await openDecision(page, "incident-action-items");
   await page.locator("#voice-btn").click();
   await option(page, "File all five as drafted").click();
@@ -170,7 +170,7 @@ test("a phrase still being spoken when Send is pressed goes with the answer", as
     };
   });
   await page.locator("#now .send").click();
-  await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.conditions, { timeout: 8000 }).toBe("But only if every ticket links the incident doc.");
+  await expect.poll(async () => (await stored(page))?.flows?.["incident-action-items"]?.turns?.[0]?.text, { timeout: 8000 }).toBe("But only if every ticket links the incident doc.");
 });
 
 /** Make the latest session hold words as unfinished, delivering them as final `delay` ms after stop(). */
@@ -193,12 +193,13 @@ async function holdPhrase(page: Page, interim: string, final: string, delay = 0)
 test("Send waits for a reason still being spoken", async ({ page }) => {
   await openDecision(page, "incident-action-items");
   await page.locator("#voice-btn").click();
-  await say(page, "Instead, assign the database one to me.");
-  await expect(page.locator("#now .send")).toHaveText("Send: something else");
+  await say(page, "Neither, assign the database one to me.");
   await holdPhrase(page, "because I own", "Because I own the database.", 200);
   await page.locator("#now .send").click();
+  await expect(page.locator("#now .send.decide")).toHaveText("Do something else", { timeout: 8000 });
+  await page.locator("#now .send.decide").click();
   await expect.poll(async () => (await stored(page))?.answered?.["incident-action-items"]?.basis, { timeout: 8000 }).toBe("Because I own the database.");
-  expect((await stored(page))?.answered?.["incident-action-items"]?.other).toBe("Instead, assign the database one to me.");
+  expect((await stored(page))?.answered?.["incident-action-items"]?.other).toBe("assign the database one to me.");
 });
 
 test("skip while a spoken reason finishes: nothing is sent, and a second click sends nothing twice", async ({ page }) => {
@@ -206,7 +207,7 @@ test("skip while a spoken reason finishes: nothing is sent, and a second click s
   page.on("request", (r) => r.url().includes("/api/fact") && facts.push(r.url()));
   await openDecision(page, "onsite-flight");
   await page.locator("#voice-btn").click();
-  await decide(page, "9:40am flight");
+  await decideQuietly(page, "9:40am flight");
   const push = page.locator("#now .followup.push .primary");
   await expect(page.locator("#now .followup.push .primary, #why").first()).toBeVisible();
   if (await push.count()) await push.click();

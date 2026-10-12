@@ -6,17 +6,17 @@
 // to clear UI layout choices makes the fake model settle it (reversible, free, cleared by a whole
 // rule), so the re-check really would take it off the person's hands.
 import { expect, test } from "@playwright/test";
-import { editRule, freshPage, goSettled, hold, openDecision, option, decide } from "./helpers";
+import { editRule, freshPage, goSettled, hold, openDecision, option, decide, decideQuietly } from "./helpers";
 
 const state = async (page: import("@playwright/test").Page) =>
-  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v3')")) as string);
+  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v4')")) as string);
 
 const BUDGET = "settings-redesign";
 const R11_CLEARS = "UI layout choices on a preview branch: just do it.";
 
 async function flightToWhy(page: import("@playwright/test").Page) {
   await openDecision(page, "onsite-flight");
-  await decide(page, "9:40am flight");
+  await decideQuietly(page, "9:40am flight");
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
 }
 
@@ -65,9 +65,9 @@ test("a card that becomes settled leaves the screen", async ({ page }) => {
 
 test("an over-long reason can be shortened and resent", async ({ page }) => {
   await flightToWhy(page);
-  await page.getByLabel("Why did you choose that?").fill("x".repeat(601));
+  await page.getByLabel("Why did you choose that?").fill("x".repeat(901));
   await page.getByRole("button", { name: "Tell Bug Me" }).click();
-  await expect(page.locator("#now [role=alert]")).toContainText("under 600 characters");
+  await expect(page.locator("#now [role=alert]")).toContainText("under 900 characters");
   await page.getByLabel("Why did you choose that?").fill("I do school drop-off before 8:30.");
   await page.getByRole("button", { name: "Tell Bug Me" }).click();
   await expect(page.getByRole("button", { name: "Keep it" })).toBeVisible();

@@ -3,7 +3,7 @@
 
 import { buildAgenda } from "../shared/agenda";
 import type { RouteKind, Source } from "../shared/types";
-import { Q, S, isCard } from "./state";
+import { Q, S, isCard, talking } from "./state";
 
 export const ROUTE_LABEL: Record<RouteKind, string> = { settle: "Settled for you", check_in: "Quick check-in", decide: "Your decision" };
 /** Routes as symbols: handled for you, a quick check, needs you. */
@@ -34,6 +34,12 @@ export function agenda() {
 /** Decisions not yet answered by the person, including ones Bug Me settled: all can be re-routed. */
 export function waitingIds(): string[] {
   return Q.decisions.filter((d) => !S.answered[d.id]).map((d) => d.id);
+}
+
+/** What guidance may re-route: waiting decisions, except one the person is in a conversation about
+ *  (it must not move into Decided for you under them). */
+export function reroutableIds(): string[] {
+  return waitingIds().filter((id) => !talking(id));
 }
 
 export function firstAgendaId(): string | null {
