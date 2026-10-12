@@ -112,7 +112,8 @@ export function initVoice(): void {
   );
   const heard = h("p", { class: "voice-heard", id: "voice-heard", "aria-live": "polite" });
   const note = h("p", { class: "voice-note", id: "voice-note" });
-  root.append(btn, heard, note);
+  // What was heard and the privacy note travel together (beside the firefly; along the bottom on phones).
+  root.append(btn, h("div", { class: "voice-says" }, heard, note));
   paint();
 }
 
