@@ -3,10 +3,29 @@
 // "couldn't evaluate". This test catches that before it ships.
 import { describe, expect, it } from "vitest";
 import recorded from "../../fixtures/captures/recorded.json";
-import { EFFORT, MAX_TOKENS, MODEL } from "../../src/shared/constants";
+import { EFFORT, MAX_TOKENS, MODEL, TITLE_MAX_TOKENS, TITLE_MODEL } from "../../src/shared/constants";
+import { type ConvTurn, type ConverseResult, type Next, advance, closeInputs, outcomeOf, sanitizeLedger, unverifiedQuotes } from "../../src/shared/converse";
+import { parseTitles } from "../../src/shared/titles";
 import { modelCacheKey } from "../../src/shared/hash";
-import { ASK_SCHEMA, FACT_SCHEMA, PARSE_PROMPT_VERSION, PROMPT_VERSION, askPrompt, factPrompt, parsePrompt, parseSchema, routeSchema, routePrompt } from "../../src/shared/prompts";
-import { EXAMPLES } from "../../src/shared/examples";
+import {
+  ASK_SCHEMA,
+  CONVERSE_PROMPT_VERSION,
+  FACT_SCHEMA,
+  PARSE_PROMPT_VERSION,
+  PROMPT_VERSION,
+  TITLE_PROMPT_VERSION,
+  askPrompt,
+  conversePrompt,
+  converseSchema,
+  factPrompt,
+  parsePrompt,
+  parseSchema,
+  routePrompt,
+  routeSchema,
+  titlePrompt,
+  titleSchema,
+} from "../../src/shared/prompts";
+import { CONVERSATIONS, EXAMPLES } from "../../src/shared/examples";
 import { answerParts, guidanceText, parseParseOutput } from "../../src/shared/parse";
 import { enforceSettleInvariant, parseRouteOutput } from "../../src/shared/route";
 import { decisions, facts, persona, rules } from "./helpers";
@@ -91,4 +110,47 @@ describe("the recorded guidance reaches the decisions it should", () => {
       expect(r.output.fact_quoted).toMatch(/field names|renam/i);
     }
   });
+});
+
+describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () => {
+  const key = (parts: { model?: string; maxTokens?: number; promptVersion: string; schema: unknown; prompt: string }) =>
+    modelCacheKey({ model: parts.model ?? MODEL, effort: EFFORT, maxTokens: parts.maxTokens ?? MAX_TOKENS, promptVersion: parts.promptVersion, schema: parts.schema, prompt: parts.prompt });
+  const output = (k: string) => (entries[k] as { output: unknown } | undefined)?.output;
+
+  /** Haiku titles dockerfile-format in seven words however often it is asked; its card shows the headline instead. */
+  const UNTITLED = ["dockerfile-format"];
+  it("every decision but the known exception has a recorded emoji and title that pass today's checks", async () => {
+    const missing: string[] = [];
+    for (const d of decisions) {
+      const out = output(await key({ model: TITLE_MODEL, maxTokens: TITLE_MAX_TOKENS, promptVersion: TITLE_PROMPT_VERSION, schema: titleSchema(d.options.map((o) => o.key)), prompt: titlePrompt(d) }));
+      if (out === undefined) missing.push(d.id);
+      else expect(() => parseTitles(out, d), d.id).not.toThrow();
+    }
+    expect(missing).toEqual(UNTITLED);
+  });
+
+  for (const s of CONVERSATIONS) {
+    it(`${s.id}: the scripted conversation replays from the recording and follows the script, and its guidance call is recorded`, async () => {
+      const d = decisions.find((x) => x.id === s.id)!;
+      const routed = parseRouteOutput(output(await key({ promptVersion: PROMPT_VERSION, schema: routeSchema(d.options.map((o) => o.key)), prompt: routePrompt(persona, rules, facts, d) })), d);
+      const card = { route: enforceSettleInvariant(routed, d, rules, facts).route, why_here: routed.why_here };
+      const turns: ConvTurn[] = [];
+      let last: ConverseResult | null = null;
+      for (const [i, t] of s.turns.entries()) {
+        turns.push(t.pick ? { who: "jordan", text: t.text, pick: t.pick } : { who: "jordan", text: t.text });
+        const raw = output(await key({ promptVersion: CONVERSE_PROMPT_VERSION, schema: converseSchema(d.options.map((o) => o.key)), prompt: conversePrompt(persona, rules, facts, d, card, turns) })) as { reply: string; next: Next; ledger: unknown } | undefined;
+        expect(raw, `turn ${i} is recorded; re-record with \`npm run record\``).toBeDefined();
+        expect(unverifiedQuotes(raw, turns), `turn ${i}: quotes not in Jordan's words`).toBe(0);
+        last = advance(d, turns, raw!.reply, raw!.next, sanitizeLedger(raw!.ledger, d, turns));
+        expect(last.next, `turn ${i}`).toBe(s.expect[i]);
+        turns.push({ who: "bugme", text: last.reply, next: last.next });
+      }
+      expect(outcomeOf(d, last!.ledger)).toEqual({ kind: "option", key: s.choice });
+      const c = closeInputs(d, turns, last!.ledger);
+      if (c.evidence) {
+        const others = decisions.filter((x) => x.id !== d.id);
+        expect(output(await key({ promptVersion: PROMPT_VERSION, schema: FACT_SCHEMA, prompt: factPrompt(persona, rules, facts, d, s.choice, c.evidence, others) })), "fact").toBeDefined();
+      }
+    });
+  }
 });

@@ -30,5 +30,6 @@ export function publicDecision(d: Decision) {
     visual: d.visual,
     bounds: d.bounds,
     tags: d.tags,
+    work: d.work,
   };
 }

@@ -168,6 +168,20 @@ On every turn: at most one question mark in the reply, and no quote in the raw m
 
 Plus: Lighthouse accessibility at 100 on a thread at phone width; screenshots of a three-turn thread at 1280 and 390 wide, checked by eye; David's real-microphone check on staging.
 
+## As built: stage 6b (the server side)
+
+Where the build differs from the plan above, and why:
+
+- **The ledger isn't sent back.** Each turn sends the transcript only; Claude re-reads it and returns the whole current ledger. That makes the request smaller, and nothing from an earlier answer can leak into a recording key.
+- **The card the conversation sees is its route and `why_here`.** That is enough for Bug Me to talk about why it came to Jordan. It is the whole projection: `sealed` and `source` are dropped (`parseConverseRequest`, tested).
+- **Confirming with the button makes no call.** Only a typed "yes" goes to the model, and its "close" stands only straight after a read-back.
+- **`whyAsked` means "Bug Me asked anything".** Any elicitation question in the thread silences the "I'm curious: why?" backstop, not only a question about why.
+- **The scripts are `CONVERSATIONS` in `src/shared/examples.ts`,** separate from `EXAMPLES`, which the stage 4 page still uses until 6c.
+- **Titles: 39 of 40 recorded.** However often it is asked, Haiku titles `dockerfile-format` in seven words ("Trim whitespace and sort Dockerfile package lists"). The limit stays at six, and that card shows its headline instead; the test names the exception.
+- **The spend reservation is unchanged.** The largest conversation prompt is under 24,000 characters (about 8k tokens), the figure the reservation was set for.
+- **What the first recording caught:** a read-back that added a detail Jordan never said; a follow-up question after Jordan had said everything; Bug Me raising a conflict with Jordan's rule before the pushback step; and two reason quotes run together. Prompt 2026-10-12.2 and the quote joining fix all four. The recordings were redone from scratch.
+- **Eval:** `npm run eval:converse` passes 8/8 conversations, 24/24 trials, at 1.8–6.9 s per turn and $0.50 a run (`results/captures/eval-converse-2026-10-12T16-11-33-400Z.json`). One check was corrected after the first run, and the script says so: the correction case checked that no condition mentioned "docs", but a trial rightly kept the correction itself ("Actually, skip the docs note.") as the new condition; it now checks that the turn-0 condition is gone.
+
 ## Plan review
 
 Codex reviewed this plan once (2026-10-12). Folded in above: the turn contract with clicks, `advance` owning both the state and the reply, terminal read-backs, the backstop flags, Skip versus "skip it", turn-referenced quotes and the ledger as current interpretation, feedback as a reason for guidance, the outcome field for other and reject, limits, the request projection for replay, persistence, the card snapshot and re-route protection, focus rules, the extra gates, the mock's phone and label fixes, and hand-authored work kinds. Its roadmap items (the full lifecycle for "other", real agent delivery, conversation quality beyond the designed cases, durable server-side threads, adaptive ordering and streaming) are in `ROADMAP.md`.

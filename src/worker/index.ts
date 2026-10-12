@@ -6,15 +6,17 @@
 //   POST /api/fact    turn a stated reason into proposed guidance and the decisions to re-route
 //   POST /api/ask     answer a clarifying question from what the agent provided, or say what is missing
 //   POST /api/parse   pick the choice, reasons, conditions and questions out of the person's thinking out loud
+//   POST /api/converse one turn of the decision conversation: Bug Me's reading of the thread and its next turn
 //
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
 
-import { MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES } from "../shared/constants";
+import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES } from "../shared/constants";
+import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
-import { type Env, ModelUnavailable, NeedsSession, askFor, factFor, parseFor, routeFor } from "./model";
+import { type Env, ModelUnavailable, NeedsSession, askFor, converseFor, factFor, parseFor, routeFor, titlesFor } from "./model";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
 import { SealError, importSealKey, seal, sha256Hex, unseal } from "./seal";
@@ -77,7 +79,8 @@ export async function contextVersion(rules: Rule[], facts: Fact[]): Promise<stri
 
 /** Route one decision and turn the result into a public card with its hidden part sealed. */
 async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, rules: Rule[], facts: Fact[]): Promise<Card> {
-  const { out, source } = await routeFor(env, canSpend, d, rules, facts);
+  // The emoji and title are display only: a card without them still works, so their failure is not the card's.
+  const [{ out, source }, titles] = await Promise.all([routeFor(env, canSpend, d, rules, facts), titlesFor(env, canSpend, d).catch(() => null)]);
   const inv = enforceSettleInvariant(out, d, rules, facts);
   const quotes = verifiedQuotes(out, rules, facts);
   const version = await contextVersion(rules, facts);
@@ -104,6 +107,7 @@ async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, ru
     problem: out.problem,
     source,
     sealed,
+    ...(titles ? { emoji: titles.out.emoji, title: titles.out.title, done: titles.out.done } : {}),
   };
 }
 
@@ -173,16 +177,22 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
   if (path === "/api/fact") {
     const d = decisionOf(b.id);
     const { rules, facts } = context(b);
-    const choice = typeof b.choice === "string" ? b.choice : "";
-    if (!d.options.some((o) => o.key === choice)) throw new BadRequest("choice is not an option of this decision");
-    const reason = cleanText(b.reason, MAX_REASON_CHARS, "reason");
+    // A thread can end outside the listed options (docs/STAGE-6.md): Jordan's own course, or the
+    // question rejected. Those carry the course in Jordan's words and never a listed option's key.
+    const outcome = b.outcome ?? "option";
+    if (outcome !== "option" && outcome !== "other" && outcome !== "rejected") throw new BadRequest("outcome must be option, other or rejected");
+    const choice = outcome === "option" && typeof b.choice === "string" ? b.choice : "";
+    if (outcome === "option" && !d.options.some((o) => o.key === choice)) throw new BadRequest("choice is not an option of this decision");
+    const outside = outcome === "option" ? undefined : { kind: outcome as "other" | "rejected", course: cleanText(b.course, MAX_REASON_CHARS, "course") };
+    if (outside && !outside.course) throw new BadRequest("course is required for other and rejected");
+    const reason = cleanText(b.reason, MAX_EVIDENCE_CHARS, "reason");
     const waitingIds = Array.isArray(b.waiting) ? b.waiting.filter((x): x is string => typeof x === "string") : [];
     const waiting = waitingIds.map((id) => byId.get(id)).filter((x): x is Decision => Boolean(x) && x!.id !== d.id);
     // The prompt lists every other decision, not just the ones still waiting, so its wording (and so a
     // recorded answer) does not depend on what the visitor happened to answer first; code then keeps
     // only suggestions that are actually waiting.
     const others = decisions.filter((x) => x.id !== d.id);
-    const { out, source } = await factFor(env, canSpend, d, choice, reason, rules, facts, others);
+    const { out, source } = await factFor(env, canSpend, d, choice, reason, rules, facts, others, outside);
     // Re-route candidates: decisions sharing a topic tag with this one, plus the model's suggestions,
     // limited to known waiting ids and capped, so one fact costs a bounded number of calls.
     const known = new Set(waiting.map((w) => w.id));
@@ -206,6 +216,20 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
     const text = b.text.trim();
     if (!text || text.length > MAX_REASON_CHARS) throw new BadRequest(`text must be 1 to ${MAX_REASON_CHARS} characters`);
     const { out, source } = await parseFor(env, canSpend, d, text);
+    return json({ ...out, source });
+  }
+
+  if (path === "/api/converse") {
+    const d = decisionOf(b.id);
+    const { rules, facts } = context(b);
+    let req: ReturnType<typeof parseConverseRequest>;
+    try {
+      req = parseConverseRequest(b, d);
+    } catch (e) {
+      if (e instanceof ConverseError) throw new BadRequest(e.message);
+      throw e;
+    }
+    const { out, source } = await converseFor(env, canSpend, d, req.card, req.turns, rules, facts);
     return json({ ...out, source });
   }
 

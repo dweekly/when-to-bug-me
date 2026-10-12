@@ -165,6 +165,7 @@
   {
     "id": "branch-cleanup",
     "category": "Data cleanup",
+    "work": "branches",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 480,
@@ -182,6 +183,7 @@
   {
     "id": "formatter-run",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 470,
@@ -199,6 +201,7 @@
   {
     "id": "patch-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "platform",
     "agent": ["platform-lead", "deps-bot"],
     "waiting_minutes": 460,
@@ -216,6 +219,7 @@
   {
     "id": "flaky-test",
     "category": "Code: housekeeping",
+    "work": "flaky-tests",
     "project": "platform",
     "agent": ["platform-lead", "ci-tuner"],
     "waiting_minutes": 440,
@@ -233,6 +237,7 @@
   {
     "id": "ts-sdk-lint",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "launch",
     "agent": ["sdk-lead", "ts-sdk"],
     "waiting_minutes": 410,
@@ -250,6 +255,7 @@
   {
     "id": "py-sdk-format",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "launch",
     "agent": ["sdk-lead", "py-sdk"],
     "waiting_minutes": 400,
@@ -267,6 +273,7 @@
   {
     "id": "launch-dash-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "launch",
     "agent": ["launch-coordinator", "deps-bot"],
     "waiting_minutes": 395,
@@ -284,6 +291,7 @@
   {
     "id": "webhooks-branches",
     "category": "Code: housekeeping",
+    "work": "branches",
     "project": "launch",
     "agent": ["api-lead", "webhooks"],
     "waiting_minutes": 380,
@@ -301,6 +309,7 @@
   {
     "id": "settings-ui-format",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "launch",
     "agent": ["web-lead", "settings-ui"],
     "waiting_minutes": 370,
@@ -318,6 +327,7 @@
   {
     "id": "gateway-branches",
     "category": "Code: housekeeping",
+    "work": "branches",
     "project": "launch",
     "agent": ["api-lead", "schema-migrator"],
     "waiting_minutes": 365,
@@ -335,6 +345,7 @@
   {
     "id": "ts-sdk-flaky",
     "category": "Code: housekeeping",
+    "work": "flaky-tests",
     "project": "launch",
     "agent": ["sdk-lead", "ts-sdk"],
     "waiting_minutes": 355,
@@ -352,6 +363,7 @@
   {
     "id": "checklist-lint",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "launch",
     "agent": ["launch-coordinator", "checklist-bot"],
     "waiting_minutes": 340,
@@ -369,6 +381,7 @@
   {
     "id": "web-patch-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "launch",
     "agent": ["web-lead", "deps-bot"],
     "waiting_minutes": 330,
@@ -386,6 +399,7 @@
   {
     "id": "billing-lint",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "billing",
     "agent": ["billing-lead", "invoice-migrator"],
     "waiting_minutes": 420,
@@ -403,6 +417,7 @@
   {
     "id": "billing-branches",
     "category": "Code: housekeeping",
+    "work": "branches",
     "project": "billing",
     "agent": ["billing-lead", "invoice-migrator"],
     "waiting_minutes": 415,
@@ -420,6 +435,7 @@
   {
     "id": "billing-dash-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "billing",
     "agent": ["billing-lead", "deps-bot"],
     "waiting_minutes": 405,
@@ -437,6 +453,7 @@
   {
     "id": "billing-gofmt",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "billing",
     "agent": ["billing-lead", "scheduler"],
     "waiting_minutes": 390,
@@ -454,6 +471,7 @@
   {
     "id": "billing-dash-flaky",
     "category": "Code: housekeeping",
+    "work": "flaky-tests",
     "project": "billing",
     "agent": ["billing-lead", "scheduler"],
     "waiting_minutes": 385,
@@ -471,6 +489,7 @@
   {
     "id": "tax-mapper-lint",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "billing",
     "agent": ["billing-lead", "invoice-migrator", "tax-mapper"],
     "waiting_minutes": 375,
@@ -488,6 +507,7 @@
   {
     "id": "billing-ci-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "billing",
     "agent": ["billing-lead", "deps-bot"],
     "waiting_minutes": 360,
@@ -505,6 +525,7 @@
   {
     "id": "cutover-branches",
     "category": "Code: housekeeping",
+    "work": "branches",
     "project": "billing",
     "agent": ["billing-lead", "cutover-planner"],
     "waiting_minutes": 350,
@@ -522,6 +543,7 @@
   {
     "id": "ci-yaml-format",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 455,
@@ -539,6 +561,7 @@
   {
     "id": "cli-patch-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "platform",
     "agent": ["platform-lead", "deps-bot"],
     "waiting_minutes": 450,
@@ -556,6 +579,7 @@
   {
     "id": "infra-branches",
     "category": "Code: housekeeping",
+    "work": "branches",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 445,
@@ -573,6 +597,7 @@
   {
     "id": "tooling-lint",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 435,
@@ -590,6 +615,7 @@
   {
     "id": "cache-flaky",
     "category": "Code: housekeeping",
+    "work": "flaky-tests",
     "project": "platform",
     "agent": ["platform-lead", "ci-tuner"],
     "waiting_minutes": 430,
@@ -607,6 +633,7 @@
   {
     "id": "dockerfile-format",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 425,
@@ -624,6 +651,7 @@
   {
     "id": "precommit-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "platform",
     "agent": ["platform-lead", "deps-bot"],
     "waiting_minutes": 420,
@@ -641,6 +669,7 @@
   {
     "id": "admin-import-sort",
     "category": "Code: housekeeping",
+    "work": "formatting",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 410,
@@ -658,6 +687,7 @@
   {
     "id": "release-branches",
     "category": "Code: housekeeping",
+    "work": "branches",
     "project": "platform",
     "agent": ["platform-lead", "repo-janitor"],
     "waiting_minutes": 400,
@@ -675,6 +705,7 @@
   {
     "id": "agent-go-bumps",
     "category": "Code: housekeeping",
+    "work": "updates",
     "project": "platform",
     "agent": ["platform-lead", "deps-bot"],
     "waiting_minutes": 390,

@@ -4,11 +4,16 @@
 // name made a parameter and the three routes added. Bump PROMPT_VERSION on any wording change: it is
 // part of every cache key and saved-run key.
 
-import type { Decision, Fact, Persona, Rule } from "./types";
+import { MAX_CONVERSE_QUESTIONS, MAX_TITLE_WORDS } from "./constants";
+import { type ConvTurn, questionsAsked, transcriptForPrompt } from "./converse";
+import type { Decision, Fact, Persona, RouteKind, Rule } from "./types";
 
 export const PROMPT_VERSION = "2026-10-09.6";
 /** The think-out-loud parse prompt has its own version, so changing it leaves every other recording valid. */
 export const PARSE_PROMPT_VERSION = "2026-10-12.1";
+/** The conversation prompt (docs/STAGE-6.md) and the title prompt, each versioned on its own. */
+export const CONVERSE_PROMPT_VERSION = "2026-10-12.2";
+export const TITLE_PROMPT_VERSION = "2026-10-12.2";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -190,9 +195,17 @@ export function factPrompt(
   choice: string,
   reason: string,
   waiting: Decision[],
+  /** A thread that ended outside the listed options (docs/STAGE-6.md): Jordan's own course, or the
+   *  question rejected. Absent for a listed option, whose prompt is unchanged (and so its recordings). */
+  outside?: { kind: "other" | "rejected"; course: string },
 ): string {
   const n = p.first_name;
   const chosen = d.options.find((o) => o.key === choice);
+  const picked = outside
+    ? outside.kind === "other"
+      ? `Neither option. ${n}'s own course instead, in ${n}'s words: ${outside.course}`
+      : `${n} rejected the question itself, in ${n}'s words: ${outside.course}`
+    : `${choice}${chosen ? ` (${chosen.label})` : ""}${choice !== d.recommended ? ", against the agent's recommendation" : ""}`;
   const factList =
     facts.map((f) => `${f.id}: ${f.text}`).join("\n") || "(none)";
   const waitList =
@@ -215,7 +228,7 @@ ${factList}
 ${decisionBlock(d)}
 
 === ${n}'s answer ===
-Picked: ${choice}${chosen ? ` (${chosen.label})` : ""}${choice !== d.recommended ? ", against the agent's recommendation" : ""}
+Picked: ${picked}
 Reason, in ${n}'s words: ${reason}
 
 === The other decisions in the fleet's queue (id: question) ===
@@ -309,6 +322,145 @@ export function parseSchema(keys: string[]) {
           properties: { kind: { type: "string", enum: ["choice", "why", "but", "ask"] }, quote: { type: "string" } },
         },
       },
+    },
+  } as const;
+}
+
+/** What the conversation knows about the routed card: the route and why it came to the person. Never
+ *  the sealed guess or the source label, so a recorded thread replays whatever the card's provenance. */
+export interface ConverseCard {
+  route: RouteKind;
+  why_here: string;
+}
+
+/**
+ * One turn of the decision conversation. Claude reads the whole thread, returns its current reading of
+ * everything the person has said (the ledger, every quote exact), and writes Bug Me's next turn. Code
+ * then checks the quotes and decides what actually happens next (converse.ts, `advance`).
+ */
+export function conversePrompt(p: Persona, rules: Rule[], facts: Fact[], d: Decision, c: ConverseCard, turns: ConvTurn[]): string {
+  const n = p.first_name;
+  const asked = questionsAsked(turns);
+  return `You are Bug Me, a chief of staff that sits between one person and their fleet of AI agents. ${head(p)}
+
+An agent brought ${n} a decision. Bug Me opened the conversation by showing ${n} the briefing, why it came to ${n}, the question and the options. ${n} is now talking it through with you, typing or speaking, in turns. Your job on every turn: read the whole conversation, write down what you heard (the ledger), and write Bug Me's next turn.
+
+How Bug Me talks:
+- At most two short, plain sentences, and at most one question. No agent jargon or internal identifiers.
+- Never say which option you expect ${n} to pick, never argue for an option, and never add anything ${n} did not say.
+- Don't raise conflicts with ${n}'s rules or standing facts: Bug Me checks the answer against ${n}'s record separately, after ${n} confirms.
+- Persist a little, but don't nag. If ${n} chose (by clicking or in words) but gave no reason, ask lightly why, once. Don't ask about minor details. Bug Me has asked ${asked} of at most ${MAX_CONVERSE_QUESTIONS} questions in this conversation.
+- If ${n} asks a question, answer it using only the agent's material below. If the material doesn't say, say plainly that you don't know and will ask the agent. If ${n} has already chosen and said why, answer in a few words and read back in the same reply; don't ask whether the answer changes their mind.
+- If ${n} says to stop asking ("just do it", "no more questions"), stop: read back.
+- Once you know the choice and why (or ${n} declined to say), read the outcome back in one sentence that names the choice and any conditions, ending with "Right?". That is next "confirm". The read-back uses only ${n}'s choice and ${n}'s own words: no details, plans or reasons ${n} did not say.
+- If Bug Me's last turn was a read-back and ${n} agreed, next is "close" and the reply is a few words ("Sending that now."). If ${n} corrected it, update the ledger and read back again.
+- If ${n} wants neither option but a different course, that is choice "other". If ${n} rejects the question itself or its framing, that is choice "reject". Either way, quote ${n}'s words for it in course.
+- next is "ask" when Bug Me's reply asks ${n} something it still needs, such as which way they lean or why.
+
+The ledger, always your reading of the whole conversation so far (a later correction replaces what it corrects):
+- choice: the option key ${n} has settled on, "other", "reject", or "none" if not yet. "(clicked option X)" means ${n} clicked X; words in the same turn that say otherwise win.
+- choice_quote: the words where ${n} stated the choice, if in words; otherwise quote "".
+- course: for "other" or "reject", ${n}'s words for it; otherwise quote "".
+- action: for "other" or "reject", an imperative of at most five words naming what will happen ("Test both with customers"); otherwise "".
+- why: ${n}'s reasons. conditions: caveats or extra instructions that go with the choice ("as long as…", "but note…").
+- questions: ${n}'s questions, each with answerable (true only when the material below answers it) and answer (your answer, or "").
+- feedback: what ${n} said about the question itself, each with kind "priority" (more or less urgent than it was framed) or "routing" (it should or shouldn't have come to ${n}).
+- no_more_questions: true when ${n} asked Bug Me to stop asking.
+Every quote is copied exactly, character for character, from one of ${n}'s turns, with that turn's number from the conversation below. Mark whole clauses, not single words.
+
+${guidance(p, rules, facts)}
+
+${decisionBlock(d)}
+
+=== Why it came to ${n} (${c.route === "decide" ? "a decision" : c.route === "check_in" ? "a quick check" : "settled"}) ===
+${c.why_here}
+
+=== The conversation so far ===
+${transcriptForPrompt(d, turns, n)}
+
+Reply with the JSON object only.`;
+}
+
+/** The conversation's schema for one decision: choice is one of its option keys, "other", "reject" or "none". */
+export function converseSchema(keys: string[]) {
+  const quote = {
+    type: "object",
+    additionalProperties: false,
+    required: ["turn", "quote"],
+    properties: { turn: { type: "integer" }, quote: { type: "string" } },
+  } as const;
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["reply", "next", "ledger"],
+    properties: {
+      reply: { type: "string" },
+      next: { type: "string", enum: ["ask", "confirm", "close"] },
+      ledger: {
+        type: "object",
+        additionalProperties: false,
+        required: ["choice", "choice_quote", "course", "action", "why", "conditions", "questions", "feedback", "no_more_questions"],
+        properties: {
+          choice: { type: "string", enum: [...keys, "other", "reject", "none"] },
+          choice_quote: quote,
+          course: quote,
+          action: { type: "string" },
+          why: { type: "array", items: quote },
+          conditions: { type: "array", items: quote },
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["turn", "quote", "answerable", "answer"],
+              properties: { turn: { type: "integer" }, quote: { type: "string" }, answerable: { type: "boolean" }, answer: { type: "string" } },
+            },
+          },
+          feedback: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["turn", "quote", "kind"],
+              properties: { turn: { type: "integer" }, quote: { type: "string" }, kind: { type: "string", enum: ["priority", "routing"] } },
+            },
+          },
+          no_more_questions: { type: "boolean" },
+        },
+      },
+    },
+  } as const;
+}
+
+/**
+ * A short emoji and title for one decision, from the fast model (David, 2026-10-12), plus, per option,
+ * what having done it reads like, for the list of things Bug Me settled. Display only: never routing.
+ */
+export function titlePrompt(d: Decision): string {
+  const opts = d.options.map((o) => `${o.key}. ${o.label}${o.description ? ` - ${o.description}` : ""}`).join("\n");
+  return `Give this question from an AI agent a short label for a busy person's to-do list.
+
+- emoji: exactly one emoji that pictures what the decision is about.
+- title: what is being decided, in at most ${MAX_TITLE_WORDS} words (count them), sentence case, no final period, no agent jargon or internal identifiers. Example: "Rename the v2 user field" (5 words).
+- done: for each option key, what was done if that option was taken, in the past tense, in at most ${MAX_TITLE_WORDS} words (count them), keeping any count from the question. Leave out where and how ("on a branch", "after CI"). Example: "Deleted 41 merged branches" (4 words).
+
+Question: ${d.question}
+Options:
+${opts}
+Context: ${d.context}
+
+Reply with the JSON object only.`;
+}
+
+export function titleSchema(keys: string[]) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["emoji", "title", "done"],
+    properties: {
+      emoji: { type: "string" },
+      title: { type: "string" },
+      done: { type: "object", additionalProperties: false, required: keys, properties: Object.fromEntries(keys.map((k) => [k, { type: "string" }])) },
     },
   } as const;
 }
