@@ -203,21 +203,24 @@ export function primaryLabel(d: Decision, l: Ledger): string {
 /** The read-back code writes when it overrides the model: one fixed template per outcome. */
 export function readBack(d: Decision, l: Ledger): string {
   const o = outcomeOf(d, l);
+  const conds = l.conditions.map((c) => sentence(c.quote)).join("; ");
   if (o.kind === "option") {
     const label = lowerFirst(d.options.find((x) => x.key === o.key)!.label);
-    const conds = l.conditions.map((c) => sentence(c.quote)).join("; ");
     return `So: ${label}${conds ? `, ${conds}` : ""}. Right?`;
   }
-  if (o.kind === "other") return `So: not either option. ${sentence(l.course!.quote)}. Right?`;
-  if (o.kind === "rejected") return `So you're rejecting the question: ${sentence(l.course!.quote)}. I'll tell the agent. Right?`;
+  if (o.kind === "other") return `So: not either option. ${sentence(l.course!.quote)}${conds ? `, ${conds}` : ""}. Right?`;
+  if (o.kind === "rejected") return `So you're rejecting the question: ${sentence(l.course!.quote)}${conds ? `; ${conds}` : ""}. I'll tell the agent. Right?`;
   if (o.kind === "ask-agent") return `I'll ask the agent: ${o.questions.map(sentence).join("; ")}, and set this aside.`;
   return "Want to set this aside for now?";
 }
 
-/** What a read-back commits to: the choice, the course in Jordan's words, and the conditions. Any
- *  change to these (a new click, a condition added or removed) is a different decision. */
+/** What a read-back commits to: everything that changes what is sent (the choice, the course in
+ *  Jordan's words, the conditions, and the questions that would be forwarded to the agent). Any change
+ *  to these is a different decision. Reasons are left out: a reason added with a "yes" changes nothing
+ *  the agent will do, and is kept with the answer. */
 export function decisionFingerprint(l: Ledger): string {
-  return JSON.stringify([l.choice, l.course?.quote.trim() ?? "", l.conditions.map((c) => c.quote.trim()).sort()]);
+  const open = l.questions.filter((q) => q.answer === null).map((q) => q.quote.quote.trim()).sort();
+  return JSON.stringify([l.choice, l.course?.quote.trim() ?? "", l.conditions.map((c) => c.quote.trim()).sort(), open]);
 }
 
 /**
