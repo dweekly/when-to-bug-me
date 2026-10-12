@@ -139,6 +139,9 @@ async function contextIn(b: Record<string, unknown>, w: World): Promise<{ rules:
   return b.rules !== undefined || b.facts !== undefined ? w.snapshot(c.rules, c.facts) : w.snapshot();
 }
 
+/** A fact's scope is "all" or a project id; a live project's id can be as long as its name (60). */
+const MAX_SCOPE_CHARS = 60;
+
 function context(b: Record<string, unknown>, defaults: { rules: Rule[]; facts: Fact[] }): { rules: Rule[]; facts: Fact[] } {
   const rules = b.rules === undefined ? defaults.rules : b.rules;
   const facts = b.facts === undefined ? defaults.facts : b.facts;
@@ -150,7 +153,7 @@ function context(b: Record<string, unknown>, defaults: { rules: Rule[]; facts: F
       id: cleanText(f?.id, 12, `facts[${i}].id`),
       text: cleanText(f?.text, MAX_RULE_CHARS, `facts[${i}].text`),
       source: cleanText(f?.source ?? "", 200, `facts[${i}].source`),
-      scope: cleanText(f?.scope ?? "all", 20, `facts[${i}].scope`),
+      scope: cleanText(f?.scope ?? "all", MAX_SCOPE_CHARS, `facts[${i}].scope`),
     })),
   };
 }
