@@ -2,6 +2,7 @@
 // its token for a session token, which every later call carries.
 
 import { h } from "./dom";
+import { OWNER_PAGE } from "./livemode";
 import { Q } from "./state";
 
 /** The session token that lets this visit make live calls, once a Turnstile check has passed. */
@@ -11,7 +12,9 @@ let sessionPending: Promise<string | null> | null = null;
 export async function api<T>(path: string, body?: unknown, retried = false): Promise<T> {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (session) headers["x-bugme-session"] = session;
-  const res = await fetch(path, body === undefined ? {} : { method: "POST", headers, body: JSON.stringify(body) });
+  // On the owner's page every call is about the live queue (docs/STAGE-7.md): /api/X becomes /api/me/X.
+  const url = OWNER_PAGE && !path.startsWith("/api/me/") ? path.replace(/^\/api\//, "/api/me/") : path;
+  const res = await fetch(url, body === undefined ? {} : { method: "POST", headers, body: JSON.stringify(body) });
   const data = (await res.json()) as { error?: string; unavailable?: boolean; needs_session?: boolean };
   if (res.status === 401 && data.needs_session && !retried) {
     session = await (sessionPending ??= humanCheck().finally(() => (sessionPending = null)));

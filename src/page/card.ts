@@ -19,6 +19,7 @@ import { renderVisual } from "./visuals";
 import { type Child, $, announce, h } from "./dom";
 import { type Flow, type ShownBugTurn, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
 import { render } from "./views";
+import { OWNER_PAGE } from "./livemode";
 
 export function quoteLine(c: Card): Child {
   const q = c.rule_quoted || c.fact_quoted;
@@ -396,7 +397,7 @@ function renderClosed(root: HTMLElement, d: Decision, why: "answered" | "aside")
     const p = S.punts[d.id];
     body.push(
       h("p", {}, h("span", { class: "quiet" }, "Set aside: "), "“", p.reason, "”"),
-      h("p", { class: "senddown" }, `The agent was asked (simulated): ${p.instruction}`),
+      h("p", { class: "senddown" }, OWNER_PAGE ? `Saved for the asking session: ${p.instruction}` : `The agent was asked (simulated): ${p.instruction}`),
       h("div", { class: "actions" }, h("button", { type: "button", class: "primary", onclick: () => resume(d.id) }, "Resume")),
     );
   }
@@ -541,7 +542,7 @@ export function followup(d: Decision, route: RouteKind): Child {
     return h(
       "div",
       { class: "followup reveal", "aria-live": "polite" },
-      h("p", { class: "senddown" }, `Sent down to ${d.agent[d.agent.length - 1]} (simulated): ${F.send_down}`),
+      h("p", { class: "senddown" }, OWNER_PAGE ? `Saved for the asking session: ${F.send_down}` : `Sent down to ${d.agent[d.agent.length - 1]} (simulated): ${F.send_down}`),
       h("div", { class: "after-marks" }, h("button", { type: "button", class: "primary", onclick: () => next() }, "Next decision")),
     );
   }
@@ -618,7 +619,7 @@ export function followup(d: Decision, route: RouteKind): Child {
       );
     }
     parts.push(
-      h("p", { class: "senddown" }, `Sent down to ${d.agent[d.agent.length - 1]} (simulated): ${F.send_down || "proceed with your choice."}`),
+      h("p", { class: "senddown" }, OWNER_PAGE ? `Saved for the asking session: ${F.send_down || "proceed with your choice."}` : `Sent down to ${d.agent[d.agent.length - 1]} (simulated): ${F.send_down || "proceed with your choice."}`),
       h(
         "div",
         { class: "after-marks" },

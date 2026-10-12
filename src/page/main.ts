@@ -8,6 +8,7 @@
 // actions.ts (what clicks do). This file only boots it.
 
 import { api } from "./api";
+import { ownerDecisions, signIn, startOwner } from "./live";
 import { initVoice, voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
@@ -16,9 +17,12 @@ import { startTour } from "./tour";
 import { render } from "./views";
 
 async function boot(): Promise<void> {
+  await signIn();
   setQ(await api<Queue>("/api/queue"));
-  setById(new Map(Q.decisions.map((d) => [d.id, d])));
   setS(load(Q));
+  // On /me the server is the source of truth for the queue, rules and set-asides (docs/STAGE-7.md).
+  if (Q.owner) startOwner(Q);
+  setById(new Map((Q.owner ? ownerDecisions(Q, S.answered) : Q.decisions).map((d) => [d.id, d])));
   initVoice();
   // The record view's buttons are redrawn with it, so their clicks are handled here, once.
   document.addEventListener("click", (e) => {
@@ -26,7 +30,7 @@ async function boot(): Promise<void> {
     if (!t) return;
     if (t.id === "export") {
       const blob = new Blob(
-        [JSON.stringify({ exported_at: new Date().toISOString(), persona: Q.persona.name, synthetic: true, rules: S.rules, facts: S.facts, set_aside: S.punts, record: S.record }, null, 2)],
+        [JSON.stringify({ exported_at: new Date().toISOString(), persona: Q.persona.name, synthetic: Q.persona.synthetic, rules: S.rules, facts: S.facts, set_aside: S.punts, record: S.record }, null, 2)],
         { type: "application/json" },
       );
       h("a", { href: URL.createObjectURL(blob), download: "bug-me-record.json" }).click();
@@ -55,7 +59,8 @@ async function boot(): Promise<void> {
   render();
   // A tour link (/app?tour=<id>, as the explainer's cards use) starts that tour.
   const tour = new URLSearchParams(location.search).get("tour");
-  if (tour) {
+  // The tours script Jordan's decisions; the owner's live queue has none.
+  if (tour && !Q.owner) {
     history.replaceState(null, "", location.pathname + location.hash);
     startTour(tour);
   }

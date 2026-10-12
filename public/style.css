@@ -391,3 +391,6 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .drule { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .dlabel, .dchev { transition: none; } }
+
+/* The owner's live queue (docs/STAGE-7.md): the header says it is real. */
+.live-label { color: var(--glow); border-color: var(--glow); }
