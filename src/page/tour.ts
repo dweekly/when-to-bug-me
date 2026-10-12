@@ -53,7 +53,7 @@ function confirmFresh(tour: Tour, ok: () => void): void {
     { class: "ts", "aria-labelledby": "tour-confirm-h" },
     h("h2", { id: "tour-confirm-h" }, "Start a fresh morning?"),
     h("p", {}, "Tours start from the beginning of Jordan's morning, so your answers so far will be cleared. You can export your record first from Record."),
-    h("div", { class: "row" }, yes, no),
+    h("div", { class: "row" }, no, yes),
   ) as HTMLDialogElement;
   document.body.append(dlg);
   const close = () => {
@@ -159,8 +159,7 @@ function waitFor(selector: string, r: Running, ms = STEP_WAIT_MS): Promise<Eleme
 function exampleText(step: TourStep): string | null {
   if (!step.example) return null;
   if (step.example.text) return step.example.text;
-  // A recorded reason is only needed when live calls are off; with a live model, people use their own words.
-  if (Q.mode === "live") return null;
+  // Offered on live servers too: Jordan's exact words replay the recording, so they cost nothing.
   const ex = EXAMPLES.find((e) => e.id === step.example!.decision);
   return (step.example.textarea === "#think" ? ex?.narration : ex?.reason) ?? null;
 }

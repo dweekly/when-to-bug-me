@@ -1,5 +1,5 @@
 // Stage 2 shared logic: precedence of standing facts, set-aside decisions in the agenda, the
-// focus-session order, the one estimate, and "Not now" reasons.
+// focus-session order, the one estimate, and "Skip" reasons.
 import { describe, expect, it } from "vitest";
 import { buildAgenda, estimateMinutes, nextInSession, overnightTotals } from "../../src/shared/agenda";
 import { GLOW_START, GLOW_STEP, nextGlow } from "../../src/shared/lifecycle";
@@ -49,7 +49,7 @@ describe("agenda with set-aside decisions", () => {
   });
 });
 
-describe("Not now", () => {
+describe("Skip", () => {
   it("needs a kind and a real sentence", () => {
     expect(puntProblem(null, "anything at all")).toMatch(/Pick/);
     expect(puntProblem("input", "hmm")).toBe("Whose input, and on what?");

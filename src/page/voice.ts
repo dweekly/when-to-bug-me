@@ -1,8 +1,10 @@
-// Always-on voice, shown by the clay firefly in the top-right corner (docs/STAGE-3.md).
+// Always-on voice (docs/STAGE-3.md), controlled by a microphone button inside the box speech fills
+// (docs/STAGE-6.md). The clay firefly in the top-right corner shows the morning's glow and, while
+// listening, is attentive and brightens for a moment whenever it hears speech.
 //
-// The firefly is the one voice control. Off, it rests; clicking it turns listening on (the browser
-// asks for microphone permission once) and it stays on across cards until clicked again. While on it
-// is attentive, brightens for a moment whenever it hears speech, and shows the words beside it.
+// One button, made once, moves into whichever box is the target. Clicking it turns listening on (the
+// browser asks for microphone permission once) and it stays on across cards until clicked again.
+// The words being heard show under the box.
 //
 // Where speech goes is decided by whatever is on screen: each render names a target (the card's Why
 // box, the "why?" prompt, the reason for setting something aside) or none. With no target, capture
@@ -95,30 +97,55 @@ let textTimer: ReturnType<typeof setTimeout> | undefined;
 let pleased = false;
 let glowMood: Mood = "attentive";
 let glowLabel = "";
+/** The microphone button and the heard-words line, made once and moved into the target's box. */
+let micBtn: HTMLButtonElement | null = null;
+let says: HTMLElement | null = null;
+let heardEl: HTMLElement | null = null;
+let noteEl: HTMLElement | null = null;
 
 function recognizer(): (new () => SpeechRec) | null {
   const W = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
   return W.SpeechRecognition ?? W.webkitSpeechRecognition ?? null;
 }
 
-/** Draw the firefly control once, into #voice (it lives outside the bar so re-renders don't restart it). */
+/** Draw the firefly once, into #voice (it lives outside the bar so re-renders don't restart it), and
+ *  make the microphone button that setVoiceTarget places in the box speech goes to. */
 export function initVoice(): void {
   const root = document.getElementById("voice");
   if (!root || root.childElementCount) return;
-  if (!recognizer()) {
-    root.hidden = true;
+  root.append(h("span", { class: "voice-glow", role: "img", id: "voice-glow" }, clip()));
+  if (recognizer()) {
+    micBtn = h(
+      "button",
+      { type: "button", class: "mic", id: "voice-btn", "aria-pressed": "false", onclick: () => toggle() },
+      micIcon(),
+    ) as HTMLButtonElement;
+    heardEl = h("p", { class: "voice-heard", id: "voice-heard", "aria-live": "polite" });
+    noteEl = h("p", { class: "voice-note", id: "voice-note" });
+    says = h("div", { class: "voice-says" }, heardEl, noteEl);
+  }
+  paint();
+}
+
+function micIcon(): Element {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>';
+  return svg;
+}
+
+/** Put the microphone in the target's box (the field around its textarea), or take it away. */
+function place(): void {
+  if (!micBtn || !says) return;
+  const box = target?.el()?.closest<HTMLElement>(".think-field, .basis-row");
+  if (!box) {
+    micBtn.remove();
+    says.remove();
     return;
   }
-  const btn = h(
-    "button",
-    { type: "button", class: "voice-btn", id: "voice-btn", "aria-pressed": "false", "aria-label": "Listen: say why at any time", onclick: () => toggle() },
-    clip(),
-  );
-  const heard = h("p", { class: "voice-heard", id: "voice-heard", "aria-live": "polite" });
-  const note = h("p", { class: "voice-note", id: "voice-note" });
-  // What was heard and the privacy note travel together (beside the firefly; along the bottom on phones).
-  root.append(btn, h("div", { class: "voice-says" }, heard, note));
-  paint();
+  if (micBtn.parentElement !== box) box.append(micBtn);
+  if (says.previousElementSibling !== box) box.after(says);
 }
 
 /** The firefly's clay loop, one element whose source follows the mood, with a still for reduced motion
@@ -164,18 +191,23 @@ function mood(): Mood {
 /** Show the state: which mood, whether listening or paused, and the one-time notice. */
 function paint(): void {
   const root = document.getElementById("voice");
-  if (!root || root.hidden) return;
+  if (!root) return;
   const m = mood();
   root.dataset.mood = m;
   showMood(m);
-  root.dataset.state = !enabled ? "off" : blocked ? "blocked" : session ? "listening" : "paused";
-  const btn = document.getElementById("voice-btn");
+  const state = !enabled ? "off" : blocked ? "blocked" : session ? "listening" : "paused";
+  root.dataset.state = state;
+  const glow = document.getElementById("voice-glow");
+  glow?.setAttribute("aria-label", `Bug Me's firefly. ${glowLabel}`.trim());
+  glow?.setAttribute("title", `Bug Me's firefly. ${glowLabel}`.trim());
+  place();
+  const btn = micBtn;
+  if (btn) btn.dataset.state = state;
   btn?.setAttribute("aria-pressed", String(enabled && !blocked));
-  const label =
-    !enabled ? `Bug Me's firefly. ${glowLabel} Click to listen: say why at any time.` : blocked ? `Microphone unavailable: ${blocked}` : session ? "Listening. Click to stop." : "Listening paused here. Click to stop.";
+  const label = !enabled ? "Talk instead of typing" : blocked ? `Microphone unavailable: ${blocked}` : session ? "Listening. Click to stop." : "Listening paused here. Click to stop.";
   btn?.setAttribute("aria-label", label);
   btn?.setAttribute("title", label);
-  const note = document.getElementById("voice-note");
+  const note = noteEl;
   if (note) {
     note.textContent = blocked
       ? `Microphone unavailable (${blocked}).`
@@ -313,7 +345,7 @@ function append(t: VoiceTarget, words: string): void {
 
 /** Show the words beside the firefly and brighten it for a moment. */
 function heard(words: string): void {
-  const p = document.getElementById("voice-heard");
+  const p = heardEl;
   if (p && words) p.textContent = `“${words}”`;
   pleased = true;
   clearTimeout(heardTimer);
@@ -323,8 +355,7 @@ function heard(words: string): void {
   }, HEARD_GLOW_MS);
   clearTimeout(textTimer);
   textTimer = setTimeout(() => {
-    const q = document.getElementById("voice-heard");
-    if (q) q.textContent = "";
+    if (heardEl) heardEl.textContent = "";
   }, HEARD_TEXT_MS);
   paint();
 }

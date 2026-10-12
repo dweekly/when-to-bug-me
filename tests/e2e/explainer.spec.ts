@@ -8,7 +8,7 @@ test("counts come from the queue, and there is exactly one recommended pile", as
   await page.goto("/");
   await expect(page.locator('[data-count="total"]')).toHaveText(String(q.decisions.length));
   await expect(page.locator(".pile.rec")).toHaveCount(1);
-  await expect(page.locator(".pile.rec .pile-head")).toHaveText(/^Start with /);
+  await expect(page.locator(".pile.rec .pile-head")).toHaveText(/^Suggested first: /);
 });
 
 test("every tour card opens its tour in the app", async ({ page }) => {

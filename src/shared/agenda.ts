@@ -86,7 +86,7 @@ export function buildAgenda(
   projects: Project[],
   /** Decisions already answered this session; they leave the agenda. */
   done: Set<string> = new Set(),
-  /** Decisions the person set aside ("Not now"); listed separately, never in a section. */
+  /** Decisions the person set aside ("Skip"); listed separately, never in a section. */
   aside: Set<string> = new Set(),
 ): Agenda {
   const waiting = decisions.filter((d) => !done.has(d.id) && !aside.has(d.id) && routes[d.id] && routes[d.id] !== "settle");

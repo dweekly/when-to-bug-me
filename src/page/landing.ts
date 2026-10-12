@@ -34,7 +34,7 @@ function drawPiles(q: Queue, cards: Card[]): void {
     pile.style.setProperty("--i", String(i));
     const head = document.createElement("p");
     head.className = "pile-head";
-    head.textContent = i === 0 ? `Start with ${s.project.name}` : s.project.name;
+    head.textContent = i === 0 ? `Suggested first: ${s.project.name}` : s.project.name;
     const meta = document.createElement("p");
     meta.className = "pile-meta";
     meta.textContent = `${items.length} question${items.length === 1 ? "" : "s"} · about ${s.minutes} min`;

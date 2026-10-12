@@ -69,6 +69,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .pile .tally { margin: 0 0 14px; font: 14px var(--mono); color: var(--ink-2); white-space: pre-wrap; }
 .pile.rec { padding: 22px 24px; border-color: var(--glow); background: linear-gradient(180deg, var(--glow-soft), transparent 70%), var(--night-2); }
 .pile.rec h2 { font-size: clamp(22px, 3.4vw, 30px); }
+.pile > button { display: block; margin-left: auto; }
 .pile .eyebrow { margin: 0 0 6px; font: 600 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--glow); }
 .peek { list-style: none; margin: 0 0 18px; padding: 0; color: var(--ink-2); font-size: 15px; }
 .peek li { padding: 3px 0 3px 18px; position: relative; }
@@ -141,7 +142,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
   border: 2px solid var(--line); background: var(--night-2); color: var(--ink);
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
-.opt:hover:not(:disabled), .opt:focus-visible { border-color: var(--glow); box-shadow: 0 0 0 4px var(--glow-soft); transform: translateY(-1px); }
+/* Hover only hints; a pick is the one lit state. */
+.opt:hover:not(:disabled) { border-color: var(--ink-3); transform: translateY(-1px); }
+.opt:focus-visible { border-color: var(--glow); box-shadow: 0 0 0 4px var(--glow-soft); }
 .opt[aria-pressed="true"] { border-color: var(--glow); background: linear-gradient(180deg, var(--glow-soft), transparent), var(--night-2); }
 .opt:disabled { cursor: default; transform: none; }
 .opt:disabled:not([aria-pressed="true"]) { opacity: 0.55; }
@@ -163,7 +166,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .think { margin: 22px 0 8px; padding-top: 18px; border-top: 1px solid var(--line); }
 .think-field { position: relative; }
 .think-field textarea, .think-marks {
-  font: 19px/2 var(--body); padding: 0; margin: 0; border: 0; width: 100%; letter-spacing: normal;
+  font: 19px/2 var(--body); padding: 0 48px 0 0; margin: 0; border: 0; width: 100%; letter-spacing: normal;
   white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
 }
 .think-field textarea {
@@ -181,9 +184,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .answers { margin: 4px 0 0; padding: 0; list-style: none; }
 .answers li { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin: 6px 0; padding-left: 14px; border-left: 2px solid var(--line); }
 .think-msg:empty { display: none; }
-.think-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; }
+.think-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px; margin-top: 16px; }
 .think-actions .example { margin: 0; font-size: 13px; color: var(--ink-3); }
-.not-now { margin-left: auto; color: var(--ink-3); font-size: 14px; }
+.skip-q { color: var(--ink-3); font-size: 14px; }
 .ask-answer { margin-top: 12px; padding: 12px 14px; border-left: 2px solid var(--glow); background: var(--night-3); border-radius: 0 10px 10px 0; }
 .ask-answer.missing { border-left-color: var(--ink-3); }
 .ask-answer p { margin: 0 0 6px; }
@@ -212,24 +215,27 @@ textarea:focus { border-color: var(--ink-3); outline: none; }
 textarea:disabled { opacity: 0.5; }
 /* The voice firefly, top-right on every view. Its mood shows whether it is listening. */
 .voice { position: fixed; top: 6px; right: max(10px, 2vw); z-index: 20; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
-.voice-btn { pointer-events: auto; width: 64px; height: 64px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; position: relative; }
-.voice-btn:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.voice-glow { display: block; width: 64px; height: 64px; position: relative; }
 .voice-mood { position: absolute; inset: 0; display: block; }
 .voice-clip { width: 64px; height: 64px; display: block; }
 .voice-clip.still { display: none; }
 /* Off: a small microphone badge says the firefly is also the way to talk. */
-.voice[data-state="off"] .voice-btn::after { content: "🎙"; position: absolute; right: 0; bottom: 2px; font-size: 13px; line-height: 1; background: var(--night-3); border: 1px solid var(--line); border-radius: 999px; padding: 3px 4px; }
-.voice[data-state="listening"] .voice-btn::after { content: ""; position: absolute; right: 4px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: #ff5d5d; box-shadow: 0 0 8px #ff5d5d; }
-.voice[data-state="paused"] .voice-btn::after { content: ""; position: absolute; right: 4px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-3); }
-.voice-heard { margin: 2px 0 0; max-width: 260px; text-align: right; font-size: 14px; color: var(--ink); font-style: italic; background: var(--night-2); border-radius: 10px; padding: 0 8px; }
+.voice-heard { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); font-style: italic; }
 .voice-heard:empty, .voice-note:empty { display: none; }
-.voice-note { margin: 2px 0 0; max-width: 240px; text-align: right; font-size: 12px; color: var(--ink-3); }
+.voice-note { margin: 2px 0 0; font-size: 12px; color: var(--ink-3); }
 .bar { padding-right: calc(max(10px, 2vw) + 72px); }
-.mic { flex: none; width: 56px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; background: var(--night-2); color: var(--glow); font-size: 20px; }
-.mic[aria-pressed="true"] { background: var(--glow); color: var(--glow-ink); animation: pulse 1.2s infinite; }
+/* The microphone sits inside the box it fills: bottom right of the think field, beside the other boxes. */
+.mic { flex: none; align-self: flex-end; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--line); cursor: pointer; background: var(--night-2); color: var(--ink-2); }
+.mic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mic:hover { color: var(--ink); border-color: var(--ink-3); }
+.mic:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.mic[data-state="listening"] { background: var(--glow); border-color: var(--glow); color: var(--glow-ink); animation: pulse 1.2s infinite; }
+.mic[data-state="paused"] { color: var(--glow); border-color: var(--glow); }
+.think-field .mic { position: absolute; right: 0; bottom: 2px; }
 @keyframes pulse { 50% { opacity: 0.7; } }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
-.actions .ghost { margin-left: auto; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: flex-end; margin-top: 16px; }
+/* The way forward sits at the right; a quiet way out (Skip, Cancel) at the far left. */
+.actions > .linkish:first-child, .think-actions > .skip-q:first-child, .row > .ghost:first-child:not(:last-child) { margin-right: auto; }
 
 .punt { margin-top: 18px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--night-2); }
 .lead { font: 600 20px/1.3 var(--display); margin: 0 0 12px; color: var(--ink); }
@@ -271,7 +277,7 @@ textarea:disabled { opacity: 0.5; }
 .rtext { background: none; border: 0; padding: 0; text-align: left; cursor: text; color: var(--ink); font-size: 15.5px; }
 .rtext:hover { text-decoration: underline dotted var(--ink-3); }
 .rules textarea { width: 100%; }
-.row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 10px; }
 .facts, .note { padding-left: 18px; display: grid; gap: 8px; }
 .facts .src { display: block; color: var(--ink-3); font-size: 13px; }
 .facts li.new { color: var(--glow); }
@@ -313,13 +319,9 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .bar nav { grid-row: 2; grid-column: 1 / -1; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
   .bar nav::-webkit-scrollbar { display: none; }
   .nav { white-space: nowrap; font-size: 14px; padding: 6px 9px; }
-  /* What the firefly heard: a panel along the bottom of the screen, not a bubble over the menu. */
-  .voice-says { position: fixed; left: 16px; right: 16px; bottom: 16px; pointer-events: none; background: var(--night-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
-  .voice-says:not(:has(p:not(:empty))) { display: none; }
-  .voice-says .voice-heard, .voice-says .voice-note { max-width: none; text-align: left; background: none; padding: 0; margin: 0; }
   .pile.rec { padding: 18px 16px; }
   .basis-row { flex-direction: column; }
-  .mic { width: 100%; height: 46px; }
+  .basis-row .mic { align-self: flex-end; }
   .variant iframe { height: 340px; }
   .think-field textarea, .think-marks { font-size: 17px; }
   .actions .ghost { margin-left: 0; }
