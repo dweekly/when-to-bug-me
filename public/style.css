@@ -331,11 +331,3 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .voice-clip.still { display: block; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
-
-/* The owner's live queue (docs/STAGE-7.md): a quiet notice while an answer hasn't reached the Worker yet. */
-.live-label { color: var(--glow); border-color: var(--glow); }
-body:not([data-undelivered="0"])[data-undelivered]::after {
-  content: "An answer hasn't reached the asking session yet; retrying.";
-  position: fixed; left: 16px; bottom: 16px; z-index: 30; padding: 8px 12px; border-radius: 10px;
-  background: var(--night-3); border: 1px solid var(--line); color: var(--ink-2); font-size: 13px;
-}
