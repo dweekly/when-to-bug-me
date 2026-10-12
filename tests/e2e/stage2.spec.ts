@@ -24,7 +24,7 @@ import {
   waitForLoad, decide, think } from "./helpers";
 
 /** Platform's waiting (unsettled) decisions in the fixtures. */
-const PLATFORM = ["ci-runners", "candidate-rejections", "peer-review", "incident-action-items", "onsite-flight", "test-runner-major"];
+const PLATFORM = ["incident-action-items", "onsite-flight"];
 const FIRST_NAME = "Jordan";
 
 function focusedId(page: Page): string {
@@ -97,10 +97,10 @@ test.describe("views", () => {
 
   test("the bar's nav reaches every view, and Decided for you shows its count", async ({ page }) => {
     const nav = page.locator("#bar nav");
-    await expect(nav.getByRole("link", { name: "Decided for you · 4" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Decided for you · 31" })).toBeVisible();
     await nav.getByRole("link", { name: /^Decided for you/ }).click();
     await expect(page).toHaveURL(/#\/settled$/);
-    await expect(page.locator("#settled > li")).toHaveCount(4);
+    await expect(page.locator("#settled > li")).toHaveCount(31);
     await nav.getByRole("link", { name: "Rules" }).click();
     await expect(page).toHaveURL(/#\/rules$/);
     await expect(page.locator("#rules > li")).toHaveCount(12);
@@ -353,23 +353,23 @@ test.describe("Not now", () => {
   });
 
   test("a set-aside decision never shows under Decided for you, even after a rule edit would settle it", async ({ page }) => {
-    const id = "sdk-comparison-budget";
+    const id = "settings-redesign";
     await openDecision(page, id);
     await setAside(page, "Not urgent yet", "Once the launch is out; the comparison can wait a week.");
     await expect(page).not.toHaveURL(new RegExp(`#/d/${id}$`));
 
-    // R10 rewritten to clear this kind of task, so a re-check would settle it.
-    await editRule(page, "R10", "If a task runs past twice its time budget, just do it.");
+    // R11 rewritten to clear UI layout choices, so a re-check would settle it.
+    await editRule(page, "R11", "UI layout choices on a preview branch: just do it.");
     await expect.poll(async () => (await stored(page))!.pending.length).toBe(0);
     const s = (await stored(page))!;
     expect(s.cards[id].route, "the re-check really did say settle").toBe("settle");
     expect(s.punts[id]).toBeDefined();
 
     await goSettled(page);
-    await expect(page.locator("#settled li").filter({ hasText: "SDK comparison" })).toHaveCount(0);
-    await expect(page.locator("#bar nav").getByRole("link", { name: "Decided for you · 4" })).toBeVisible();
+    await expect(page.locator("#settled li").filter({ hasText: "Settings page redesign" })).toHaveCount(0);
+    await expect(page.locator("#bar nav").getByRole("link", { name: "Decided for you · 31" })).toBeVisible();
     await goHome(page);
-    await expect(page.locator("#aside .aside-item").filter({ hasText: "SDK comparison" })).toHaveCount(1);
+    await expect(page.locator("#aside .aside-item").filter({ hasText: "Settings page redesign" })).toHaveCount(1);
     await expect(page.locator(`#agenda a.item[href="#/d/${id}"]`)).toHaveCount(0);
     // A direct link still opens it (as set aside), never redirecting to Decided for you.
     await openDecision(page, id);
@@ -386,7 +386,7 @@ test.describe("narrow layout", () => {
   test("no horizontal scroll on home or in focus @narrow", async ({ page }) => {
     await noHScroll(page, "home");
     await noHScroll(page, "home, agenda expanded");
-    for (const id of ["onsite-flight", "berlin-sync", "settings-redesign", "api-rename", "outage-chart", "ci-runners"]) {
+    for (const id of ["onsite-flight", "berlin-sync", "settings-redesign", "api-rename", "free-tier", "sdk-dependency"]) {
       await openDecision(page, id);
       await noHScroll(page, id);
     }

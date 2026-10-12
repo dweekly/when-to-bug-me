@@ -41,11 +41,11 @@ describe("fixture lint", () => {
     expect(decisions.length).toBeGreaterThanOrEqual(CATEGORIES.length);
   });
 
-  it("covers all 18 categories, and every other category starts with 'Code: '", () => {
+  // Stage 5 (docs/STAGE-5.md) narrowed the morning to the proposal's 40 questions: nine for Jordan
+  // and 31 housekeeping calls Bug Me settles, so it no longer spans all 18 categories.
+  it("uses only the 18 categories or 'Code: …' ones", () => {
     expect(CATEGORIES).toHaveLength(18);
-    const used = new Set(decisions.map((d) => d.category));
-    for (const c of CATEGORIES) expect(used, c).toContain(c);
-    for (const c of used) {
+    for (const c of new Set(decisions.map((d) => d.category))) {
       if (!CATEGORIES.includes(c)) expect(c.startsWith("Code: "), c).toBe(true);
     }
   });

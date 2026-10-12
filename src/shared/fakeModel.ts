@@ -24,6 +24,7 @@ const TAG_RULES: [tag: string, rule: RegExp][] = [
   ["task-budget", /time budget/i],
   ["travel", /travel|flight/i],
   ["dependencies", /dependency|dependencies/i],
+  ["ui", /\bUI\b|layout/i],
 ];
 
 const CLEARS = /just do it|go ahead|fine to do/i;

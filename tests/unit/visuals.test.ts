@@ -26,9 +26,9 @@ import {
   type Scene,
   type SceneNode,
 } from "../../src/page/visuals-layout";
-import { decisions } from "./helpers";
+import { decisions, retiredDecisions } from "./helpers";
 
-const withVisual = decisions.filter((d): d is Decision & { visual: Visual } => d.visual !== undefined);
+const withVisual = [...decisions, ...retiredDecisions].filter((d): d is Decision & { visual: Visual } => d.visual !== undefined);
 const byId = (id: string) => {
   const d = withVisual.find((x) => x.id === id);
   if (!d) throw new Error(`no fixture decision ${id} with a visual`);

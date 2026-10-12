@@ -313,14 +313,18 @@ test("words restored by a reload before they were read are read then", async ({ 
   await expect(page.locator("#now .send")).toBeEnabled();
 });
 
-test("a morning saved by the previous version starts fresh", async ({ page }) => {
+test("a morning saved by an earlier version starts fresh, even one naming a question that no longer exists", async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem("bugme.state.v1", JSON.stringify({ cards: {}, rules: [], facts: [], answered: { "incident-action-items": { final: "A" } }, flows: {} }));
+    // Stage 4's morning, with a question stage 5 removed set aside.
+    localStorage.setItem("bugme.state.v2", JSON.stringify({ cards: {}, rules: [], facts: [], answered: {}, flows: {}, punts: { "peer-review": { id: "peer-review", kind: "unsure", reason: "Later.", at: "2026-10-11T00:00:00Z", instruction: "Wait." } } }));
   });
   await page.reload();
+  await expect(page.locator("#overnight")).toContainText("questions overnight");
   await openDecision(page, "incident-action-items");
   await expect(page.locator("#think")).toHaveValue("");
   expect(await page.evaluate("localStorage.getItem('bugme.state.v1')")).toBeNull();
+  expect(await page.evaluate("localStorage.getItem('bugme.state.v2')")).toBeNull();
   expect(await answered(page, "incident-action-items")).toBeUndefined();
 });
 

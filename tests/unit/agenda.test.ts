@@ -123,7 +123,7 @@ describe("buildAgenda with the fixture fleet", () => {
   });
 
   it("leaves out answered decisions", () => {
-    const answered = new Set(["api-rename", "onsite-flight", "outage-chart"]);
+    const answered = new Set(["api-rename", "onsite-flight", "incident-action-items"]);
     const a = buildAgenda(decisions, routes, persona.projects, answered);
     const ids = a.sections.flatMap((s) => [...s.decisions, ...s.check_ins].map((i) => i.id));
     for (const id of answered) expect(ids).not.toContain(id);

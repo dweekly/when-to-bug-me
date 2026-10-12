@@ -6,13 +6,13 @@
 
 Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the prototype's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11), [`docs/STAGE-4.md`](docs/STAGE-4.md) (think out loud: one place to talk a decision through, marked up as Bug Me reads it; fresh as of 2026-10-12).
 
-> **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 28 of their questions are made up. No real agent receives anything Bug Me "sends down".
+> **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 40 of their questions are made up. No real agent receives anything Bug Me "sends down".
 
 ## Try it in two minutes
 
-The front page is a short explainer; each tour card opens a guided tour of the real app that points and lets you click. Or open the app and play Jordan, a staff engineer whose fleet raised 28 questions overnight:
+The front page is a short explainer; each tour card opens a guided tour of the real app that points and lets you click. Or open the app and play Jordan, a staff engineer whose fleet raised 40 questions overnight:
 
-1. **Home** shows the night as piles, one per project, and recommends where to start ("Start with Launch: 11 questions, about 23 minutes, because answers here unblock the most agents"). Four were settled for Jordan without asking, each reversible, cheap and cleared by a written rule.
+1. **Home** shows the night as piles, one per project, and recommends where to start ("Start with Launch: 5 questions, about 11 minutes, because answers here unblock 14 agents, the most of any project"). Of the 40 questions, 31 were housekeeping Bug Me settled for Jordan without asking (formatting, lint fixes, patch-level bumps, merged branches, flaky-test quarantines), each reversible, free and cleared by a written rule; 9 wait for Jordan.
 2. **A decision card** briefs you first (what is going on, and why it is yours, quoting the rule), then asks. The options sit side by side, each with its own pros, cons and cost (and, where there is one, its line of the payload or its clickable prototype).
 3. **Think out loud.** Say or type it the way you would to a colleague: which way you lean, why, any "but…", any question. As you go, Bug Me marks your words: the choice lit, reasons, conditions and questions underlined, each an exact quote. Questions are answered under your words from what the agent provided. Or just click an option. Nothing goes out until **Send**, which says what it will send ("Send: keep user_id, with one condition"). Bug Me's guess stays sealed until then.
 4. If your answer surprises it, Bug Me asks **"I'm curious: why?"** Your reason becomes proposed guidance; keep it, and the waiting decisions it touches are re-checked with the cause shown (the 7:30am Berlin invite is reframed by a reason given on the flight).
@@ -28,7 +28,7 @@ Every card carries a badge saying where its routing came from.
 | --- | --- |
 | **live Claude** | A call to `claude-opus-5-5` (low effort, JSON-schema output) made just now. |
 | **cached Claude** | An earlier live answer to the byte-identical request. |
-| **recorded Claude run** | A live answer recorded with `npm run record` and packaged with the Worker. Replayed only on an exact request match. The opening morning (all 28 routes, briefings and option notes) and the tours' scripted reasons are recorded, so the first view is fast and costs nothing; everything a visitor types or edits goes to live Claude. |
+| **recorded Claude run** | A live answer recorded with `npm run record` and packaged with the Worker. Replayed only on an exact request match. The opening morning (all 40 routes, briefings and option notes) and the tours' scripted reasons are recorded, so the first view is fast and costs nothing; everything a visitor types or edits goes to live Claude. |
 | **code stand-in** | The deterministic keyword-matching fake (`src/shared/fakeModel.ts`), used for tests and when `FAKE_MODEL` is set. Not judgment. |
 
 Plain code, never the model, decides: the piles, their order and the recommended one; whether a "settle" is allowed (see below); when to push back, ask why, or propose guidance (`src/shared/lifecycle.ts`); and which decisions to re-route.
@@ -56,7 +56,7 @@ When live calls are off (no key, or the daily budget is spent), only recorded an
 
 ## Does a captured reason actually move the routing?
 
-`npm run eval` asks live Claude, three fresh times per condition (no cache, no recorded answers), whether a reason the person gave changes how the decisions it should touch are routed, and leaves the others alone. Expected outcomes were written before running; the command fails unless every condition passes every trial. Latest run, 2026-10-09, on prompt version 2026-10-09.6 (`results/captures/eval-2026-10-10T00-02-47-728Z.json`, $0.92):
+`npm run eval` asks live Claude, three fresh times per condition (no cache, no recorded answers), whether a reason the person gave changes how the decisions it should touch are routed, and leaves the others alone. Expected outcomes were written before running; the command fails unless every condition passes every trial. Latest run, 2026-10-12, on prompt version 2026-10-09.6 and the 40-question morning (`results/captures/eval-2026-10-12T13-12-05-069Z.json`, $0.96):
 
 | Condition | Expected | Passed |
 | --- | --- | --- |
@@ -96,7 +96,7 @@ sh scripts/install-hooks.sh     # pre-push hook: scan + tests
 ## Limitations
 
 - **The evidence boundary.** In the research behind the proposal, a check that quotes the person's written rules, ordering with reasons, and hidden guesses all worked; and with one deciding fact supplied, Opus 5.5 got 11 of 17 previously missed decisions right, against 0 without it. Nothing measured shows that a model can predict when a person will reject a strong agent's recommendation. The prototype does not claim it.
-- One synthetic persona and a fixed set of 28 decisions; no real agents, intake or send-down.
+- One synthetic persona and a fixed set of 40 decisions; no real agents, intake or send-down.
 - Visitor state lives in the browser only. The record can be exported as JSON.
 - Re-routing after kept guidance checks decisions that share a topic tag with the answered one plus the model's suggestions, capped; it can miss a decision that shares neither.
 - Voice uses the browser's speech recognition (Chrome, Safari); in Chrome the audio goes to the browser's speech service, which the page says beside the firefly. Typing always works.

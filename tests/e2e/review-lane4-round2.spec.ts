@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 import { editRule, freshPage, goHome, goRecord, hold, openDecision, openFromAgenda, option, decide } from "./helpers";
 
 const state = async (page: import("@playwright/test").Page) =>
-  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v2')")) as string);
+  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v3')")) as string);
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
