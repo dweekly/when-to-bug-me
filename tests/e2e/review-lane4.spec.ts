@@ -85,10 +85,10 @@ test("a re-routed card whose route did not change survives a reload", async ({ p
   await decide(page, "Keep user_id");
   await page.getByRole("button", { name: "Keep it" }).click();
   const quoted = async () =>
-    (JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string).cards["webhook-rename"].fact_quoted as string);
+    (JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v2')")) as string).cards["webhook-rename"].fact_quoted as string);
   await expect.poll(quoted).toContain("keep existing field names");
   // Remove the presentation note, so only the "re-evaluated" record can keep this card across a reload.
-  await page.evaluate(`(() => { const s = JSON.parse(localStorage.getItem('bugme.state.v1')); delete s.changes['webhook-rename']; localStorage.setItem('bugme.state.v1', JSON.stringify(s)); })()`);
+  await page.evaluate(`(() => { const s = JSON.parse(localStorage.getItem('bugme.state.v2')); delete s.changes['webhook-rename']; localStorage.setItem('bugme.state.v2', JSON.stringify(s)); })()`);
   await page.reload();
   await waitForLoad(page);
   expect(await quoted()).toContain("keep existing field names");
@@ -118,7 +118,7 @@ test("a newer edit takes over an unfinished re-route pass instead of abandoning 
   await editRule(page, "R4", "Anything customers will see comes to me before it goes out.");
   held = false;
   release();
-  const state = async () => JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string);
+  const state = async () => JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v2')")) as string);
   await expect.poll(async () => (await state()).pending.length, { timeout: 20_000 }).toBe(0);
   const s = await state();
   const total = Object.keys(s.cards).length;

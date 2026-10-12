@@ -7,7 +7,7 @@
 // the way a person would (the bar's nav links, the agenda's rows), and wait for each view to draw.
 import { type Page, expect } from "@playwright/test";
 
-export const STORE_KEY = "bugme.state.v1";
+export const STORE_KEY = "bugme.state.v2";
 
 /** Open the app with empty browser storage and wait for home to draw. */
 export async function freshPage(page: Page): Promise<void> {

@@ -313,35 +313,25 @@ test("words restored by a reload before they were read are read then", async ({ 
   await expect(page.locator("#now .send")).toBeEnabled();
 });
 
-test("a pushback saved by the previous version keeps its Yes-but conditions", async ({ page }) => {
-  await openDecision(page, "sdk-dependency");
-  await decide(page, "Add the library");
-  await expect(page.locator("#now .followup.push")).toBeVisible();
-  // Rewrite the saved flow the way stage 3 stored it: conditions in basis, mode "conditions".
+test("a morning saved by the previous version starts fresh", async ({ page }) => {
   await page.evaluate(() => {
-    const k = "bugme.state.v1";
-    const st = JSON.parse(localStorage.getItem(k)!);
-    const f = st.flows["sdk-dependency"];
-    for (const field of ["think", "rev", "parsed", "asks", "conditions", "narration", "parseError", "choiceBy"]) delete f[field];
-    Object.assign(f, { mode: "conditions", basis: "only if the version is pinned", other: "", question: "", askAnswer: null });
-    localStorage.setItem(k, JSON.stringify(st));
+    localStorage.setItem("bugme.state.v1", JSON.stringify({ cards: {}, rules: [], facts: [], answered: { "incident-action-items": { final: "A" } }, flows: {} }));
   });
   await page.reload();
-  await page.locator("#now .followup.push .primary").click();
-  await expect.poll(async () => (await answered(page, "sdk-dependency"))?.send_down as string | undefined).toContain("only if the version is pinned");
+  await openDecision(page, "incident-action-items");
+  await expect(page.locator("#think")).toHaveValue("");
+  expect(await page.evaluate("localStorage.getItem('bugme.state.v1')")).toBeNull();
+  expect(await answered(page, "incident-action-items")).toBeUndefined();
 });
 
-test("a draft saved by the previous version comes back as words to think with, its pick still picked", async ({ page }) => {
+test("Not now is off while a Send is out, so a Send can't be left armed behind the panel", async ({ page }) => {
   await openDecision(page, "incident-action-items");
-  await option(page, "File all five as drafted").click(); // so there is a saved morning to rewrite
-  await page.evaluate(() => {
-    const k = "bugme.state.v1";
-    const st = JSON.parse(localStorage.getItem(k)!);
-    st.flows["incident-action-items"] = { id: "incident-action-items", choice: "B", basis: "I want to check owners", phase: "pending", mode: null, other: "", question: "", askAnswer: null, puntKind: null, puntReason: "", puntFrom: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null };
-    localStorage.setItem(k, JSON.stringify(st));
-  });
-  await page.reload();
-  await expect(page.locator("#think")).toHaveValue("I want to check owners");
-  await expect(option(page, "Show me the list first")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#now .send")).toBeEnabled();
+  await option(page, "File all five as drafted").click();
+  const release = await hold(page, "/api/parse");
+  await page.locator("#think").fill("Show me the list first.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .think-msg")).toHaveText("Reading what you said…");
+  await expect(page.locator("#now .not-now")).toBeDisabled();
+  release();
+  await expect.poll(async () => (await answered(page, "incident-action-items"))?.final).toBeTruthy();
 });

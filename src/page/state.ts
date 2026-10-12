@@ -84,7 +84,10 @@ export interface State {
   puntHistory: Record<string, Punt[]>;
 }
 
-export const STORE_KEY = "bugme.state.v1";
+/** v2 since thinking out loud (stage 4): a morning saved by stage 3 starts fresh rather than being
+ *  translated, since its drafts (Why box, Yes but, Something else, Ask) have no faithful equivalent. */
+export const STORE_KEY = "bugme.state.v2";
+const OLD_STORE_KEYS = ["bugme.state.v1"];
 export let Q: Queue;
 export let S: State;
 export let byId = new Map<string, Decision>();
@@ -195,6 +198,7 @@ export function save(): void {
 
 export function load(q: Queue): State {
   try {
+    for (const k of OLD_STORE_KEYS) localStorage.removeItem(k);
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const s = JSON.parse(raw) as State;
@@ -211,23 +215,11 @@ export function load(q: Queue): State {
         const flows: Record<string, Flow> = {};
         for (const [id, saved] of Object.entries(s.flows ?? {})) {
           const f = { ...newFlow(id), ...saved }; // fields added since this morning was saved get defaults
-          // Saved before thinking out loud (stage 3): its reason becomes the words to think with, its
-          // "Yes, but…" text the conditions, and its choice a click, so nothing said is lost.
-          if (!("think" in saved)) {
-            const old = saved as unknown as { mode?: string };
-            const drafting = ["choose", "pending"].includes(f.phase as string);
-            if (old.mode === "conditions" && f.basis) f.conditions = f.basis;
-            if (drafting && f.basis) f.think = f.basis;
-            if (old.mode === "conditions" || drafting) f.basis = "";
-            if (f.choice) f.choiceBy = "click";
-          }
           // A question that was out when the page reloaded is asked again when the words are next read.
           // (card.ts asks them again when the card is next shown.)
           for (const [q, a] of Object.entries(f.asks)) if (a.status === "pending") delete f.asks[q];
           f.parseError = null;
           if (f.phase === "punting") flows[id] = { ...f, phase: f.puntFrom ?? "choose" };
-          // Saved by an earlier version mid-Undo: the choice comes back unsent.
-          else if ((f.phase as string) === "pending") flows[id] = { ...f, phase: "choose" };
           else if (f.phase !== "busy") flows[id] = f;
           else if (!s.answered[id]) flows[id] = { ...f, phase: "choose", message: "The page reloaded before that was sent; send it again." };
           else if (s.answered[id]) flows[id] = { ...f, phase: "done", message: "The page reloaded before this finished; your answer and reason are recorded." };

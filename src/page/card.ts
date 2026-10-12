@@ -302,6 +302,9 @@ export function paintThink(): void {
   const failed = flow.parseError && flow.parseError.rev === flow.rev ? `Couldn't read that just now (${flow.parseError.message}). Pick an option, or read it again.` : "";
   msg.textContent = flow.error || (choosing ? flow.message || failed : "");
   for (const el of area.querySelectorAll<HTMLElement>(".example, .not-now")) el.hidden = !choosing;
+  // While a Send is out, setting the card aside would leave it armed behind the panel.
+  const notNow = area.querySelector<HTMLButtonElement>(".not-now");
+  if (notNow) notNow.disabled = isSending(flow);
 
   // A figure that colours the picked option follows the pick.
   const fig = document.querySelector<HTMLElement>("#now .viz");
@@ -349,6 +352,7 @@ function drawnOnce(id: string, fig: HTMLElement): HTMLElement {
 
 /** Open the "Not now" panel on this card, remembering where to return if the person cancels. */
 function startPunt(flow: Flow): void {
+  if (isSending(flow)) return; // a Send in progress is finished first
   flow.puntFrom = flow.phase === "pushback" ? "pushback" : "choose";
   flow.phase = "punting";
   flow.error = "";

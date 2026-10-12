@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { editRule, freshPage, goSettled, hold, openDecision, option, decide } from "./helpers";
 
 const state = async (page: import("@playwright/test").Page) =>
-  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string);
+  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v2')")) as string);
 
 const BUDGET = "sdk-comparison-budget";
 const R10_CLEARS = "If a task runs past twice its time budget, just do it.";
