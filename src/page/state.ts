@@ -84,10 +84,11 @@ export interface State {
   puntHistory: Record<string, Punt[]>;
 }
 
-/** v2 since thinking out loud (stage 4): a morning saved by stage 3 starts fresh rather than being
- *  translated, since its drafts (Why box, Yes but, Something else, Ask) have no faithful equivalent. */
-export const STORE_KEY = "bugme.state.v2";
-const OLD_STORE_KEYS = ["bugme.state.v1"];
+/** Bumped whenever a saved morning can no longer be read faithfully, and the old one starts fresh:
+ *  v2 when thinking out loud replaced stage 3's drafts; v3 when stage 5 rebuilt the morning (a saved
+ *  answer or set-aside could name a question that no longer exists). */
+export const STORE_KEY = "bugme.state.v3";
+const OLD_STORE_KEYS = ["bugme.state.v1", "bugme.state.v2"];
 export let Q: Queue;
 export let S: State;
 export let byId = new Map<string, Decision>();

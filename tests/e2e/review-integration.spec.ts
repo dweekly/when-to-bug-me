@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { editRule, freshPage, goSettled, hold, openDecision, option, decide } from "./helpers";
 
 const state = async (page: import("@playwright/test").Page) =>
-  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v2')")) as string);
+  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v3')")) as string);
 
 const BUDGET = "settings-redesign";
 const R11_CLEARS = "UI layout choices on a preview branch: just do it.";

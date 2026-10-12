@@ -121,7 +121,7 @@ test("a finished decision opened later has no box for speech, so listening pause
   await decide(page, "File all five as drafted");
   await expect.poll(async () => Boolean((await stored(page))?.answered?.["incident-action-items"])).toBe(true);
   await page.evaluate(() => {
-    const k = "bugme.state.v2";
+    const k = "bugme.state.v3";
     const st = JSON.parse(localStorage.getItem(k)!);
     delete st.flows["incident-action-items"];
     localStorage.setItem(k, JSON.stringify(st));

@@ -418,19 +418,19 @@
     "tags": ["housekeeping", "repos"]
   },
   {
-    "id": "billing-patch-bumps",
+    "id": "billing-dash-bumps",
     "category": "Code: housekeeping",
     "project": "billing",
     "agent": ["billing-lead", "deps-bot"],
     "waiting_minutes": 405,
     "unblocks": 0,
-    "question": "Bump the billing worker's logging and HTTP client libraries by patch versions? All tests pass on the branch.",
+    "question": "Bump the billing team's internal metrics dashboard's dependencies by patch versions (three packages)? All tests pass on the branch.",
     "options": [
       {"key": "A", "label": "Merge the bumps", "description": "Patch releases only; their changelogs list bug fixes. Reverting is one commit."},
       {"key": "B", "label": "Hold"}
     ],
     "recommended": "A",
-    "context": "No major or minor version changes.",
+    "context": "An internal dashboard of queue depths; it never touches invoices or payments.",
     "bounds": {"A": {"reversible": "yes", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
     "tags": ["housekeeping", "repos"]
   },
@@ -452,19 +452,19 @@
     "tags": ["housekeeping", "repos"]
   },
   {
-    "id": "billing-flaky",
+    "id": "billing-dash-flaky",
     "category": "Code: housekeeping",
     "project": "billing",
-    "agent": ["billing-lead", "invoice-migrator"],
+    "agent": ["billing-lead", "scheduler"],
     "waiting_minutes": 385,
     "unblocks": 0,
-    "question": "test_invoice_pdf_render failed in 4 of the last 25 runs (font download timeouts). Quarantine it with a ticket?",
+    "question": "test_dashboard_refresh in the billing team's internal metrics dashboard failed in 4 of the last 25 runs. Quarantine it with a ticket?",
     "options": [
       {"key": "A", "label": "Quarantine with a ticket", "description": "Skipped in CI and tracked by a ticket until it is fixed; turning it back on is one line."},
       {"key": "B", "label": "Leave it running"}
     ],
     "recommended": "A",
-    "context": "The failures are network timeouts fetching a font in CI, not rendering errors.",
+    "context": "The dashboard only displays queue depths; nothing in it touches invoices or payments. The failures are a timing race in the test itself.",
     "bounds": {"A": {"reversible": "yes", "cost_usd": 0}, "B": {"reversible": "yes", "cost_usd": 0}},
     "tags": ["housekeeping", "tests"]
   },

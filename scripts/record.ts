@@ -123,20 +123,22 @@ async function main(): Promise<void> {
     for (const m of parsed.marks.filter((x) => x.kind === "ask")) {
       await ask(`ask ${ex.id}`, askPrompt(persona, d, m.quote.slice(0, MAX_REASON_CHARS)), ASK_SCHEMA, parseAskOutput);
     }
-    // With no reason in the narration, Bug Me asks "why?" and Jordan answers with the scripted reason.
-    const evidence = guidanceText(answerParts(parsed.marks)) || ex.reason;
-    const raw = await ask(`fact ${ex.id}`, factPrompt(persona, rules, facts, d, ex.choice, evidence, others), FACT_SCHEMA, (x) => parseFactOutput(x, facts));
-    if (!raw) continue;
-    const fo = parseFactOutput(raw, facts);
-    console.log(`  fact ${ex.id}: ${fo.kind} "${fo.text}" may_affect=${fo.may_affect.join(",")}`);
-    if (fo.kind === "none") continue;
-    // The same candidate set the Worker computes for a fresh morning: tag overlap plus suggestions, capped.
-    const known = new Set(others.map((o) => o.id));
-    const byTag = others.filter((w) => w.tags.some((t) => d.tags.includes(t))).map((w) => w.id);
-    const reroute = [...new Set([...fo.may_affect.filter((x) => known.has(x)), ...byTag])].slice(0, MAX_REROUTES_PER_FACT);
-    const label = d.options.find((o) => o.key === ex.choice)!.label;
-    const f2 = withFact(facts, keptFact(facts, fo, fo.text, label));
-    await routeAll(reroute, rules, f2, `after ${ex.id}`);
+    // Two ways the page reaches guidance with Jordan's words: the narration's reason and conditions,
+    // or (after a bare click, or a narration with no reason) the scripted reason typed at "why?".
+    for (const evidence of [...new Set([guidanceText(answerParts(parsed.marks)), ex.reason].filter(Boolean))]) {
+      const raw = await ask(`fact ${ex.id}`, factPrompt(persona, rules, facts, d, ex.choice, evidence, others), FACT_SCHEMA, (x) => parseFactOutput(x, facts));
+      if (!raw) continue;
+      const fo = parseFactOutput(raw, facts);
+      console.log(`  fact ${ex.id}: ${fo.kind} "${fo.text}" may_affect=${fo.may_affect.join(",")}`);
+      if (fo.kind === "none") continue;
+      // The same candidate set the Worker computes for a fresh morning: tag overlap plus suggestions, capped.
+      const known = new Set(others.map((o) => o.id));
+      const byTag = others.filter((w) => w.tags.some((t) => d.tags.includes(t))).map((w) => w.id);
+      const reroute = [...new Set([...fo.may_affect.filter((x) => known.has(x)), ...byTag])].slice(0, MAX_REROUTES_PER_FACT);
+      const label = d.options.find((o) => o.key === ex.choice)!.label;
+      const f2 = withFact(facts, keptFact(facts, fo, fo.text, label));
+      await routeAll(reroute, rules, f2, `after ${ex.id}`);
+    }
   }
   writeFileSync(OUT, `${JSON.stringify(recorded, null, 2)}\n`);
   console.log(`${dryRun ? "would make" : "made"} ${calls} call(s); spent $${spent.toFixed(3)}; ${Object.keys(recorded.entries).length} entries recorded`);

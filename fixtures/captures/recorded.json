@@ -282,205 +282,6 @@
       },
       "ms": 11532
     },
-    "ba5ade509790fb598964b1ebcb3f1bf44d66d849bef9857f3b9b37460932a6b9": {
-      "label": "route launch-slip [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
-        "fact_quoted": "",
-        "why_here": "This shapes what the public API ships with and when customers hear about it, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
-        "headline": "Bulk export is a week late: launch v2 on time without it, or delay launch a week?",
-        "in_your_terms": "Launching on time keeps marketing's announcement date, but v2 goes out without bulk export, and the two design-partner customers who asked for it wait about three weeks for v2.1. Delaying a week means everything ships together and those customers get bulk export on day one, but the announcement date moves and marketing has to rework its plans. Four agents are waiting on this call.",
-        "briefing": "The bulk-export part of the public API v2 is running a week behind the rest of the launch. Marketing has the announcement drafted for the original date, so the launch plan needs a decision now.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Announcement goes out on the planned date",
-              "Rest of v2 reaches customers a week sooner"
-            ],
-            "cons": [
-              "Two design partners wait about three weeks for bulk export",
-              "Launch ships missing a requested feature"
-            ],
-            "consequence": "Bulk export ships in v2.1, about three weeks later"
-          },
-          "B": {
-            "pros": [
-              "Everything ships together, including bulk export",
-              "Design partners get what they asked for at launch"
-            ],
-            "cons": [
-              "Announcement date moves",
-              "Whole launch slips a week"
-            ],
-            "consequence": "Launch and announcement move one week"
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.55
-          },
-          {
-            "option": "B",
-            "p": 0.45
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Proceed with the v2 launch on the original date with bulk export removed from scope; plan bulk export for v2.1 and send any customer-facing announcement or changelog changes to Jordan before they go out."
-          },
-          {
-            "option": "B",
-            "instruction": "Move the v2 launch one week and coordinate the new date with marketing; bring the revised announcement to Jordan for review before it goes out."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:31.442Z",
-      "usage": {
-        "input": 4072,
-        "output": 742
-      },
-      "ms": 7483
-    },
-    "3c9ff81567ce264dbdc632203541edcdff42d4d25fd2ec8356dcaae6390e79a6": {
-      "label": "route changelog-publish [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
-        "fact_quoted": "",
-        "why_here": "This is customer-facing, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
-        "headline": "Publish the v2 changelog and migration guide today, or wait for tomorrow's docs review?",
-        "in_your_terms": "Publishing today gives integrators an extra day to prepare for v2. It also means customers read a 2,400-word guide with code samples generated last night before any human reviewer has checked them. Waiting a day delays that prep time but gets the guide a second read before customers rely on it.",
-        "briefing": "The v2 changelog and migration guide are drafted, including code samples the SDK agents produced last night. The docs reviewer can't check them until tomorrow, so the question is whether to publish before that review happens.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Integrators get an extra day to prepare"
-            ],
-            "cons": [
-              "Unreviewed code samples go straight to customers"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "A second reviewer checks it before customers read it"
-            ],
-            "cons": [
-              "Integrators lose a day of preparation"
-            ],
-            "consequence": "One other agent stays blocked until tomorrow"
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.25
-          },
-          {
-            "option": "B",
-            "p": 0.75
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Put the changelog and migration guide on a preview, send Jordan the link for sign-off, then publish to the docs site today once they approve."
-          },
-          {
-            "option": "B",
-            "instruction": "Hold publication. Hand the guide to the docs reviewer for tomorrow's pass, check the generated code samples, then send Jordan a preview link before publishing."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:31.678Z",
-      "usage": {
-        "input": 4063,
-        "output": 669
-      },
-      "ms": 7382
-    },
-    "f6e6e9a6c7e4adc70330cffa58a0e5cd3536a330ef037dc61f6bacfdf1d7792c": {
-      "label": "route deprecation-post [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "",
-        "fact_quoted": "",
-        "why_here": "Posting a deprecation date internally isn't covered by any of your rules, and a date posted to a whole channel is hard to fully take back, so it's worth a quick check from you.",
-        "headline": "Post the v1 end-of-life timeline to engineering now, or wait until the launch date is firm?",
-        "in_your_terms": "Posting now gives other teams the longest heads-up to plan their move off v1. The draft's end-of-life date assumes the launch ships on time, so if the launch slips, teams may plan around a date that later moves and need a correction. Holding avoids that risk but shortens their notice.",
-        "briefing": "The launch team has drafted an internal post announcing when the old v1 API will be retired. The retirement date in it depends on the v2 launch landing on schedule, which isn't final yet.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Teams get the most notice to plan"
-            ],
-            "cons": [
-              "Date may move if launch slips"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Avoids announcing a date that could change"
-            ],
-            "cons": [
-              "Teams get less time to prepare"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.45
-          },
-          {
-            "option": "B",
-            "p": 0.55
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Post the v1 deprecation timeline to #engineering now, noting that the end-of-life date depends on the launch shipping on schedule."
-          },
-          {
-            "option": "B",
-            "instruction": "Hold the post; keep the draft ready and re-raise it once the launch date is confirmed."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:31.993Z",
-      "usage": {
-        "input": 4038,
-        "output": 576
-      },
-      "ms": 6483
-    },
     "511d91da5f1fe891096b2dcfd368a05c655015e267fbcda0667e2857c61a1c49": {
       "label": "route free-tier [default]",
       "output": {
@@ -550,285 +351,6 @@
       },
       "ms": 7838
     },
-    "769993fac097c80c7031d6ecd1ca724c6bbe7f1035b7121de7568c7c9b92db05": {
-      "label": "route readiness-review [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Accept routine internal meeting invites; just do it.",
-        "fact_quoted": "Prefers a short written summary to a meeting when either would do.",
-        "why_here": "Your rule covers accepting routine internal invites, not scheduling a meeting on your behalf, and you've said you prefer \"a short written summary to a meeting when either would do\", so this is a quick check.",
-        "headline": "Hold the API v2 launch-readiness review Thursday at 10:00 with all four reviewers, or Friday at 14:00?",
-        "in_your_terms": "Thursday at 10:00 gets all four reviewers in the room and an earlier read on whether the API v2 launch is ready. Friday at 14:00 is a day later, and one reviewer would miss it and need to catch up separately. Either way, four engineers get an invite for an hour of their week.",
-        "briefing": "The launch coordinator wants to book a readiness review for the public API v2 launch with four reviewers. It needs a time slot before it can send the invites.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "All four reviewers can attend",
-              "Earlier readiness signal for the launch"
-            ],
-            "cons": [
-              "Commits four engineers' time on Thursday"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "One more day to prepare"
-            ],
-            "cons": [
-              "One reviewer misses the review",
-              "Later readiness signal"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.85
-          },
-          {
-            "option": "B",
-            "p": 0.15
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Send the launch-readiness review invite for Thursday 10:00 to all four reviewers."
-          },
-          {
-            "option": "B",
-            "instruction": "Send the invite for Friday 14:00 to the reviewers, and arrange a written summary for the reviewer who is out."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:38.693Z",
-      "usage": {
-        "input": 4036,
-        "output": 640
-      },
-      "ms": 7251
-    },
-    "e046b331e8432ef96d7b3d689fe818d364e52e803dbb39a4dc3a39881c1847c5": {
-      "label": "route provider-contract [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "expensive",
-        "clearing_rule": "",
-        "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
-        "fact_quoted": "",
-        "why_here": "This is a multi-year contract with exit fees, and your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
-        "headline": "Commit to the new payments provider for three years in exchange for a 20% lower rate?",
-        "in_your_terms": "Signing locks Larkspur into this provider for three years at a 20% lower processing rate, saving about $38,000 a year at current volume, but leaving early means paying the remaining minimum fees. Staying month to month keeps the higher rate and leaves us free to switch providers. The integration isn't live yet, so we haven't seen how this provider performs in production. Customers see no difference either way.",
-        "briefing": "The billing team is moving invoicing to a new payments provider, and the provider has offered a discount for a three-year commitment. Three agents are waiting on the answer, which shapes the contract before the integration goes live.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "About $38,000 a year saved at current volume",
-              "20% lower processing rate"
-            ],
-            "cons": [
-              "Early exit costs the remaining minimum fees",
-              "Committing before the integration is proven live"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Free to switch providers later",
-              "No commitment before the integration is live"
-            ],
-            "cons": [
-              "Higher processing rate",
-              "Gives up about $38,000 a year in savings"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.45
-          },
-          {
-            "option": "B",
-            "p": 0.55
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Jordan approved the three-year commitment; proceed to sign it at the 20% lower rate and share the final contract terms with Jordan."
-          },
-          {
-            "option": "B",
-            "instruction": "Jordan chose to stay month to month; decline the three-year commitment for now and continue on standard terms."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:39.657Z",
-      "usage": {
-        "input": 4056,
-        "output": 691
-      },
-      "ms": 6839
-    },
-    "e15ef7a3a851d87ae414b5c50da7f10b6d5bce980f32c5a689060e11a212c0c0": {
-      "label": "route outage-chart [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "yes",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
-        "fact_quoted": "Outages and bad weeks stay in any chart that leaves the team, with a note if needed.",
-        "why_here": "This deck goes to leadership and two design-partner customers, and your standing note says \"Outages and bad weeks stay in any chart that leaves the team, with a note if needed.\" So this is a quick check rather than something to settle without you.",
-        "headline": "Should the September 30 outage stay in the launch-readiness latency chart shown to leadership and partners?",
-        "in_your_terms": "Leaving it out gives leadership and the two design-partner customers a smoother latency trend, with the three-hour outage mentioned only in a footnote. Keeping it in shows the spike on the chart with a label explaining it. That is more visible and makes the trend a little harder to read, but nobody can miss it.",
-        "briefing": "An agent is building the launch-readiness deck for leadership and two design-partner customers, and the latency chart includes the three-hour outage on September 30. The spike makes the trend hard to read, so the agent wants to know whether to drop it from the chart.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Cleaner, easier-to-read trend line",
-              "Outage still mentioned in a footnote"
-            ],
-            "cons": [
-              "Spike not visible to partners or leadership",
-              "Footnote is easy to overlook"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Outage visible with an explanatory label",
-              "Same chart for internal and external readers"
-            ],
-            "cons": [
-              "Trend line harder to read",
-              "Spike draws attention in a customer deck"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.08
-          },
-          {
-            "option": "B",
-            "p": 0.92
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "Outages and bad weeks stay in any chart that leaves the team, with a note if needed."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Remove the September 30 outage data from the latency chart, add a footnote describing the three-hour outage, and share a preview of the deck before it goes out."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep the September 30 outage in the latency chart with a clear label explaining the three-hour outage, and share a preview of the deck before it goes out."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:40.052Z",
-      "usage": {
-        "input": 4077,
-        "output": 823
-      },
-      "ms": 8374
-    },
-    "7caf583147086c18f837039e62cabce9951e617778f8d49c3618838152bbea0a": {
-      "label": "route rate-limit-exception [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "",
-        "fact_quoted": "",
-        "why_here": "This is a commitment to an outside customer about how the public API treats them, and none of your rules lets me decide it for you.",
-        "headline": "Should a long-time enterprise customer get double the API rate limit for 30 days while they migrate?",
-        "in_your_terms": "An enterprise customer of six years wants double the normal request limit for 30 days while they move to the new API. Granting it would use about 3% of current spare capacity and would expire on its own, but it sets a precedent other customers may ask about. Declining keeps limits the same for everyone and offers the customer hands-on migration help instead, which may slow their move.",
-        "briefing": "An enterprise customer moving to the new public API has asked for a temporary increase to their rate limit during the migration. The support agent needs an answer before replying to them, and one other agent is waiting on it.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Eases migration for a six-year customer",
-              "Uses about 3% of spare capacity; expires automatically"
-            ],
-            "cons": [
-              "Creates a precedent for other exception requests",
-              "Limits no longer uniform across customers"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Keeps limits the same for every customer",
-              "Offers direct migration help instead"
-            ],
-            "cons": [
-              "Customer's migration may be slower",
-              "Risks frustrating a long-standing enterprise customer"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.7
-          },
-          {
-            "option": "B",
-            "p": 0.3
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Configure a per-account 2x rate-limit exception for this customer with automatic expiry in 30 days, and draft the reply to the customer for Jordan to review before sending."
-          },
-          {
-            "option": "B",
-            "instruction": "Draft a reply declining the exception and offering migration help, and bring the draft to Jordan for review before sending."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:40.196Z",
-      "usage": {
-        "input": 4060,
-        "output": 667
-      },
-      "ms": 8203
-    },
     "e4d40f87a08b8feaf67022bf71dc4ee33d5a87f06348449e58b5036b6e5811b9": {
       "label": "route reconciliation-path [default]",
       "output": {
@@ -897,497 +419,6 @@
         "output": 804
       },
       "ms": 9138
-    },
-    "c7f59e642151e281896102556b62a846de2dd6e5b7de10dd255fd0f155b23c5b": {
-      "label": "route sdk-comparison-budget [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "yes",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "If a task runs past twice its time budget, stop and check in with me.",
-        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "Your rule says \"If a task runs past twice its time budget, stop and check in with me,\" and this comparison is at three times its budget, so it comes to you as a quick check.",
-        "headline": "The payments SDK comparison is at 3 hours of a 1-hour budget: stop with the top two, or finish all five?",
-        "in_your_terms": "Stopping now gives a written summary and a choice between the two strongest payment providers, and unblocks the waiting work today. Finishing would test all five providers end to end, about 3 more hours, giving firmer evidence before committing billing to one. Most of the time so far went to setting up test accounts, which are now in place.",
-        "briefing": "An agent is comparing the developer kits of five candidate payments providers for the invoicing move. It has run to three times its time budget, mostly on setting up test accounts, so your rule says it must check in.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Unblocks the waiting agent now",
-              "Narrows the choice to two leading providers"
-            ],
-            "cons": [
-              "Three providers never tested end to end",
-              "Choice rests on partial evidence"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "All five providers tested end to end",
-              "Test accounts already set up"
-            ],
-            "cons": [
-              "About 3 more hours",
-              "Another agent stays blocked meanwhile"
-            ],
-            "consequence": "About 3 more hours; one other agent keeps waiting"
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.6
-          },
-          {
-            "option": "B",
-            "p": 0.4
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Stop benchmarking; write a short summary of findings so far and a comparison of the top two SDKs, then unblock the dependent agent."
-          },
-          {
-            "option": "B",
-            "instruction": "Continue end-to-end benchmarks of all five SDKs, capped at about 3 more hours; check in again if it runs past that."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:48.098Z",
-      "usage": {
-        "input": 4079,
-        "output": 730
-      },
-      "ms": 8045
-    },
-    "34ed98d64a0a103dd56fd87c542686760ed8cdd067cd1f7c782e5167754329eb": {
-      "label": "route double-charge-reply [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
-        "fact_quoted": "",
-        "why_here": "This is a message a customer will read, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\" Once it is sent, it can't be taken back.",
-        "headline": "Send the apology to the customer charged twice in September, or edit it first?",
-        "in_your_terms": "Sending now gets the customer an apology, confirmation that their refund went through, and an explanation blaming a retry bug in our old billing system. Holding it lets you check the wording, especially how much we say about the cause, but the customer waits longer for a reply. The refund has already been issued either way.",
-        "briefing": "A customer was charged twice in September, the refund has already gone out, and a reply has been drafted that apologizes and explains the cause. The draft is ready and needs a decision on whether it goes out as written.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Customer hears back sooner",
-              "Confirms the refund already issued"
-            ],
-            "cons": [
-              "Goes out without your review",
-              "Cause wording publicly blames old billing system"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "You can adjust the cause explanation",
-              "Matches your review-before-sending rule"
-            ],
-            "cons": [
-              "Customer waits longer for a reply"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.25
-          },
-          {
-            "option": "B",
-            "p": 0.75
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Send the drafted reply to the double-charged customer as written and log it in the support ticket."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep the draft in the support queue unsent, and share a link to it with Jordan for editing; send only after Jordan approves."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:49.351Z",
-      "usage": {
-        "input": 4058,
-        "output": 704
-      },
-      "ms": 9154
-    },
-    "deffddcd13974d9348b122cb697c9e0ff1b2c63721d8825b86d457dc837470a3": {
-      "label": "route duplicate-customers [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Never delete or merge customer data without asking me.",
-        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "Your rule says \"Never delete or merge customer data without asking me,\" and this merge rewrites who owns invoices with no way to undo it.",
-        "headline": "Should the 40 duplicate customer records found in the invoice import be merged now, or reviewed first?",
-        "in_your_terms": "If all 40 are merged, each pair collapses into its newest record and the invoices move to it. Any mismatch, such as two different customers sharing an email and company name, would put invoices on the wrong account, and it can't be undone. Reviewing the list first means nothing changes until you've looked, but the import and one other agent stay paused meanwhile.",
-        "briefing": "The invoice move to the new payments provider turned up 40 pairs of customer records that look like duplicates, matched on email address and company name. Merging them would rewrite which customer owns each invoice, and there is no built-in un-merge.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Import continues immediately",
-              "Removes 40 duplicate customers before cutover"
-            ],
-            "cons": [
-              "No way to undo the merge",
-              "A wrong match puts invoices on the wrong customer"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Each pair checked before anything changes",
-              "Nothing is rewritten yet"
-            ],
-            "cons": [
-              "Import and one other agent stay paused",
-              "Takes your time to review 40 pairs"
-            ],
-            "consequence": "Invoice import and one other agent stay blocked until review"
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.15
-          },
-          {
-            "option": "B",
-            "p": 0.85
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Merge all 40 pairs, keeping the newest record and moving invoices to it; first export a full snapshot of the affected records and invoice ownership so a manual restore is possible."
-          },
-          {
-            "option": "B",
-            "instruction": "Do not merge anything. Send Jordan the 40 pairs with both records side by side, the invoices on each, and the match reason, and keep the rest of the import going where it doesn't depend on them."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:50.349Z",
-      "usage": {
-        "input": 4051,
-        "output": 832
-      },
-      "ms": 10691
-    },
-    "0cd01f9d670a80a3524f11aab91fc97e520064a7cc4a7039e9662e0230875851": {
-      "label": "route ci-runners [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
-        "fact_quoted": "",
-        "why_here": "This adds $280 a month in spending, and your rule says \"Anything that spends more than $100 a month, or commits us to a contract, comes to me.\"",
-        "headline": "Pay $280 more a month for faster builds, or try better caching first?",
-        "in_your_terms": "Upgrading raises the build service bill from $200 to $480 a month and cuts a typical build from about 14 to 8 minutes across roughly 160 builds a day. Staying on the current plan keeps the bill flat. Better caching is estimated to give about a 20% speedup, roughly half the upgrade's gain, and it takes some agent work to set up. Either way the team and agents wait less on builds, by different amounts.",
-        "briefing": "An agent tuning the build pipeline found that agents spend a lot of time waiting on builds, which run about 160 times a day. It can speed builds up by paying for a bigger plan or by improving caching on the current plan.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Builds drop from about 14 to 8 minutes",
-              "Speedup without engineering work"
-            ],
-            "cons": [
-              "Bill rises from $200 to $480 a month",
-              "Possible plan commitment not yet checked"
-            ],
-            "consequence": "$280 more a month"
-          },
-          "B": {
-            "pros": [
-              "No added monthly spend",
-              "Caching gains carry over if you upgrade later"
-            ],
-            "cons": [
-              "Only about 20% faster, an estimate",
-              "Needs agent time to build and maintain"
-            ],
-            "consequence": "Agent time to improve caching; spend stays at $200 a month"
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.5
-          },
-          {
-            "option": "B",
-            "p": 0.5
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Upgrade the CI runner plan to the $480/month tier, confirm it's month-to-month with no annual commitment, and report the measured median run time after a few days."
-          },
-          {
-            "option": "B",
-            "instruction": "Stay on the $200 plan and implement improved caching on a branch with a preview; report the measured median build time against the 20% estimate."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:56.590Z",
-      "usage": {
-        "input": 4079,
-        "output": 755
-      },
-      "ms": 8492
-    },
-    "6da3bc82afb38bea38abb9abbbfff785e6f3752f13660cb0d2e404337737b4ce": {
-      "label": "route contractor-db-access [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Access and security changes are always mine.",
-        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "This is a decision for you because your rule says \"Access and security changes are always mine,\" and it touches billing, where \"correctness beats speed.\"",
-        "headline": "Should the contractor's agent get write access to the live billing database for cutover weekend?",
-        "in_your_terms": "With write access, the contractor's agent runs the scripts it wrote directly against live billing data for the weekend. The credential expires Monday at 09:00, but an outside party could change customer billing records until then. With read-only access, our own agent runs the contractor's scripts. That keeps outsiders out of the data, but it is slower, and our agent has never been tested against the live system.",
-        "briefing": "The billing cutover weekend is coming, and the contractor's agent wrote the scripts that move the data. Someone has to run those writes on the live billing database, so access has to be decided now; two other agents are waiting on this.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Script author runs its own migration",
-              "Access expires automatically Monday 09:00"
-            ],
-            "cons": [
-              "Outside party can change live billing data",
-              "Broader security exposure over the weekend"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Contractor never writes to live billing data",
-              "Our team keeps control of changes"
-            ],
-            "cons": [
-              "Slower cutover",
-              "Our agent untested against the live database"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.4
-          },
-          {
-            "option": "B",
-            "p": 0.6
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Issue the contractor's migration agent a write credential for the production billing database that expires Monday 09:00, log its use, and confirm revocation afterward."
-          },
-          {
-            "option": "B",
-            "instruction": "Give the contractor read-only access, get the migration scripts from them, and dry-run the scripts with our agent on a production-like copy before running the cutover writes."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:56.600Z",
-      "usage": {
-        "input": 4072,
-        "output": 715
-      },
-      "ms": 8768
-    },
-    "57a566072271a2a376f05b824bc23d77a0fb79cf1fac06c11553a187b970b893": {
-      "label": "route peer-review [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Anything about a person (hiring, reviews, feedback) stays with me.",
-        "fact_quoted": "",
-        "why_here": "This is a peer review of a colleague, and your rule says \"Anything about a person (hiring, reviews, feedback) stays with me.\"",
-        "headline": "Submit the drafted peer review for Raj as written, or rewrite it yourself?",
-        "in_your_terms": "Submitting as is gets Raj's review in well before Friday, but it is a mostly positive 300-word draft based only on his pull requests, so it may miss work that never showed up in code. Rewriting it means Raj's review reflects your own view of his half, at the cost of your time before the deadline. Either way, the review goes in under your name and shapes how Raj is assessed.",
-        "briefing": "An agent drafted a peer review of Raj from his pull requests this half, and reviews are due Friday. It is asking whether to submit the draft or hand it to you as notes.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Done well before Friday's deadline",
-              "No time needed from you"
-            ],
-            "cons": [
-              "Based only on pull request history",
-              "Not in your own words about Raj"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Review reflects your own judgment of Raj",
-              "Draft still useful as starting notes"
-            ],
-            "cons": [
-              "Takes your time before Friday"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.15
-          },
-          {
-            "option": "B",
-            "p": 0.85
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Submit the draft peer review for Raj to the review tool unchanged and confirm once it's in."
-          },
-          {
-            "option": "B",
-            "instruction": "Do not submit anything; share the draft with Jordan as notes and leave the review for them to write."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:27:57.819Z",
-      "usage": {
-        "input": 4037,
-        "output": 641
-      },
-      "ms": 7469
-    },
-    "dc8fbdc5ff251cb490c35206680224ca1bd42a37e42f4474b332a0f98e675b11": {
-      "label": "route candidate-rejections [default]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Anything about a person (hiring, reviews, feedback) stays with me.",
-        "fact_quoted": "",
-        "why_here": "This is a hiring message to real candidates, and your rule says \"Anything about a person (hiring, reviews, feedback) stays with me.\"",
-        "headline": "How should we send rejections to the two take-home candidates the panel passed on?",
-        "in_your_terms": "Two candidates who did the take-home will hear they weren't selected. With the standard template, both get the same brief, polite note right away. With personalized notes, each gets a message reflecting the panel's feedback, including the one who reached the final round, but it takes your time first.",
-        "briefing": "The hiring panel passed on two candidates who completed the take-home exercise, and the recruiting helper has drafted rejections. It needs to know whether to send the standard note or wait for you to personalize them.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Goes out promptly",
-              "Consistent, polite wording for both"
-            ],
-            "cons": [
-              "Generic for a candidate who reached the final round",
-              "Once sent, can't be taken back"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Can reflect panel feedback for each candidate",
-              "Acknowledges the final-round candidate's effort"
-            ],
-            "cons": [
-              "Needs your time to write",
-              "Candidates wait longer for an answer"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.4
-          },
-          {
-            "option": "B",
-            "p": 0.6
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Send the standard rejection template to both take-home candidates the panel passed on."
-          },
-          {
-            "option": "B",
-            "instruction": "Hold both rejections; prepare drafts with the panel notes attached so Jordan can personalize them, starting with the final-round candidate."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:00.562Z",
-      "usage": {
-        "input": 4022,
-        "output": 631
-      },
-      "ms": 11211
     },
     "485cdd8d0921654917e0b9f380b747c955376b6443c86de52b3700fb9f922252": {
       "label": "route onsite-flight [default]",
@@ -1875,510 +906,6 @@
       },
       "ms": 8195
     },
-    "388262349a3553cf5bcdf838e9129c4e764a0c09d6bb750f1e8bd6c4233c1604": {
-      "label": "route test-runner-major [default]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "yes",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
-        "fact_quoted": "",
-        "why_here": "Your housekeeping rule covers patch-level dependency bumps, but this is a major-version upgrade, so it isn't cleared to settle. It's small and easy to undo, though, so it comes as a quick check.",
-        "headline": "Upgrade the test runner to its new major version now, or wait until after the launch?",
-        "in_your_terms": "Upgrading now gives the team faster test runs and keeps us on a version that still gets fixes after next spring. It requires small mechanical edits to 14 tests, and the upgrade branch is already passing. Waiting until after the launch avoids changing test tooling during a busy period, but it leaves the work for later. Nothing customers see changes either way.",
-        "briefing": "The dependency agent has prepared an upgrade of our test runner to a new major version, with small edits to 14 tests, and all tests pass on the branch. Because it is a major version rather than a patch, it falls outside the routine housekeeping you've cleared.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Faster test runs",
-              "Stays on a supported version past next spring"
-            ],
-            "cons": [
-              "Changes test tooling during the launch period",
-              "14 tests edited"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "No test tooling changes during the launch"
-            ],
-            "cons": [
-              "Upgrade work sits until later",
-              "Old version stops getting fixes next spring"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "fine",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.75
-          },
-          {
-            "option": "B",
-            "p": 0.25
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Merge the test runner major upgrade from its branch through the normal review flow (no direct push to main), and confirm CI stays green afterward."
-          },
-          {
-            "option": "B",
-            "instruction": "Park the upgrade branch, open a ticket to revisit it after the launch, and keep it rebased so it stays ready."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:16.152Z",
-      "usage": {
-        "input": 4042,
-        "output": 711
-      },
-      "ms": 7712
-    },
-    "fd4f04e98a17b9d680f9fa65027af7ca2d54d9493c24df9e642b2f402009af7a": {
-      "label": "fact onsite-flight",
-      "output": {
-        "kind": "add",
-        "replaces": "",
-        "text": "Jordan is unavailable before 8:30am on weekdays for school drop-off and does not take early-morning (6am) flights, even to save money.",
-        "scope": "all",
-        "confirm": "So mornings before 8:30 are off-limits for school drop-off, and no 6am flights even when they're cheaper; got it.",
-        "may_affect": [
-          "berlin-sync"
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:18.877Z",
-      "usage": {
-        "input": 3239,
-        "output": 134
-      },
-      "ms": 2724
-    },
-    "6e7a495b09c2a608350b3f70c16a0ff39227efc843ac70da1922737b9eb24af0": {
-      "label": "route berlin-sync [after onsite-flight]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Accept routine internal meeting invites; just do it.",
-        "fact_quoted": "Jordan is unavailable before 8:30am on weekdays for school drop-off and does not take early-morning (6am) flights, even to save money.",
-        "why_here": "Routine internal invites are normally accepted automatically, but this one is at 7:30am, and your standing note says \"Jordan is unavailable before 8:30am on weekdays for school drop-off,\" so it needs a quick check.",
-        "headline": "Accept the Berlin team's weekly 7:30am Tuesday billing sync, or ask for a later time?",
-        "in_your_terms": "Accepting puts a 30-minute billing-migration sync with the Berlin team on your calendar every Tuesday at 7:30am Pacific, starting next week. That falls inside your school drop-off window. Declining and proposing a slot after 8:30am Pacific keeps your mornings clear. It would push the meeting into late afternoon in Berlin, which is less convenient for them.",
-        "briefing": "The Berlin team has invited you to a recurring weekly sync on the billing migration, starting next week. The invite time conflicts with your mornings, so this needs your answer before it goes back to them.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Fits the Berlin team's preferred time",
-              "No back-and-forth with the organizer"
-            ],
-            "cons": [
-              "Falls during your weekday school drop-off",
-              "A weekly commitment, awkward to back out of later"
-            ],
-            "consequence": "30 minutes every Tuesday"
-          },
-          "B": {
-            "pros": [
-              "Keeps your mornings before 8:30am free",
-              "Scheduler proposes the new time automatically"
-            ],
-            "cons": [
-              "Late afternoon for the Berlin team",
-              "Organizer may not accept the new slot"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.07
-          },
-          {
-            "option": "B",
-            "p": 0.93
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "Jordan is unavailable before 8:30am on weekdays for school drop-off and does not take early-morning (6am) flights, even to save money."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite from the Berlin team."
-          },
-          {
-            "option": "B",
-            "instruction": "Decline the 7:30am invite and automatically propose a Tuesday slot after 8:30am Pacific to the Berlin organizer, with a short polite note."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:30.142Z",
-      "usage": {
-        "input": 4152,
-        "output": 871
-      },
-      "ms": 11265
-    },
-    "24ef0d74f4eb79605540841eb4d62438e9a59c02832ee7c1e45fd1f35beb4906": {
-      "label": "fact api-rename",
-      "output": {
-        "kind": "add",
-        "replaces": "",
-        "text": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators.",
-        "scope": "launch",
-        "confirm": "So in public APIs and payloads, keep existing names; consistency or tidiness isn't worth breaking customers' integrations.",
-        "may_affect": [
-          "webhook-rename"
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:33.532Z",
-      "usage": {
-        "input": 3292,
-        "output": 124
-      },
-      "ms": 3390
-    },
-    "9ffebdabbd7191b271cc60ea56250bebdd843128410d76f681cef4041d6bc6a5": {
-      "label": "route webhook-rename [after api-rename]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
-        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators.",
-        "why_here": "This changes a public webhook payload, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\" Your standing fact also applies: \"In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators.\"",
-        "headline": "Rename the webhook timestamp field to match the rest of v2, or keep the existing name?",
-        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming the field would make webhooks match every other v2 timestamp, but any of those integrations that read the old field name would break or need updating. Keeping the old name means existing integrations keep working unchanged, and webhooks stay the one place with a different timestamp name.",
-        "briefing": "The webhooks part of the v2 API launch still uses an older name for its creation timestamp, unlike the rest of v2. The webhooks and docs work is paused until the name is settled.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Matches every other v2 timestamp"
-            ],
-            "cons": [
-              "Integrations at about 300 customer endpoints may break"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Existing webhook consumers keep working unchanged"
-            ],
-            "cons": [
-              "Webhooks stay inconsistent with the rest of v2"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.1
-          },
-          {
-            "option": "B",
-            "p": 0.9
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because renames break integrators."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Rename `created` to `created_at` in webhook payloads on a branch with a preview, and draft a customer-facing migration note for Jordan's review before anything ships."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep `created` in webhook payloads unchanged and unblock the docs agent to document it as-is."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:41.041Z",
-      "usage": {
-        "input": 4135,
-        "output": 777
-      },
-      "ms": 7509
-    },
-    "8ec08674a2a4cb2ec6111e5eb9822bd494abdbb6289d87c88d5d455398d45986": {
-      "label": "fact settings-redesign",
-      "output": {
-        "kind": "add",
-        "replaces": "",
-        "text": "Jordan prefers settings layouts that keep everything visible on one scrolling page over hiding sections behind tabs or clicks.",
-        "scope": "launch",
-        "confirm": "So for settings and similar UI in Launch, you'd rather show everything on one scrollable page than tuck sections behind tabs, even when one section gets most of the traffic?",
-        "may_affect": []
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:46.263Z",
-      "usage": {
-        "input": 3266,
-        "output": 137
-      },
-      "ms": 5222
-    },
-    "415589330b34561246ca66273680ba46a0dea550e9fdf03575b7727e058d0964": {
-      "label": "fact reconciliation-path",
-      "output": {
-        "kind": "add",
-        "replaces": "",
-        "text": "In billing, Jordan fixes errors going forward rather than reissuing or correcting invoices customers have already paid, especially for trivial amounts.",
-        "scope": "billing",
-        "confirm": "So in billing, fix mistakes going forward and leave already-paid invoices alone rather than sending corrections for small differences?",
-        "may_affect": [
-          "double-charge-reply",
-          "duplicate-customers"
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:49.574Z",
-      "usage": {
-        "input": 3314,
-        "output": 143
-      },
-      "ms": 3311
-    },
-    "56b92c424938320bb314fc00f1fe2e67668290b4fc7d30f3101934c8c13cf7a1": {
-      "label": "route double-charge-reply [after reconciliation-path]",
-      "output": {
-        "route": "check_in",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
-        "fact_quoted": "",
-        "why_here": "This is a customer-facing email, and your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\"",
-        "headline": "Send the apology to the customer charged twice in September, or edit it first?",
-        "in_your_terms": "If it goes now, the customer gets an apology, confirmation that their refund was issued, and an explanation that the double charge came from a retry bug in our old billing system. If it is held, the customer waits longer for a reply while you read or edit the wording, including how much to say about the cause. The refund itself is already done either way.",
-        "briefing": "A customer was charged twice in September; the refund has already gone out and support has drafted a reply. The draft is ready to send, and as a customer email it needs your sign-off.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Customer hears back sooner",
-              "Refund already issued, so the message is accurate"
-            ],
-            "cons": [
-              "Goes out without your review of the wording",
-              "Names a bug in our old billing system to a customer"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "You control the wording and how much the cause is explained"
-            ],
-            "cons": [
-              "Customer waits longer for a reply"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.4
-          },
-          {
-            "option": "B",
-            "p": 0.6
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Jordan has approved the draft; send the reply to the customer now as written and mark the ticket resolved."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep the draft in the support queue unsent and share a link to it with Jordan for editing; send only after Jordan approves the edited version."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:56.803Z",
-      "usage": {
-        "input": 4139,
-        "output": 695
-      },
-      "ms": 7229
-    },
-    "2d0e6661d9e3bf1bd1c9e2694b3a70882b2c5adb29a6d010403133bb0d516b54": {
-      "label": "route changelog-publish [after reconciliation-path]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "partly",
-        "cost": "cheap",
-        "clearing_rule": "",
-        "rule_quoted": "Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.",
-        "fact_quoted": "",
-        "why_here": "Your rule says \"Anything customers will see (emails, docs, changelogs, announcements) comes to me before it goes out.\" This is a customer-facing changelog and migration guide, so it needs your call.",
-        "headline": "Publish the v2 changelog and migration guide today, or wait a day for the docs review?",
-        "in_your_terms": "Publishing today gives integrators an extra day to prepare for v2, but customers would read a 2,400-word guide whose code samples were generated overnight and haven't had a human review. Waiting means the docs reviewer checks it first, and integrators get one day less to prepare. Once customers have read and copied the samples, any errors can be corrected but not taken back.",
-        "briefing": "The v2 changelog and migration guide are drafted and ready for the docs site, including code samples the SDK agents wrote last night. The docs reviewer can't look at it until tomorrow, so the question is whether to publish before that review.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Integrators get an extra day to prepare"
-            ],
-            "cons": [
-              "Overnight code samples go out unreviewed",
-              "Errors would reach customers before anyone catches them"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Docs reviewer checks it before customers read it"
-            ],
-            "cons": [
-              "Integrators get one day less to prepare",
-              "One other agent stays blocked until tomorrow"
-            ],
-            "consequence": "One other agent waits until tomorrow"
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.3
-          },
-          {
-            "option": "B",
-            "p": 0.7
-          }
-        ],
-        "conflicts": [],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Publish the v2 changelog and migration guide to the docs site today, then send Jordan the live link and flag the overnight SDK code samples for the docs reviewer to check tomorrow."
-          },
-          {
-            "option": "B",
-            "instruction": "Hold publication until the docs reviewer's pass tomorrow, apply their fixes, and send Jordan the preview link before publishing."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:57.749Z",
-      "usage": {
-        "input": 4144,
-        "output": 754
-      },
-      "ms": 8173
-    },
-    "49002bde0f2c066022ddc9d8063218ec2e779dde010f9726aa66ecc48511df98": {
-      "label": "route duplicate-customers [after reconciliation-path]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Never delete or merge customer data without asking me.",
-        "fact_quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
-        "why_here": "This is yours because your rule says \"Never delete or merge customer data without asking me,\" and merging can't be undone once invoices move.",
-        "headline": "Merge 40 apparently duplicate customer accounts found during the invoice move, or review the list first?",
-        "in_your_terms": "Merging now combines each pair into the newer account and moves its invoices there, so customers see one account and the import keeps moving. If any pair is actually two different customers who share an email and company name, their invoices would end up on the wrong account, and there is no built-in way to separate them again. Reviewing the list first delays the import while someone checks the pairs, but nothing changes until it's confirmed.",
-        "briefing": "While moving invoices to the new payments provider, the import found 40 pairs of customer records that look like duplicates, matched on email and company name. Merging them would move invoice ownership with no way to undo it, so the import is paused, with one other agent waiting.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Import continues immediately",
-              "Each customer ends up with one account"
-            ],
-            "cons": [
-              "No built-in way to undo a merge",
-              "A wrong match puts invoices on the wrong account"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Nothing changes until pairs are checked",
-              "Catches false matches before invoices move"
-            ],
-            "cons": [
-              "Import and one other agent stay paused",
-              "Someone has to review 40 pairs"
-            ],
-            "consequence": "Two agents stay blocked until the list is reviewed"
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.15
-          },
-          {
-            "option": "B",
-            "p": 0.85
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Merge the 40 pairs keeping the newest record and reassigning invoices; first export a full snapshot of all 80 records and their invoice ownership so the merge can be reconstructed if needed."
-          },
-          {
-            "option": "B",
-            "instruction": "Don't merge anything. Send Jordan the 40 pairs with match evidence (email, company, record dates, invoice counts), flag any pair with conflicting details, and leave those records out of the import until Jordan confirms."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-09T23:28:58.185Z",
-      "usage": {
-        "input": 4132,
-        "output": 858
-      },
-      "ms": 8610
-    },
     "f3f250cf4a80e65ad8d79ea0e5393f81584573e5f3c115b7217df914a6b1575e": {
       "label": "parse onsite-flight",
       "output": {
@@ -2447,99 +974,6 @@
       },
       "ms": 1521
     },
-    "cc08f53e240b3048b5084a824c7d61319c5cd1ac8abe3539801d0ce03792dd67": {
-      "label": "fact api-rename",
-      "output": {
-        "kind": "add",
-        "replaces": "",
-        "text": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because breaking integrators isn't worth it.",
-        "scope": "launch",
-        "confirm": "So in public APIs and payloads you keep existing field names over consistency renames, and I'll note account_id in the docs as the internal name here.",
-        "may_affect": [
-          "webhook-rename"
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-12T05:03:08.593Z",
-      "usage": {
-        "input": 3307,
-        "output": 134
-      },
-      "ms": 3900
-    },
-    "7d643dc9e0edca16c0bd1d4c32dc66cd2f67de1c6c2cf95f0e8bce874a224969": {
-      "label": "route webhook-rename [after api-rename]",
-      "output": {
-        "route": "decide",
-        "settle_option": "",
-        "reversible": "no",
-        "cost": "moderate",
-        "clearing_rule": "",
-        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
-        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because breaking integrators isn't worth it.",
-        "why_here": "Renaming a field in webhook payloads is a public API change, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"; your standing fact on keeping existing public field names also bears on it.",
-        "headline": "Should webhook payloads rename the 'created' timestamp to 'created_at' to match the rest of v2?",
-        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming makes webhook timestamps match every other v2 timestamp, but any customer code that reads the old name would break or need updating. Keeping the old name means existing integrations keep working unchanged, at the cost of one inconsistent field name in v2.",
-        "briefing": "The webhooks part of the API v2 launch still uses an older timestamp field name that differs from the rest of v2. The webhooks and docs work is paused until the field name is settled.",
-        "option_notes": {
-          "A": {
-            "pros": [
-              "Matches every other v2 timestamp",
-              "One consistent naming pattern for integrators"
-            ],
-            "cons": [
-              "About 300 customer endpoints may need code changes",
-              "Existing integrations could break silently"
-            ],
-            "consequence": ""
-          },
-          "B": {
-            "pros": [
-              "Existing webhook consumers keep working unchanged",
-              "No migration needed for about 300 endpoints"
-            ],
-            "cons": [
-              "One field name differs from rest of v2"
-            ],
-            "consequence": ""
-          }
-        },
-        "problem": "recommendation_conflicts_with_written_rule",
-        "guess": [
-          {
-            "option": "A",
-            "p": 0.1
-          },
-          {
-            "option": "B",
-            "p": 0.9
-          }
-        ],
-        "conflicts": [
-          {
-            "option": "A",
-            "quoted": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because breaking integrators isn't worth it."
-          }
-        ],
-        "send_down": [
-          {
-            "option": "A",
-            "instruction": "Rename `created` to `created_at` in webhook payloads on a branch with a preview, and draft a customer-facing changelog/migration note for Jordan's review before anything ships."
-          },
-          {
-            "option": "B",
-            "instruction": "Keep `created` in webhook payloads as-is; unblock the docs agent to document it under that name."
-          }
-        ]
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-12T05:03:18.795Z",
-      "usage": {
-        "input": 4142,
-        "output": 804
-      },
-      "ms": 10201
-    },
     "fa44f6c25f7c6dffdd293e9281f18f371e173c1bec775a0b213dcb5cabc3395d": {
       "label": "parse settings-redesign",
       "output": {
@@ -2567,24 +1001,6 @@
       },
       "ms": 2187
     },
-    "8aa7fcd30cef6fe2d9b76faf0cdad251caca9b14c2e0ad3733b1e9d7956cce44": {
-      "label": "fact settings-redesign",
-      "output": {
-        "kind": "add",
-        "replaces": "",
-        "text": "In UI design, Jordan prefers layouts that keep all options visible on one page over ones that hide settings behind clicks, even when one section dominates usage.",
-        "scope": "launch",
-        "confirm": "So for UI layouts, you'd rather keep everything visible and scannable on one page than hide options behind tabs or clicks, even when one section gets most of the traffic?",
-        "may_affect": []
-      },
-      "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-12T05:03:23.909Z",
-      "usage": {
-        "input": 3264,
-        "output": 143
-      },
-      "ms": 2926
-    },
     "29f96bad844355fff2659994a015e73320a84878fdf758707f4efbb8b7ac5f9d": {
       "label": "parse reconciliation-path",
       "output": {
@@ -2611,6 +1027,2148 @@
         "output": 121
       },
       "ms": 2138
+    },
+    "16672a556fbcd07a6aad1933024a50e346d91f99eeb4435decd2f9ce7f27a92a": {
+      "label": "route py-sdk-format [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and a whitespace-only change is easy to revert.",
+        "headline": "Should the Python SDK's test files be reformatted to match the rest of the code?",
+        "in_your_terms": "Reformatting changes only spacing in 58 test files, so users and customers see nothing different and the tests stay consistent with the main code. Skipping leaves the tests formatted differently from the rest of the SDK, with no effect on users either way.",
+        "briefing": "The Python SDK's tests haven't been run through the same formatter the main code already uses. The agent noticed and asked before touching 58 files.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Tests match the rest of the SDK's style",
+              "Whitespace only, easy to revert"
+            ],
+            "cons": [
+              "58-file change adds noise to history"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No churn in the test files"
+            ],
+            "cons": [
+              "Tests stay inconsistent with the main code"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.93
+          },
+          {
+            "option": "B",
+            "p": 0.07
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Run the existing formatter config over the tests folder on a branch, open it with a preview, and merge once CI passes. Formatting is pre-cleared housekeeping, so don't ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the tests folder unformatted and move on to your next task."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:36.815Z",
+      "usage": {
+        "input": 4039,
+        "output": 682
+      },
+      "ms": 7667
+    },
+    "cd7eef2caa1cbc26714908112dcb34acc400c479d86477426a70b0e90d86444e": {
+      "label": "route webhooks-branches [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" Deleted branches can also be restored for 90 days.",
+        "headline": "Should the nine already-merged branches in the webhooks service be deleted?",
+        "in_your_terms": "Nothing changes for users or customers either way. Deleting tidies the repository, and the branches can be restored for 90 days. Keeping them leaves nine finished branches in place, which adds clutter but no risk.",
+        "briefing": "The webhooks agent found nine branches whose work is already merged and which have no open pull requests. It is asking whether to clean them up.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Tidier repository",
+              "Restorable for 90 days"
+            ],
+            "cons": [
+              "Branches gone from the main list"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change at all"
+            ],
+            "cons": [
+              "Nine stale branches remain"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Delete all 9 merged branches in the webhooks service repo; per Jordan's housekeeping rule, do this without asking next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the 9 merged branches in place and continue your other work."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:36.865Z",
+      "usage": {
+        "input": 4025,
+        "output": 633
+      },
+      "ms": 7715
+    },
+    "08008bb020b0469f3936ae6c5fc8035bc2e4ac59d25a501d35197d916011b052": {
+      "label": "route launch-dash-bumps [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "This is settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and a revert is one commit.",
+        "headline": "Apply patch-level updates to four packages in the internal launch dashboard?",
+        "in_your_terms": "Only the launch team uses this dashboard, so no customers are affected either way. Merging picks up four bug-fix releases, and all tests pass. Holding keeps the dashboard on its current versions and leaves the fixes out for now.",
+        "briefing": "The dependency agent prepared patch-level updates for four packages in the internal launch dashboard. Tests pass on the branch, so it is asking whether to merge them.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Picks up bug fixes in four packages",
+              "Tests pass; undone with one commit"
+            ],
+            "cons": [
+              "Small chance a patch changes behavior"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to a working internal tool"
+            ],
+            "cons": [
+              "Bug fixes not picked up"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Merge the four patch bumps to the dashboard through the normal branch-and-preview flow. Don't push to main directly. Revert if anything breaks."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the bump branch open and unmerged; don't apply the updates for now."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:37.423Z",
+      "usage": {
+        "input": 4055,
+        "output": 673
+      },
+      "ms": 8273
+    },
+    "77ff0424aa04044a637478dbc676b3cb04c7767a6006e6259aeb03f2147c1b26": {
+      "label": "route ts-sdk-lint [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and the change is a single revertible commit.",
+        "headline": "Apply 37 automatic lint cleanups to the TypeScript SDK?",
+        "in_your_terms": "Nothing changes for SDK users either way, because the fixes only remove unused imports and tidy variable declarations. Applying them leaves the code cleaner and matching the repo's own lint settings. Leaving them keeps the current warnings in place.",
+        "briefing": "The TypeScript SDK agent found 37 lint issues it can fix automatically under the repo's existing settings. CI passes with the fixes applied, and the agent is asking whether to apply them.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Code matches the repo's own lint settings",
+              "Single commit, easy to revert"
+            ],
+            "cons": [
+              "Small amount of unrelated churn in history"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to the code"
+            ],
+            "cons": [
+              "Lint warnings remain"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Apply the 37 lint auto-fixes as one commit on a branch, and merge after CI passes. Your housekeeping rule covers this, so don't ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the lint issues as they are and drop the branch."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:37.632Z",
+      "usage": {
+        "input": 4065,
+        "output": 684
+      },
+      "ms": 8497
+    },
+    "e13add62db2fcccfbacca2656ba7c9a243a9cce6559e1a3acef80d198a3b63c8": {
+      "label": "route gateway-branches [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" The deleted branches can also be restored for 90 days.",
+        "headline": "Delete 14 already-merged branches in the API gateway code?",
+        "in_your_terms": "Nothing changes for users or customers either way. Deleting tidies the repository, and the branches can be restored for 90 days. Keeping them leaves 14 stale branches in the list.",
+        "briefing": "An agent working on the API launch found 14 branches in the gateway code that are fully merged and have no open reviews. It asked whether to clean them up.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Tidier repository",
+              "Restorable for 90 days"
+            ],
+            "cons": [
+              "Restoring after 90 days not possible"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Branches stay immediately available"
+            ],
+            "cons": [
+              "14 stale branches remain"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Delete the 14 merged branches in the API gateway repo. Your housekeeping rule covers deleting merged branches, so handle this directly next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the 14 merged branches in place and continue with the migration work."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:43.446Z",
+      "usage": {
+        "input": 4025,
+        "output": 638
+      },
+      "ms": 6581
+    },
+    "578e3b8e761a6ea2df7af0c9b178819f3511e44a66819f81fd7b02753e87ccad": {
+      "label": "route settings-ui-format [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and a formatting commit on a branch is easy to revert.",
+        "headline": "Should the settings page redesign be reformatted to match the web app's style before review?",
+        "in_your_terms": "Nothing changes for users either way; this only affects whitespace and quote style in 23 files. Running it makes the redesign match the rest of the web app and keeps review focused on real changes. Skipping it leaves the branch out of step with the app's existing formatting, which may surface as noise later.",
+        "briefing": "The settings page redesign branch was started before the web app's formatter settings were applied, so 23 files differ only in whitespace and quotes. The agent wants to know whether to tidy that up before the branch goes to review.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Branch matches the app's existing style",
+              "Review shows only real changes"
+            ],
+            "cons": [
+              "Adds one extra commit to the branch"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No extra commit on the branch"
+            ],
+            "cons": [
+              "Formatting differences stay in 23 files"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Run the web app's existing formatter on the settings page branch as a single commit, let CI pass, and continue to review via the preview. Formatting is covered by Jordan's housekeeping rule; no need to ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave formatting as is and send the settings page branch to review unchanged."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:44.121Z",
+      "usage": {
+        "input": 4035,
+        "output": 728
+      },
+      "ms": 7304
+    },
+    "9783f0d9c3e69a324fa803db438d572242d055c4d69cc983a4a2dad4c260217d": {
+      "label": "route ts-sdk-flaky [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
+        "rule_quoted": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.\" and quarantining is undone with one line.",
+        "headline": "Should the flaky retry-timing test in the TypeScript SDK be quarantined with a ticket?",
+        "in_your_terms": "Quarantining stops the test from randomly failing builds, but it stops checking the SDK's retry timing until someone fixes it. Leaving it running keeps that check live, at the cost of an occasional spurious failure on shared build machines. Users see no change either way.",
+        "briefing": "A TypeScript SDK test of retry timing timed out in 2 of the last 30 build runs, only on shared build machines, and passes locally. The SDK agent wants to know whether to sideline it while it's tracked.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Stops random build failures",
+              "Tracked by a ticket; one line to re-enable"
+            ],
+            "cons": [
+              "Retry timing goes unchecked until fixed"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Retry timing stays checked on every run"
+            ],
+            "cons": [
+              "Builds fail randomly about 1 in 15 runs"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Quarantine test_retry_backoff on a branch, open a ticket noting the timeouts occur only on shared CI runners, and link the ticket in the skip marker. Don't delete the test."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave test_retry_backoff running unchanged and keep monitoring its failure rate on shared runners."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:45.039Z",
+      "usage": {
+        "input": 4065,
+        "output": 701
+      },
+      "ms": 7615
+    },
+    "8659063abaa96c8c12a4583ee22c795011df4915c0d6f012436797734654ac8e": {
+      "label": "route checklist-lint [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and this is a one-commit change that is easy to revert.",
+        "headline": "Tidy up imports and lint in the internal launch checklist script?",
+        "in_your_terms": "Nothing changes for users or customers either way; the script is internal and the fixes don't change behaviour. Applying them makes six files consistent with the team's style in one revertible commit. Leaving them keeps the script as it is, with the style issues still present.",
+        "briefing": "An agent on the launch project found import ordering and lint issues in the internal script the launch coordinator runs. It is asking whether to apply the fixes across six files.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Script matches team style",
+              "One commit, easy to revert"
+            ],
+            "cons": [
+              "Small review and CI run needed"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to a working script"
+            ],
+            "cons": [
+              "Style issues remain in six files"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "B",
+            "quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Apply the import sort and lint fixes as one commit on a branch, and merge after CI passes; never push to main. This kind of housekeeping is pre-cleared, so don't ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the launch-checklist script as it is and close this task."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:45.207Z",
+      "usage": {
+        "input": 4054,
+        "output": 726
+      },
+      "ms": 7574
+    },
+    "866a97b6495dbc35cbfffb6b2227313b8a55ae45745108c7dac26ff3e12d63da": {
+      "label": "route billing-lint [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says lint fixes in our own repos are housekeeping: \"just do it\", and a single commit on a branch is easy to revert.",
+        "headline": "Should the invoice migration service get its 21 small lint cleanups?",
+        "in_your_terms": "Applying the fixes tidies unused variables and import order in the invoice migration code, with no change to how invoices are produced; the invoice comparison tests still pass. Leaving them keeps the code as it is, with no risk from the change but the clutter stays.",
+        "briefing": "The agent moving invoicing to the new provider found 21 small style issues in its service. It asked whether to clean them up before continuing.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Cleaner code, no behaviour change",
+              "Invoice comparison tests pass with fixes"
+            ],
+            "cons": [
+              "Touches billing code during migration"
+            ],
+            "consequence": "One commit on a branch; easy to revert"
+          },
+          "B": {
+            "pros": [
+              "No change to billing code at all"
+            ],
+            "cons": [
+              "Lint issues remain in the service"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Apply the 21 lint fixes as one commit on a branch, merge after CI passes (including invoice comparison tests); never push to main."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the lint issues as they are and continue the migration work."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:50.523Z",
+      "usage": {
+        "input": 4048,
+        "output": 649
+      },
+      "ms": 6402
+    },
+    "5c0ab837cdfc471d43a265c49905a3ca3a3e8d303fc2da59cd44638d40847eb6": {
+      "label": "route web-patch-bumps [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and this is reverted with one commit.",
+        "headline": "Should the web app take patch updates to its date library and icon set?",
+        "in_your_terms": "Merging brings in bug-fix-only releases of two libraries the web app uses, and users should see no visible change beyond any fixes. Holding keeps the current versions and their known bugs for now. Tests pass either way, and the update can be undone with one commit.",
+        "briefing": "The dependency agent prepared patch-level updates for the web app's date library and icon set, and unit and visual tests pass. It paused to ask before merging.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Picks up listed bug fixes",
+              "Tests pass; one-commit revert"
+            ],
+            "cons": [
+              "Small chance of unlisted behavior change"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to current behavior"
+            ],
+            "cons": [
+              "Known bugs stay unfixed",
+              "Update stays pending"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Merge the patch bumps through the normal branch-and-preview flow (no direct push to main), and revert with one commit if anything regresses. Patch bumps are pre-cleared housekeeping; don't ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the bump branch unmerged and keep current versions until told otherwise."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:50.985Z",
+      "usage": {
+        "input": 4032,
+        "output": 698
+      },
+      "ms": 7539
+    },
+    "9b025b17ad592073cab67bd457ecbc48020d40fad9d1b2ad95b088eb701530dd": {
+      "label": "route billing-branches [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and deleted branches can be restored for 90 days.",
+        "headline": "Clean up 17 already-merged branches in the billing code?",
+        "in_your_terms": "Nothing changes for customers either way. Deleting tidies the billing code's branch list for the team, and any branch can be restored for 90 days. Keeping them leaves the clutter but changes nothing.",
+        "briefing": "The agent moving invoicing to the new provider found 17 old branches whose work is already merged and has no open reviews. It is asking whether to clean them up.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Tidier branch list for the team",
+              "Restorable for 90 days"
+            ],
+            "cons": [
+              "Restoring later takes a small manual step"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change at all"
+            ],
+            "cons": [
+              "Stale branches keep cluttering the repo"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "B",
+            "quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Delete the 17 merged branches with no open PRs; this is covered by Jordan's housekeeping rule, so do such cleanups without asking next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave all 17 branches in place and continue the invoice migration."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:52.614Z",
+      "usage": {
+        "input": 4024,
+        "output": 707
+      },
+      "ms": 7574
+    },
+    "8e46105280b9f14a8376dcfa0490f01c46e1edbc711e5b6777a64e6afb0bd523": {
+      "label": "route billing-gofmt [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and a whitespace-only change is easy to revert.",
+        "headline": "Should the billing scheduler code be reformatted to match the repo's standard style?",
+        "in_your_terms": "Nothing changes for customers or invoices either way; the change only affects spacing in the code. Reformatting brings the scheduler in line with the rest of the repo's formatting check. Skipping leaves it inconsistent but avoids touching 19 files.",
+        "briefing": "The billing scheduler was written before the repo's automatic formatting check existed, so its code spacing doesn't match. An agent offered to reformat it, a whitespace-only change across 19 files.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Matches the repo's formatting check",
+              "One commit, easy to revert"
+            ],
+            "cons": [
+              "Touches 19 files in billing code"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No billing code touched"
+            ],
+            "cons": [
+              "Scheduler stays out of line with formatting check"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.92
+          },
+          {
+            "option": "B",
+            "p": 0.08
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Run gofmt over the scheduler on a branch, confirm the diff is whitespace-only, and merge after CI passes; don't push to main."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the scheduler formatting as is and move on."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:57.284Z",
+      "usage": {
+        "input": 4038,
+        "output": 680
+      },
+      "ms": 6761
+    },
+    "c04c26b0cf4182104c0e6723c23c6ec106a083e35d471c88014f0323714a6569": {
+      "label": "route tax-mapper-lint [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says lint fixes in our own repos are housekeeping to \"just do it\", and this is one revertable commit with identical output.",
+        "headline": "Fix nine lint warnings in the billing tax-mapping scripts?",
+        "in_your_terms": "Fixing the warnings tidies the tax-mapping scripts without changing any invoice output; every test invoice comes out identical. Leaving them changes nothing for customers but keeps the warnings in the code.",
+        "briefing": "An agent working on the invoicing move found nine lint warnings about reused variable names in the tax-mapping scripts. It checked that fixing them leaves every test invoice unchanged and asked whether to apply the fix.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Cleaner scripts, no warnings",
+              "Invoice output verified identical"
+            ],
+            "cons": [
+              "Small change to billing code"
+            ],
+            "consequence": "One commit on a branch, easy to revert"
+          },
+          "B": {
+            "pros": [
+              "No billing code touched"
+            ],
+            "cons": [
+              "Warnings remain in the scripts"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Apply the lint fixes on a branch, confirm the mapping output stays byte-identical, and merge after CI passes; never push to main directly."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the lint warnings as they are and continue the migration work."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:04:59.801Z",
+      "usage": {
+        "input": 4066,
+        "output": 657
+      },
+      "ms": 7187
+    },
+    "ff64f2e36e71a133ea70a08c21723eaaeeea82853d1b0cde020d7d4d5a4590b7": {
+      "label": "route billing-ci-bumps [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says patch-level dependency bumps in our own repos are housekeeping: \"just do it.\"",
+        "headline": "Apply patch updates to two build-pipeline tools in the billing repo?",
+        "in_your_terms": "Nothing changes for customers or invoices either way; these are tools that run the billing team's automated checks. Applying them picks up the tools' bug fixes, and undoing it takes one change. Holding keeps the current versions and leaves the bug fixes for later.",
+        "briefing": "A maintenance agent found patch updates for two tools the billing repo's automated checks rely on, and the checks passed with them. It paused to ask whether to apply them.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Picks up bug fixes",
+              "Checks already passed; undone in one change"
+            ],
+            "cons": [
+              "Small chance of unnoticed pipeline change"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to the pipeline at all"
+            ],
+            "cons": [
+              "Misses the bug fixes",
+              "Leaves routine upkeep open"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Merge the checkout and cache patch bumps via the branch with passing CI (no direct push to main); revert the single commit if anything breaks."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the CI action versions as they are and close or park the bump branch."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:02.939Z",
+      "usage": {
+        "input": 4041,
+        "output": 656
+      },
+      "ms": 6843
+    },
+    "9b8130dcf84461c6485c562daf5d2888af0fa3caa7299f3fa89374eee5726ce0": {
+      "label": "route cutover-branches [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says deleting merged branches in our own repos is housekeeping to \"just do it\", and deleted branches can be restored for 90 days.",
+        "headline": "Delete six old, fully merged experiment branches in the billing cutover planning repo?",
+        "in_your_terms": "Nothing changes for customers or invoices either way. Deleting tidies the repo so the team sees only active work, and the branches can be restored for 90 days. Keeping them leaves the experiments easy to browse but adds clutter.",
+        "briefing": "The agent planning the billing cutover found six experiment branches that are already merged and have no open reviews. It asked whether to clean them up.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Cleaner repo with only active work",
+              "Restorable for 90 days"
+            ],
+            "cons": [
+              "Experiments less visible for browsing",
+              "Restore needed after 90 days lapse is impossible"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Experiment history stays easy to browse",
+              "No action needed"
+            ],
+            "cons": [
+              "Repo stays cluttered",
+              "Merged work lingers indefinitely"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.93
+          },
+          {
+            "option": "B",
+            "p": 0.07
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Delete the 6 merged spike branches in the cutover planning repo; this is covered by the housekeeping rule, so no need to ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the 6 spike branches in place and continue cutover planning."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:04.248Z",
+      "usage": {
+        "input": 4029,
+        "output": 674
+      },
+      "ms": 6963
+    },
+    "976dc46ffa949fb756fbf2bf0043691a34c959d640e214c8ff4972d788708352": {
+      "label": "route ci-yaml-format [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says formatting in our own repos is housekeeping: \"just do it.\"",
+        "headline": "Should the CI configuration files in the platform repo get an indentation-only cleanup?",
+        "in_your_terms": "Nothing changes for users or customers either way. Formatting makes the 31 CI config files consistent, in one easily reverted commit that has already passed a pipeline run. Skipping leaves the files as they are, with no cleanup churn.",
+        "briefing": "The repo-cleanup agent wants to fix indentation across 31 CI configuration files in the platform repo. It ran the pipeline on a branch with the changes and it passed.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Consistent formatting across CI configs",
+              "Single commit, easy to revert"
+            ],
+            "cons": [
+              "Touches 31 files at once"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No churn in CI files"
+            ],
+            "cons": [
+              "Inconsistent indentation remains"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.93
+          },
+          {
+            "option": "B",
+            "p": 0.07
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Commit the indentation-only formatting on a branch, confirm CI passes, merge via the normal branch flow (no direct push to main). Formatting is pre-cleared housekeeping, so don't ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Drop the formatting change and delete the branch."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:06.594Z",
+      "usage": {
+        "input": 4034,
+        "output": 647
+      },
+      "ms": 6792
+    },
+    "abad4e6d8866463df98037e76ca1c52d2cf88bcf69a1454ebb2cc9b41699bc2e": {
+      "label": "route cli-patch-bumps [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says patch-level dependency bumps in our own repos are housekeeping: \"just do it\", and this is reversible in one commit.",
+        "headline": "Should the internal command-line tool get seven patch-level dependency updates?",
+        "in_your_terms": "Merging brings seven packages in the internal command-line tool up to their latest bug-fix releases; tests pass and it can be reverted in one commit. Holding keeps the tool on its current versions with no change for the team. No customers are affected either way.",
+        "briefing": "The dependency agent prepared patch-only updates for seven packages used by the internal command-line tool. All tests pass on its branch, so it asked whether to merge.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Picks up upstream bug fixes",
+              "Tests pass; revert is one commit"
+            ],
+            "cons": [
+              "Small chance of an untested regression"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to a working tool"
+            ],
+            "cons": [
+              "Misses upstream bug fixes"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Merge the patch bumps via the normal branch and preview flow (not a direct push to main); revert with one commit if anything breaks."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the branch unmerged and keep the current pinned versions."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:08.613Z",
+      "usage": {
+        "input": 4038,
+        "output": 640
+      },
+      "ms": 7532
+    },
+    "b0b4ffa899d1f836ad18ef1ea7c9557191aba7d2e933d8a988e6f3573d89ea35": {
+      "label": "route infra-branches [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" Deleted branches can also be restored for 90 days.",
+        "headline": "Delete 23 already-merged branches in the infrastructure repo?",
+        "in_your_terms": "Deleting tidies the infrastructure repo and changes nothing for users or customers. All 23 branches are fully merged and none has an open pull request. Any of them can be restored for 90 days. Keeping them leaves the repo cluttered but loses nothing.",
+        "briefing": "The repo cleanup agent found 23 branches in the infrastructure repo that are fully merged and have no open pull requests. It stopped to ask before deleting them.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Cleaner repo",
+              "Restorable for 90 days"
+            ],
+            "cons": [
+              "Restoring after 90 days isn't possible"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Nothing removed"
+            ],
+            "cons": [
+              "Repo stays cluttered"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "B",
+            "quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Delete all 23 merged branches in the infrastructure repo. Merged-branch deletion is covered by Jordan's housekeeping rule, so don't ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the 23 merged branches in place and take no further action."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:09.994Z",
+      "usage": {
+        "input": 4026,
+        "output": 734
+      },
+      "ms": 7054
+    },
+    "8124538ba41048220a26a90ad88bfce0cf0cb66e43d5e6c5375180f9bc93e965": {
+      "label": "route tooling-lint [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says lint fixes in our own repos are housekeeping: \"just do it.\"",
+        "headline": "Should the 44 automatic lint fixes in the internal tooling repo be applied?",
+        "in_your_terms": "Applying the fixes tidies the internal tooling code with no change to how anything behaves for users or the team, and the change can be reverted in one step. Leaving them keeps the code as it is, with the lint warnings still present.",
+        "briefing": "The repo janitor found 44 automatic lint fixes in the internal tooling repo, and the test suite passes with them applied. It paused to ask whether to apply them.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Cleaner code, tests already pass",
+              "Single commit, easy to revert"
+            ],
+            "cons": [
+              "Small review and merge effort"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to the repo at all"
+            ],
+            "cons": [
+              "Lint warnings remain in the code"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Commit the 44 lint auto-fixes on a branch, open a preview, and merge once CI is green. Never push directly to main. Lint fixes are covered by the housekeeping rule, so don't ask about them in future."
+          },
+          {
+            "option": "B",
+            "instruction": "Drop the lint auto-fixes and leave the internal tooling repo unchanged."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:10.927Z",
+      "usage": {
+        "input": 4032,
+        "output": 656
+      },
+      "ms": 6678
+    },
+    "236c4c34d1e0b7cb745cb715c57e84aa150857b6b875eb54bcd204906615f4c7": {
+      "label": "route cache-flaky [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
+        "rule_quoted": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.\" and turning the test back on is one line.",
+        "headline": "Should the occasionally failing cache test be set aside with a ticket until it's fixed?",
+        "in_your_terms": "Setting the test aside stops it from randomly failing builds for the team, while a ticket keeps the fix on the list; it can be switched back on with a one-line change. Leaving it running keeps its coverage active, but builds will keep failing now and then for reasons unrelated to the code being changed.",
+        "briefing": "A cache test has failed in 3 of the last 40 automated build runs, and the failures seem to come from a slow clock on one build machine. The CI agent wants to know how to handle it.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Stops random build failures",
+              "Ticket keeps the fix tracked"
+            ],
+            "cons": [
+              "Test coverage paused until fixed"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Test keeps running in every build"
+            ],
+            "cons": [
+              "Builds keep failing about 1 in 13 runs"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Quarantine test_cache_eviction in CI, file a ticket noting the slow-clock runner correlation, and do the change on a branch with a preview."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave test_cache_eviction running unchanged and continue monitoring failure rate."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:14.341Z",
+      "usage": {
+        "input": 4051,
+        "output": 661
+      },
+      "ms": 7747
+    },
+    "74200e32fd538dce3e65acd75f92257923a283f75f45e6dd1e52c2b516e5a557": {
+      "label": "route dockerfile-format [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and this is a revertible formatting change.",
+        "headline": "Tidy whitespace and sort package lists in 12 internal Dockerfiles?",
+        "in_your_terms": "If applied, 12 internal Dockerfiles get cleaner formatting while the built images stay identical, so nothing changes for users or the team's running systems. If skipped, the files stay as they are and nothing changes either.",
+        "briefing": "The repo cleanup agent found trailing whitespace and unsorted package lists in 12 internal Dockerfiles. It confirmed the images build identically and wants to know whether to apply the tidy-up.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Cleaner, consistent Dockerfiles",
+              "Images build identically; easy to revert"
+            ],
+            "cons": [
+              "One more commit to review in history"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change at all"
+            ],
+            "cons": [
+              "Formatting mess stays in 12 files"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Apply the formatting on a branch, open it with a preview, and merge after CI passes. Don't ask for housekeeping like this in future; your rules cover it."
+          },
+          {
+            "option": "B",
+            "instruction": "Drop the change and leave the 12 Dockerfiles as they are."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:15.786Z",
+      "usage": {
+        "input": 4041,
+        "output": 684
+      },
+      "ms": 7173
+    },
+    "9cb8d095507267fa1af733a300105b60b25c8ea5e398c1ad47a339fa7b0e6cc3": {
+      "label": "route precommit-bumps [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says patch-level dependency bumps in our own repos are housekeeping to \"just do\", and this reverts with one commit.",
+        "headline": "Should we apply patch updates to five of the repo's pre-commit checks?",
+        "in_your_terms": "Applying the updates gives the team bug fixes in the tools that check code before each commit, and every check still passes on the whole repo. Holding keeps the current versions, with no change to anyone's workflow. Neither choice affects users or customers.",
+        "briefing": "The dependency agent found patch updates for five of the automated checks that run before each commit. It has confirmed they all pass and is asking whether to apply them.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Picks up bug fixes in five commit checks",
+              "All checks pass on the whole repo"
+            ],
+            "cons": [
+              "Small chance of new tool behavior"
+            ],
+            "consequence": "Reverting is one commit"
+          },
+          "B": {
+            "pros": [
+              "No change to developer tooling"
+            ],
+            "cons": [
+              "Misses listed bug fixes"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Merge the five patch-level pre-commit hook bumps via a branch with a preview, not a direct push to main. Patch bumps are pre-cleared housekeeping, so don't ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Hold the pre-commit hook bumps and leave the current versions pinned."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:17.190Z",
+      "usage": {
+        "input": 4035,
+        "output": 670
+      },
+      "ms": 7195
+    },
+    "101d429312b90d4807b14205fb391d9d50cf8c9151be84acda6f74abb791a895": {
+      "label": "route admin-import-sort [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and a single commit is easy to revert.",
+        "headline": "Should the internal admin tool's imports be sorted to match the agreed formatter settings?",
+        "in_your_terms": "Sorting imports touches 64 files in the internal admin tool but changes only their order, so nothing changes for users or customers. Doing it brings the code in line with the team's agreed formatting. Skipping leaves the files as they are, with no effect on anyone.",
+        "briefing": "A cleanup agent found that imports in the internal admin tool don't follow the team's agreed formatter settings. It is asking whether to apply the sort across 64 files.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Matches agreed formatter config",
+              "One commit, easy to revert"
+            ],
+            "cons": [
+              "Touches 64 files at once"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No file churn"
+            ],
+            "cons": [
+              "Code stays out of line with formatter config"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Apply the import sort on a branch as one commit, open it with a preview, and merge once CI passes; never push to main directly."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the admin tool's imports unchanged and close this task."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:17.518Z",
+      "usage": {
+        "input": 4032,
+        "output": 661
+      },
+      "ms": 6590
+    },
+    "22487eec4cd4f059bfed43c957982b3a37c19588565bd33bc8329f02d3b6b539": {
+      "label": "route release-branches [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" The deletion can also be undone for 90 days.",
+        "headline": "Delete five old release branches that are already merged and tagged?",
+        "in_your_terms": "Deleting tidies the repo's branch list. The release tags stay, and the branches can be restored for 90 days. Keeping them leaves the list as it is, with no change for users either way.",
+        "briefing": "The repo cleanup agent found five old release branches. Each one is fully merged into main and has a release tag.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Cleaner branch list",
+              "Tags kept; restorable for 90 days"
+            ],
+            "cons": [
+              "Restoring after 90 days not possible"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Nothing changes"
+            ],
+            "cons": [
+              "Clutter stays in the repo"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Delete the 5 merged release branches and leave all release tags in place. Log the branch names and their head SHAs in case a restore is needed."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the 5 release branches as they are and close this task."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:20.489Z",
+      "usage": {
+        "input": 4031,
+        "output": 619
+      },
+      "ms": 6147
+    },
+    "7ddb7ed1af7d4e6b4d2a9cc963941063f14e0a6bc1261af5417bc47d5331e353": {
+      "label": "route agent-go-bumps [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.\" and this is undone with one revert.",
+        "headline": "Apply three patch-level updates to the platform agent's Go libraries?",
+        "in_your_terms": "Applying the updates brings in the libraries' latest bug fixes with no feature or interface changes, and all tests pass. Holding keeps the current versions, so nothing changes for the team or users but the fixes are not picked up.",
+        "briefing": "The dependency agent prepared patch-level updates for three Go libraries used by an internal platform agent. The tests pass on its branch, and it is asking whether to merge.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Picks up upstream bug fixes",
+              "Undone with a single revert"
+            ],
+            "cons": [
+              "Small chance of untested behavior change"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to working code"
+            ],
+            "cons": [
+              "Misses upstream bug fixes"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "B",
+            "quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Merge the three patch bumps through the normal branch and preview flow, not a direct push to main. Patch-level bumps are covered by Jordan's housekeeping rule, so there's no need to ask next time."
+          },
+          {
+            "option": "B",
+            "instruction": "Hold the bumps; leave the branch open and do not merge."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:05:23.768Z",
+      "usage": {
+        "input": 4033,
+        "output": 733
+      },
+      "ms": 7982
+    },
+    "12d74cd68716db8c5cf5f436feb35c7617f423cac5f63b9281dd3865b5a39317": {
+      "label": "route billing-dash-flaky [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
+        "rule_quoted": "Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says \"Flaky tests get fixed, or quarantined with a ticket. Never just delete a test.\" Turning the test back on is one line, and the dashboard doesn't touch invoices.",
+        "headline": "Should the flaky test on the internal billing metrics dashboard be quarantined with a ticket?",
+        "in_your_terms": "A test for the billing team's internal queue-depth dashboard fails about one run in six because of a timing race in the test itself. Quarantining stops it from blocking CI and tracks the fix in a ticket, but the dashboard refresh loses test coverage until the fix lands. Leaving it running keeps that coverage, but CI keeps failing intermittently. Customers and invoices are unaffected either way.",
+        "briefing": "A test on the billing team's internal metrics dashboard failed 4 of its last 25 runs because of a timing race in the test. The agent is asking whether to set it aside with a ticket or keep it running.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Stops intermittent CI failures",
+              "Tracked by a ticket; re-enabled with one line"
+            ],
+            "cons": [
+              "Dashboard refresh untested until fixed"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Keeps test coverage on the dashboard"
+            ],
+            "cons": [
+              "CI keeps failing about one run in six"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.9
+          },
+          {
+            "option": "B",
+            "p": 0.1
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Quarantine test_dashboard_refresh in CI on a branch with a preview, open a ticket describing the timing race, and link the ticket in the skip marker."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave test_dashboard_refresh running as is and keep monitoring its failure rate."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:13.628Z",
+      "usage": {
+        "input": 4092,
+        "output": 739
+      },
+      "ms": 7763
+    },
+    "3755c5d857571cd93dcf0e5315eaa4ee13c4f612d2277e62242d1b647db512bb": {
+      "label": "route billing-dash-bumps [default]",
+      "output": {
+        "route": "settle",
+        "settle_option": "A",
+        "reversible": "yes",
+        "cost": "cheap",
+        "clearing_rule": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "rule_quoted": "Housekeeping in our own repos (formatting, lint fixes, patch-level dependency bumps, deleting merged branches): just do it.",
+        "fact_quoted": "",
+        "why_here": "Settled without you because your rule says patch-level dependency bumps in our own repos are \"just do it\", and this one reverts with a single commit.",
+        "headline": "Apply patch updates to three packages on the billing team's internal queue dashboard?",
+        "in_your_terms": "Merging picks up bug-fix releases for an internal dashboard that only shows queue depths and never touches invoices or payments; customers see nothing either way. Holding keeps the dashboard on its current versions, with no change for anyone, and the bumps wait.",
+        "briefing": "The dependency agent prepared patch-level updates for three packages in the billing team's internal metrics dashboard, and all tests pass. It is asking whether to merge them.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Picks up listed bug fixes",
+              "Undone with one commit"
+            ],
+            "cons": [
+              "Small chance of a regression on the dashboard"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "No change to a working dashboard"
+            ],
+            "cons": [
+              "Misses the listed bug fixes"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "should_investigate_before_asking",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.95
+          },
+          {
+            "option": "B",
+            "p": 0.05
+          }
+        ],
+        "conflicts": [],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Merge the three patch bumps through the normal branch-and-review flow (not a direct push to main). Going forward, treat patch-level bumps in our own repos as housekeeping and do them without asking."
+          },
+          {
+            "option": "B",
+            "instruction": "Leave the bump branch unmerged and keep the dashboard on its current versions until told otherwise."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:13.866Z",
+      "usage": {
+        "input": 4058,
+        "output": 677
+      },
+      "ms": 8019
+    },
+    "d301ff92f7930682fbc1ed3ae12942efc0ea038fe4fb084b95af4136f52543c9": {
+      "label": "fact onsite-flight",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan is unavailable before 8:30am on weekdays because of school drop-off and does not take 6am flights, even to save money.",
+        "scope": "all",
+        "confirm": "So mornings before 8:30 are blocked for school drop-off, and I shouldn't book you 6am flights even when they're cheaper.",
+        "may_affect": [
+          "berlin-sync"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:18.725Z",
+      "usage": {
+        "input": 3752,
+        "output": 133
+      },
+      "ms": 4858
+    },
+    "0d9e99fdcb70d3b00cd3c85ef56e8ba70d787280597c56507d5770099bcfca57": {
+      "label": "route berlin-sync [after onsite-flight]",
+      "output": {
+        "route": "check_in",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "cheap",
+        "clearing_rule": "",
+        "rule_quoted": "Accept routine internal meeting invites; just do it.",
+        "fact_quoted": "Jordan is unavailable before 8:30am on weekdays because of school drop-off and does not take 6am flights, even to save money.",
+        "why_here": "Routine internal invites are normally accepted automatically, but this one is at 7:30am, and you've said you're \"unavailable before 8:30am on weekdays because of school drop-off\", so it comes to you as a quick check.",
+        "headline": "Berlin wants a weekly Tuesday 7:30am billing sync. Accept, or propose a later time?",
+        "in_your_terms": "Accepting puts a 30-minute billing-migration sync with the Berlin team on your calendar every Tuesday at 7:30am Pacific, which overlaps school drop-off. Declining and proposing a slot after 8:30am Pacific keeps your mornings free. That slot lands in late afternoon for Berlin, so they may push back or have to stay later.",
+        "briefing": "The Berlin team has invited you to a weekly 30-minute sync on the billing migration, starting next week. The proposed time is 7:30am Pacific, which is before you're available on weekdays.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Matches Berlin's preferred time",
+              "Weekly direct line to the Berlin team on billing"
+            ],
+            "cons": [
+              "Falls during school drop-off",
+              "Recurring weekly commitment"
+            ],
+            "consequence": "30 minutes every Tuesday"
+          },
+          "B": {
+            "pros": [
+              "Keeps weekday mornings before 8:30am free",
+              "Can be proposed automatically"
+            ],
+            "cons": [
+              "Late afternoon for Berlin",
+              "Organizer may not accept the new time"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.08
+          },
+          {
+            "option": "B",
+            "p": 0.92
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "Jordan is unavailable before 8:30am on weekdays because of school drop-off and does not take 6am flights, even to save money."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Accept the recurring Tuesday 7:30am Pacific billing-migration sync invite from the Berlin team."
+          },
+          {
+            "option": "B",
+            "instruction": "Decline the 7:30am invite and propose the earliest Tuesday slot after 8:30am Pacific, with a short note to the organizer explaining that mornings before 8:30 are unavailable."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:27.195Z",
+      "usage": {
+        "input": 4148,
+        "output": 854
+      },
+      "ms": 8469
+    },
+    "469ee3f2eb4f84cebc97f6ec68f09767c9e3954fab94d56d182898c934f1ad42": {
+      "label": "fact api-rename",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it.",
+        "scope": "launch",
+        "confirm": "So in public APIs, existing names stay even when a rename would be tidier; breaking integrators isn't worth it.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:29.876Z",
+      "usage": {
+        "input": 3820,
+        "output": 126
+      },
+      "ms": 2681
+    },
+    "eca31311d8aaa12d2a4687cc048fa3bdbcfcbd6c821796e2be7b9f9cb2808cd5": {
+      "label": "route webhook-rename [after api-rename]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it.",
+        "why_here": "Renaming a field in webhook payloads is a public API change, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Should webhook payloads rename the timestamp field to match the rest of v2, breaking existing consumers?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming the field makes webhooks match every other v2 timestamp, but any of those endpoints that read the old field name would break until their owners update. Keeping the old name means nothing changes for existing customers, while the webhook payloads stay the one inconsistent spot in v2.",
+        "briefing": "Webhook payloads still use an older timestamp field name, while the rest of the v2 API uses a different one. The webhooks and docs work is paused until this is settled.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Matches every other v2 timestamp",
+              "One naming pattern for integrators to learn"
+            ],
+            "cons": [
+              "About 300 customer endpoints may break",
+              "Customers must update their webhook parsing"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Existing webhook consumers keep working unchanged",
+              "No customer migration needed"
+            ],
+            "cons": [
+              "Webhooks stay inconsistent with rest of v2"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.1
+          },
+          {
+            "option": "B",
+            "p": 0.9
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "In anything public, Jordan keeps existing field names rather than renaming for tidiness, because breaking integrators isn't worth it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in webhook payloads on a branch with a preview, and draft a customer-facing changelog note for Jordan's review before anything ships."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads unchanged; tell the docs agent to document it as-is and unblock dependent work."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:38.085Z",
+      "usage": {
+        "input": 4141,
+        "output": 788
+      },
+      "ms": 8208
+    },
+    "11c67c809edf1779a6682582b1fa343765ad2a37db39fb0ea4d1c6af7485f21f": {
+      "label": "fact api-rename",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because renames break integrators.",
+        "scope": "launch",
+        "confirm": "So in anything public, existing names stay as they are, even when a rename would be tidier, because breaking integrators isn't worth it.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:41.324Z",
+      "usage": {
+        "input": 3805,
+        "output": 125
+      },
+      "ms": 3239
+    },
+    "46e1416cab29547f9417d9bc57ef871a68240d9b0acf6d3bd040a1c855f87868": {
+      "label": "route webhook-rename [after api-rename]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "partly",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because renames break integrators.",
+        "why_here": "This changes a public webhook payload that about 300 customer endpoints parse, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"",
+        "headline": "Rename the webhook timestamp field for consistency, or keep the name existing customers already parse?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming the field makes webhooks match every other timestamp in v2, but every one of those integrations reading the old name would have to change or would break. Keeping the old name means existing integrations keep working unchanged, while webhooks stay the one place in v2 with a differently named timestamp.",
+        "briefing": "The v2 API work has reached webhooks, whose payloads still use an older name for their creation timestamp. The webhooks and docs work is paused until the field name is settled.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Matches every other v2 timestamp",
+              "One naming pattern for new integrators"
+            ],
+            "cons": [
+              "About 300 customer endpoints must update parsing",
+              "Existing integrations may break silently"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Existing webhook consumers keep working unchanged",
+              "No migration needed for customers"
+            ],
+            "cons": [
+              "Webhooks stay inconsistent with rest of v2",
+              "New integrators meet two naming styles"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.1
+          },
+          {
+            "option": "B",
+            "p": 0.9
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because renames break integrators."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in v2 webhook payloads on a branch with a preview, and draft a customer-facing changelog and migration note for Jordan's review before anything ships."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads unchanged; tell the docs agent to document it as-is and unblock the waiting work."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:50.093Z",
+      "usage": {
+        "input": 4136,
+        "output": 801
+      },
+      "ms": 8768
+    },
+    "4ebc4fd862079bc0141c8d702c43d71cc78e2c88409353960ab9aa8051d62f8d": {
+      "label": "fact settings-redesign",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan prefers settings layouts that keep every section visible on one page over tabs that hide sections behind clicks, even when one section gets most of the traffic.",
+        "scope": "launch",
+        "confirm": "So for the settings redesign, and similar pages in the launch, you'd rather show everything on one scrollable page than hide sections behind tabs, even when one section dominates usage?",
+        "may_affect": []
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:53.706Z",
+      "usage": {
+        "input": 3777,
+        "output": 146
+      },
+      "ms": 3612
+    },
+    "2075eaf510f71761e7ae54508ab189903360e9fbf805d892f74d16457ba7fc68": {
+      "label": "fact settings-redesign",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "Jordan prefers settings layouts that keep everything visible on one page over ones that hide sections behind clicks, even when one section dominates usage.",
+        "scope": "launch",
+        "confirm": "So for the settings work, you'd rather keep everything visible on one scrolling page than hide sections behind tabs, even when most visits go to one section?",
+        "may_affect": []
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:56.390Z",
+      "usage": {
+        "input": 3779,
+        "output": 133
+      },
+      "ms": 2684
+    },
+    "2f6d6a5c4e170c06da02e833207986c082b91cc9512ea839d4d3fe9ec1e2a72a": {
+      "label": "fact reconciliation-path",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In billing, Jordan fixes tax and calculation errors going forward rather than reissuing or correcting invoices customers have already paid, especially for small amounts.",
+        "scope": "billing",
+        "confirm": "So in billing, fix errors going forward and don't reissue already-paid invoices over small differences. Is that right?",
+        "may_affect": []
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T13:07:58.917Z",
+      "usage": {
+        "input": 3827,
+        "output": 127
+      },
+      "ms": 2526
     }
   }
 }
