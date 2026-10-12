@@ -5,7 +5,7 @@
 // question with "I don't know; I'll ask the agent", closes on a lone "yes" after a read-back, and reads
 // "Neither, …" as a course of the person's own and "wrong question" as a rejection.
 import { type Page, expect, test } from "@playwright/test";
-import { STORE_KEY, freshPage, goRecord, hold, openDecision, option, reply, say, stored } from "./helpers";
+import { STORE_KEY, editRule, freshPage, goRecord, hold, openDecision, option, reply, say, stored } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -230,4 +230,49 @@ test("starting the morning over gives the card a fresh conversation", async ({ p
   await openDecision(page, "api-rename");
   await expect(turns(page)).toHaveCount(0);
   await expect(page.locator("#think")).toHaveValue("");
+});
+
+// Regressions from the code review of #31: each reproduces one finding.
+
+test("a correction typed while a yes is out keeps the decision open", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await say(page, "Keep user_id, because integrators parse v1 responses.");
+  const release = await hold(page, "/api/converse");
+  await page.locator("#think").fill("Yes");
+  await sendBtn(page).click();
+  await page.locator("#think").fill("Actually, rename it.");
+  release();
+  await expect(page.locator("#now .think-msg")).toContainText("You added something after that yes");
+  expect(await answered(page, "api-rename")).toBeUndefined();
+  await expect(page.locator("#think")).toHaveValue("Actually, rename it.");
+});
+
+test("changed words replace a turn that never got a reply", async ({ page }) => {
+  const sent: string[] = [];
+  page.on("request", (r) => r.url().includes("/api/converse") && sent.push(JSON.stringify(r.postDataJSON().turns.at(-1))));
+  await openDecision(page, "api-rename");
+  await page.route("**/api/converse", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "down for a moment" }) }));
+  await page.locator("#think").fill("Something it can't answer.");
+  await sendBtn(page).click();
+  await expect(page.locator("#now .think-msg")).toContainText("Bug Me couldn't reply just now");
+  await page.unroute("**/api/converse");
+  await page.locator("#think").fill("Keep user_id, because integrators parse v1 responses.");
+  await sendBtn(page).click();
+  await reply(page);
+  await expect(turns(page)).toHaveCount(2);
+  await expect(turns(page).first()).toContainText("Keep user_id, because integrators parse v1 responses.");
+  expect(sent.at(-1)).toContain("Keep user_id");
+});
+
+test("a re-route already in flight leaves a decision alone once a conversation starts on it", async ({ page }) => {
+  const release = await hold(page, "/api/route", (b) => b.id === "settings-redesign");
+  await editRule(page, "R11", "UI layout choices on a preview branch: just do it.");
+  // Every other re-check finishes first, so only the held one is still out when the talking starts.
+  await expect.poll(async () => (await stored(page))?.pending ?? []).toEqual(["settings-redesign"]);
+  await openDecision(page, "settings-redesign");
+  await say(page, "One page.");
+  release();
+  await expect.poll(async () => (await stored(page))?.pending?.length ?? 0).toBe(0);
+  await expect(page).toHaveURL(/#\/d\/settings-redesign$/);
+  await expect(turns(page)).toHaveCount(2);
 });
