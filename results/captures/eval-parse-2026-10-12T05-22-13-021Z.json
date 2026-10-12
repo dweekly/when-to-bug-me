@@ -1,0 +1,314 @@
+{
+ "prompt_version": "2026-10-12.1",
+ "model": "claude-opus-5-5",
+ "trials": 3,
+ "spent_usd": 0.11506800000000003,
+ "raw": [
+  {
+   "case": "all four kinds",
+   "ms": 2139,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "I'd keep user_id."
+     },
+     {
+      "kind": "why",
+      "quote": "Renaming a field breaks every integrator who already parses v1 responses."
+     },
+     {
+      "kind": "why",
+      "quote": "In anything public, keep existing names; tidiness isn't worth breaking customers."
+     },
+     {
+      "kind": "but",
+      "quote": "But note account_id in the docs as the internal name."
+     },
+     {
+      "kind": "ask",
+      "quote": "How many integrations read that field directly?"
+     }
+    ]
+   }
+  },
+  {
+   "case": "all four kinds",
+   "ms": 2298,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "I'd keep user_id."
+     },
+     {
+      "kind": "why",
+      "quote": "Renaming a field breaks every integrator who already parses v1 responses."
+     },
+     {
+      "kind": "why",
+      "quote": "In anything public, keep existing names; tidiness isn't worth breaking customers."
+     },
+     {
+      "kind": "but",
+      "quote": "But note account_id in the docs as the internal name."
+     },
+     {
+      "kind": "ask",
+      "quote": "How many integrations read that field directly?"
+     }
+    ]
+   }
+  },
+  {
+   "case": "all four kinds",
+   "ms": 2436,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "I'd keep user_id."
+     },
+     {
+      "kind": "why",
+      "quote": "Renaming a field breaks every integrator who already parses v1 responses."
+     },
+     {
+      "kind": "why",
+      "quote": "In anything public, keep existing names; tidiness isn't worth breaking customers."
+     },
+     {
+      "kind": "but",
+      "quote": "But note account_id in the docs as the internal name."
+     },
+     {
+      "kind": "ask",
+      "quote": "How many integrations read that field directly?"
+     }
+    ]
+   }
+  },
+  {
+   "case": "a bare choice",
+   "ms": 1525,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "Let's take the 9:40."
+     }
+    ]
+   }
+  },
+  {
+   "case": "a bare choice",
+   "ms": 1559,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "Let's take the 9:40."
+     }
+    ]
+   }
+  },
+  {
+   "case": "a bare choice",
+   "ms": 1604,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "Let's take the 9:40."
+     }
+    ]
+   }
+  },
+  {
+   "case": "changes their mind",
+   "ms": 1846,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "keep user_id"
+     },
+     {
+      "kind": "why",
+      "quote": "because the integrations matter more than tidy names"
+     }
+    ]
+   }
+  },
+  {
+   "case": "changes their mind",
+   "ms": 1859,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "keep user_id"
+     },
+     {
+      "kind": "why",
+      "quote": "because the integrations matter more than tidy names"
+     }
+    ]
+   }
+  },
+  {
+   "case": "changes their mind",
+   "ms": 2049,
+   "out": {
+    "choice": "B",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "keep user_id"
+     },
+     {
+      "kind": "why",
+      "quote": "because the integrations matter more than tidy names"
+     }
+    ]
+   }
+  },
+  {
+   "case": "only weighing, one question",
+   "ms": 2197,
+   "out": {
+    "choice": "none",
+    "marks": [
+     {
+      "kind": "ask",
+      "quote": "How many customers still call v1?"
+     }
+    ]
+   }
+  },
+  {
+   "case": "only weighing, one question",
+   "ms": 2297,
+   "out": {
+    "choice": "none",
+    "marks": [
+     {
+      "kind": "ask",
+      "quote": "How many customers still call v1?"
+     }
+    ]
+   }
+  },
+  {
+   "case": "only weighing, one question",
+   "ms": 2352,
+   "out": {
+    "choice": "none",
+    "marks": [
+     {
+      "kind": "ask",
+      "quote": "How many customers still call v1?"
+     }
+    ]
+   }
+  },
+  {
+   "case": "neither option",
+   "ms": 1196,
+   "out": {
+    "choice": "other",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "Ship the current page as is and test both versions with five customers first."
+     }
+    ]
+   }
+  },
+  {
+   "case": "neither option",
+   "ms": 1266,
+   "out": {
+    "choice": "other",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "Ship the current page as is and test both versions with five customers first."
+     }
+    ]
+   }
+  },
+  {
+   "case": "neither option",
+   "ms": 1808,
+   "out": {
+    "choice": "other",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "Ship the current page as is and test both versions with five customers first."
+     }
+    ]
+   }
+  },
+  {
+   "case": "yes, with a condition",
+   "ms": 1719,
+   "out": {
+    "choice": "A",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "File them all"
+     },
+     {
+      "kind": "but",
+      "quote": "as long as each ticket links the incident doc"
+     }
+    ]
+   }
+  },
+  {
+   "case": "yes, with a condition",
+   "ms": 1734,
+   "out": {
+    "choice": "A",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "File them all"
+     },
+     {
+      "kind": "but",
+      "quote": "as long as each ticket links the incident doc"
+     }
+    ]
+   }
+  },
+  {
+   "case": "yes, with a condition",
+   "ms": 1844,
+   "out": {
+    "choice": "A",
+    "marks": [
+     {
+      "kind": "choice",
+      "quote": "File them all"
+     },
+     {
+      "kind": "but",
+      "quote": "as long as each ticket links the incident doc"
+     }
+    ]
+   }
+  }
+ ]
+}
