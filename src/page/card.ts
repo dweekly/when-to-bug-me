@@ -283,7 +283,7 @@ export function paintThink(): void {
   answers.replaceChildren(
     ...asks.map((m) => {
       const a = flow.asks[m.quote];
-      const words = a.status === "pending" ? "Looking at what the agent provided…" : a.status === "missing" ? `${a.answer} Send can ask the agent.` : a.answer;
+      const words = a.status === "pending" ? "Looking at what the agent provided…" : a.answer;
       return h("li", { class: a.status, title: a.source ? SOURCE_LABEL[a.source] : "" }, words);
     }),
   );
