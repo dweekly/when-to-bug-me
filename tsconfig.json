@@ -21,5 +21,7 @@
     "tests",
     "playwright.config.ts",
     "vitest.config.ts"
-  ]
+  ],
+  // Imports page code, which needs the DOM library: checked by tsconfig.page.json instead.
+  "exclude": ["tests/unit/live-page.test.ts"]
 }

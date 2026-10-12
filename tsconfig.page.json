@@ -10,6 +10,7 @@
   },
   "include": [
     "src/page",
-    "src/shared"
+    "src/shared",
+    "tests/unit/live-page.test.ts"
   ]
 }

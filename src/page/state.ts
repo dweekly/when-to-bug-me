@@ -24,6 +24,8 @@ export interface Queue {
   /** The owner's live queue (docs/STAGE-7.md), not the simulation, and what is set aside on any device. */
   owner?: boolean;
   aside?: { id: string; kind: string; reason: string; instruction: string; at: string }[];
+  /** Answered in the last day (the live page keeps their follow-ups working). */
+  answered?: { decision: Decision; card: Card }[];
 }
 
 export interface Answer {

@@ -8,7 +8,7 @@
 // actions.ts (what clicks do). This file only boots it.
 
 import { api } from "./api";
-import { signIn, startOwner } from "./live";
+import { ownerDecisions, signIn, startOwner } from "./live";
 import { initVoice, voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
@@ -19,9 +19,10 @@ import { render } from "./views";
 async function boot(): Promise<void> {
   await signIn();
   setQ(await api<Queue>("/api/queue"));
-  setById(new Map(Q.decisions.map((d) => [d.id, d])));
+  // On /me, decisions answered in the last day stay known by id (their follow-ups), though not waiting.
+  setById(new Map((Q.owner ? ownerDecisions(Q) : Q.decisions).map((d) => [d.id, d])));
   setS(load(Q));
-  if (Q.owner) startOwner(Q.rules, Q.facts, Q.decisions.map((d) => d.id), Q.aside ?? []);
+  if (Q.owner) startOwner(Q);
   initVoice();
   // The record view's buttons are redrawn with it, so their clicks are handled here, once.
   document.addEventListener("click", (e) => {
