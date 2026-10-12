@@ -39,7 +39,7 @@ const CASES: Case[] = [
   { name: "a bare choice", id: "onsite-flight", text: narration("onsite-flight"), choice: "B", kinds: ["choice"] },
   { name: "changes their mind", id: "api-rename", text: "I'd rename it to account_id, it's cleaner. Actually no, keep user_id, because the integrations matter more than tidy names.", choice: "B", kinds: ["choice", "why"] },
   { name: "only weighing, one question", id: "api-rename", text: "I'm not sure yet. How many customers still call v1?", choice: "none", kinds: ["ask"] },
-  { name: "neither option", id: "settings-redesign", text: "Neither, honestly. Ship the current page as is and test both versions with five customers first.", choice: "other", kinds: [] },
+  { name: "neither option", id: "settings-redesign", text: "Neither, honestly. Ship the current page as is and test both versions with five customers first.", choice: "other", kinds: ["choice"] },
   { name: "yes, with a condition", id: "incident-action-items", text: "File them all, as long as each ticket links the incident doc.", choice: "A", kinds: ["choice", "but"] },
 ];
 

@@ -25,7 +25,8 @@ test("a set-aside the app rejects keeps the tour on that step", async ({ page })
     await expect(title(page)).toHaveText(t);
     await page.locator(".driver-popover-next-btn").click();
   }
-  await page.locator("#now .opt").nth(1).click(); // clicking decides; the answer goes out after the Undo window
+  await page.locator("#now .opt").nth(1).click();
+  await page.locator("#now .send").click();
   await passPushback(page);
   await page.locator(".driver-popover .bm-example").click();
   await page.locator("#now .followup .primary").first().click();
@@ -38,17 +39,17 @@ test("a set-aside the app rejects keeps the tour on that step", async ({ page })
   await expect(title(page)).toHaveText("What would you need?");
 });
 
-test("Tab reaches the options while a step highlights the Why panel", async ({ page }) => {
+test("Tab reaches the options while a step highlights the think-out-loud box", async ({ page }) => {
   await page.goto("/app?tour=rule-quoted#/");
-  for (const t of ["Why it's yours", "The real payload"]) {
+  for (const t of ["Why it's yours", "Each option, whole"]) {
     await expect(title(page)).toHaveText(t);
     await page.locator(".driver-popover-next-btn").click();
   }
-  await expect(title(page)).toHaveText("Say why, if you like");
-  await page.locator("#basis").fill("Renames break integrators.");
-  await page.locator("#basis").focus();
+  await expect(title(page)).toHaveText("Think out loud");
+  await page.locator("#think").fill("Renames break integrators.");
+  await page.locator("#think").focus();
   let reached = false;
-  // The options come before the Why panel in reading order, so Shift+Tab walks back to them.
+  // The options come before the think box in reading order, so Shift+Tab walks back to them.
   for (let i = 0; i < 8 && !reached; i++) {
     await page.keyboard.press("Shift+Tab");
     reached = await page.evaluate("Boolean(document.activeElement?.closest('#now .opt'))");
@@ -72,7 +73,8 @@ test("a slow typist is not stranded at the why step", async ({ page }) => {
   await page.goto("/app?tour=say-why#/");
   await expect(title(page)).toHaveText("Code said no");
   await page.locator(".driver-popover-next-btn").click();
-  await page.locator("#now .opt").nth(1).click(); // clicking decides; the answer goes out after the Undo window
+  await page.locator("#now .opt").nth(1).click();
+  await page.locator("#now .send").click();
   await passPushback(page);
   await expect(title(page)).toHaveText("I'm curious: why?");
   await page.waitForTimeout(13_000); // longer than a step's normal wait
@@ -94,7 +96,8 @@ test("a typed reason with no recorded answer says so and offers to start again",
   await page.goto("/app?tour=say-why#/");
   await expect(title(page)).toHaveText("Code said no");
   await page.locator(".driver-popover-next-btn").click();
-  await page.locator("#now .opt").nth(1).click(); // clicking decides; the answer goes out after the Undo window
+  await page.locator("#now .opt").nth(1).click();
+  await page.locator("#now .send").click();
   await passPushback(page);
   await page.locator("#why").fill("I prefer a later flight because I cannot leave home until after school drop-off.");
   await page.locator("#now .followup .primary").first().click();
@@ -109,7 +112,8 @@ test("skipping the why says so and offers to start again", async ({ page }) => {
   await page.goto("/app?tour=say-why#/");
   await expect(title(page)).toHaveText("Code said no");
   await page.locator(".driver-popover-next-btn").click();
-  await page.locator("#now .opt").nth(1).click(); // clicking decides; the answer goes out after the Undo window
+  await page.locator("#now .opt").nth(1).click();
+  await page.locator("#now .send").click();
   await passPushback(page);
   await page.locator("#now .followup").getByRole("button", { name: "skip" }).click();
   await expect(title(page)).toHaveText("No guidance from that one");

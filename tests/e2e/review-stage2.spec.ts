@@ -2,7 +2,7 @@
 // by link are shown read-only, Resume keeps a decision with the person, and Skip to content keeps
 // the current view.
 import { expect, test } from "@playwright/test";
-import { editRule, freshPage, openDecision, option, stored } from "./helpers";
+import { editRule, freshPage, openDecision, option, stored, decide } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 test("Back onto an answered decision shows it read-only; it cannot be answered again", async ({ page }) => {
   await openDecision(page, "incident-action-items");
-  await option(page, "File all five as drafted").click();
+  await decide(page, "File all five as drafted");
   await page.getByRole("button", { name: "Next decision" }).click();
   await page.goBack();
   await expect(page.locator("#now")).toContainText("You decided:");

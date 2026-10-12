@@ -196,7 +196,8 @@ function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nul
     id: "think",
     rows: 2,
     maxlength: MAX_REASON_CHARS,
-    placeholder: "Talk it through, or pick one.",
+    // On explored options, the prompt asks for a teach-back: what happens next on the one you pick.
+    placeholder: d.explore ? "Talk it through: in a sentence, what happens next on the one you pick?" : "Talk it through, or pick one.",
     "aria-label": "Think out loud: which way you lean, why, any conditions, and any questions",
   }) as HTMLTextAreaElement;
   ta.value = flow.think;

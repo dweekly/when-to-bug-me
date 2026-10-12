@@ -49,14 +49,14 @@ What goes into that path, all verbatim (Bug Me never paraphrases the person into
 
 ```bash
 npm run typecheck && npm test            # parse: schema per decision, quote verification, choice precedence, Send label states, fake parser
-npm run e2e                              # all projects (desktop, phone, 320px, recorded-desktop/phone): tours in every project; answering helpers use Send; the old lifecycle regressions kept; 320px covers narration, a long Send label, payload and prototypes
+npm run e2e                              # all projects: desktop and phone on the stand-in; every tour on the keyless recorded server at desktop and phone (on the stand-in, Jordan's words aren't the recorded parse, so tours run where they would for a reviewer); 320px covers narration, a long Send label, payload and prototypes
 npm run eval:parse                       # 6 narrations x 3 live trials, expectations written first; passes only if every trial gets the choice and every expected mark kind, with no mark dropped as inexact
 python3 scripts/scan.py
 ```
 
 Plus Lighthouse accessibility at 100 on a decision card at phone width; screenshots of a card mid-narration at 1280 and 390 wide, checked by eye against the mockup; and a by-hand check of caret, selection, scrolling and keyboard editing in the marked textarea.
 
-First eval run (2026-10-12, before the UI): 6/6 narrations, 18/18 trials, 1.4–4.8 s per parse, $0.12 in all.
+Eval runs (2026-10-12): before the UI, 6/6 narrations, 18/18 trials, 1.4–4.8 s per parse; on the final prompt, 6/6, 18/18, 1.2–2.4 s; $0.12 each.
 
 ## Out of scope
 

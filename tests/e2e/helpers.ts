@@ -13,8 +13,6 @@ export const STORE_KEY = "bugme.state.v1";
 export async function freshPage(page: Page): Promise<void> {
   await page.goto("/app#/");
   await page.evaluate("localStorage.clear()");
-  // Clicking an option decides after an Undo window; tests skip the wait (tests/e2e/stage3.spec.ts covers Undo itself).
-  await page.evaluate("localStorage.setItem('bugme.undoMs', '0')");
   await page.reload();
   await waitForHome(page);
 }
@@ -45,7 +43,7 @@ export interface StoredState {
   evaluated: Record<string, true>;
   punts: Record<string, { id: string; kind: string; reason: string; at: string; instruction: string }>;
   puntHistory: Record<string, { id: string; kind: string; reason: string; instruction: string }[]>;
-  flows?: Record<string, { basis: string }>;
+  flows?: Record<string, { basis: string; think?: string; choice?: string | null }>;
 }
 
 export async function stored(page: Page): Promise<StoredState | null> {
@@ -106,6 +104,22 @@ export async function openFromAgenda(page: Page, text: string): Promise<void> {
 export function option(page: Page, label: string) {
   // An option's accessible name starts with its label (the letter badge is decorative).
   return page.locator("#now .options").getByRole("button", { name: new RegExp(`^(?:[A-Z]\\. )?${escape(label)}`) });
+}
+
+/** Decide the card in front of the person: click the option (which picks it), then Send. */
+export async function decide(page: Page, label: string): Promise<void> {
+  await option(page, label).click();
+  await expect(option(page, label)).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#now .send").click();
+}
+
+/**
+ * Think out loud on the card in front of the person: type the words and wait until Bug Me has read
+ * them (the stand-in parses after the typing pause; the Send label then reflects the parse).
+ */
+export async function think(page: Page, text: string): Promise<void> {
+  await page.locator("#think").fill(text);
+  await expect.poll(() => page.evaluate(`(() => { const s = JSON.parse(localStorage.getItem(${JSON.stringify(STORE_KEY)}) || "{}"); const f = Object.values(s.flows || {}).find((x) => x.think === ${JSON.stringify(text)}); return Boolean(f && f.parsed && f.parsed.rev === f.rev); })()`), { timeout: 8000 }).toBe(true);
 }
 
 /** Edit a written rule on the rules view (going there first if needed) and save it. */

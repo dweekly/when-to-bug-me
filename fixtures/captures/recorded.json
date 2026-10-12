@@ -2378,6 +2378,239 @@
         "output": 858
       },
       "ms": 8610
+    },
+    "f3f250cf4a80e65ad8d79ea0e5393f81584573e5f3c115b7217df914a6b1575e": {
+      "label": "parse onsite-flight",
+      "output": {
+        "choice": "B",
+        "marks": [
+          {
+            "kind": "choice",
+            "quote": "Let's take the 9:40."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:02:59.494Z",
+      "usage": {
+        "input": 1200,
+        "output": 40
+      },
+      "ms": 3183
+    },
+    "d61c3676f716e149934e10d9ac1d868fdb547a5fdb5b7226cb2a5c17fed2f161": {
+      "label": "parse api-rename",
+      "output": {
+        "choice": "B",
+        "marks": [
+          {
+            "kind": "choice",
+            "quote": "I'd keep user_id."
+          },
+          {
+            "kind": "why",
+            "quote": "Renaming a field breaks every integrator who already parses v1 responses."
+          },
+          {
+            "kind": "why",
+            "quote": "In anything public, keep existing names; tidiness isn't worth breaking customers."
+          },
+          {
+            "kind": "but",
+            "quote": "But note account_id in the docs as the internal name."
+          },
+          {
+            "kind": "ask",
+            "quote": "How many integrations read that field directly?"
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:03:03.170Z",
+      "usage": {
+        "input": 1331,
+        "output": 168
+      },
+      "ms": 3670
+    },
+    "aba5d548fc4a02a5b9f7faaa5272a335009764c0cc19d4882d34995e47869159": {
+      "label": "ask api-rename",
+      "output": {
+        "answerable": false,
+        "answer": "The agent didn't say how many outside integrations read the user_id field directly, so it needs to be asked for that count."
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:03:04.692Z",
+      "usage": {
+        "input": 900,
+        "output": 51
+      },
+      "ms": 1521
+    },
+    "cc08f53e240b3048b5084a824c7d61319c5cd1ac8abe3539801d0ce03792dd67": {
+      "label": "fact api-rename",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because breaking integrators isn't worth it.",
+        "scope": "launch",
+        "confirm": "So in public APIs and payloads you keep existing field names over consistency renames, and I'll note account_id in the docs as the internal name here.",
+        "may_affect": [
+          "webhook-rename"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:03:08.593Z",
+      "usage": {
+        "input": 3307,
+        "output": 134
+      },
+      "ms": 3900
+    },
+    "7d643dc9e0edca16c0bd1d4c32dc66cd2f67de1c6c2cf95f0e8bce874a224969": {
+      "label": "route webhook-rename [after api-rename]",
+      "output": {
+        "route": "decide",
+        "settle_option": "",
+        "reversible": "no",
+        "cost": "moderate",
+        "clearing_rule": "",
+        "rule_quoted": "Changes to the public API or the SDK interfaces are mine to decide.",
+        "fact_quoted": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because breaking integrators isn't worth it.",
+        "why_here": "Renaming a field in webhook payloads is a public API change, and your rule says \"Changes to the public API or the SDK interfaces are mine to decide.\"; your standing fact on keeping existing public field names also bears on it.",
+        "headline": "Should webhook payloads rename the 'created' timestamp to 'created_at' to match the rest of v2?",
+        "in_your_terms": "About 300 customer endpoints receive these webhooks today. Renaming makes webhook timestamps match every other v2 timestamp, but any customer code that reads the old name would break or need updating. Keeping the old name means existing integrations keep working unchanged, at the cost of one inconsistent field name in v2.",
+        "briefing": "The webhooks part of the API v2 launch still uses an older timestamp field name that differs from the rest of v2. The webhooks and docs work is paused until the field name is settled.",
+        "option_notes": {
+          "A": {
+            "pros": [
+              "Matches every other v2 timestamp",
+              "One consistent naming pattern for integrators"
+            ],
+            "cons": [
+              "About 300 customer endpoints may need code changes",
+              "Existing integrations could break silently"
+            ],
+            "consequence": ""
+          },
+          "B": {
+            "pros": [
+              "Existing webhook consumers keep working unchanged",
+              "No migration needed for about 300 endpoints"
+            ],
+            "cons": [
+              "One field name differs from rest of v2"
+            ],
+            "consequence": ""
+          }
+        },
+        "problem": "recommendation_conflicts_with_written_rule",
+        "guess": [
+          {
+            "option": "A",
+            "p": 0.1
+          },
+          {
+            "option": "B",
+            "p": 0.9
+          }
+        ],
+        "conflicts": [
+          {
+            "option": "A",
+            "quoted": "In anything public, Jordan keeps existing field names rather than renaming them for tidiness, because breaking integrators isn't worth it."
+          }
+        ],
+        "send_down": [
+          {
+            "option": "A",
+            "instruction": "Rename `created` to `created_at` in webhook payloads on a branch with a preview, and draft a customer-facing changelog/migration note for Jordan's review before anything ships."
+          },
+          {
+            "option": "B",
+            "instruction": "Keep `created` in webhook payloads as-is; unblock the docs agent to document it under that name."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:03:18.795Z",
+      "usage": {
+        "input": 4142,
+        "output": 804
+      },
+      "ms": 10201
+    },
+    "fa44f6c25f7c6dffdd293e9281f18f371e173c1bec775a0b213dcb5cabc3395d": {
+      "label": "parse settings-redesign",
+      "output": {
+        "choice": "B",
+        "marks": [
+          {
+            "kind": "choice",
+            "quote": "One page."
+          },
+          {
+            "kind": "why",
+            "quote": "Everything is on one page, so people scroll straight to API keys and still see what else is there"
+          },
+          {
+            "kind": "why",
+            "quote": "tabs would hide the other settings behind clicks"
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:03:20.983Z",
+      "usage": {
+        "input": 1263,
+        "output": 102
+      },
+      "ms": 2187
+    },
+    "8aa7fcd30cef6fe2d9b76faf0cdad251caca9b14c2e0ad3733b1e9d7956cce44": {
+      "label": "fact settings-redesign",
+      "output": {
+        "kind": "add",
+        "replaces": "",
+        "text": "In UI design, Jordan prefers layouts that keep all options visible on one page over ones that hide settings behind clicks, even when one section dominates usage.",
+        "scope": "launch",
+        "confirm": "So for UI layouts, you'd rather keep everything visible and scannable on one page than hide options behind tabs or clicks, even when one section gets most of the traffic?",
+        "may_affect": []
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:03:23.909Z",
+      "usage": {
+        "input": 3264,
+        "output": 143
+      },
+      "ms": 2926
+    },
+    "29f96bad844355fff2659994a015e73320a84878fdf758707f4efbb8b7ac5f9d": {
+      "label": "parse reconciliation-path",
+      "output": {
+        "choice": "B",
+        "marks": [
+          {
+            "kind": "choice",
+            "quote": "Keep the T-19 mapping."
+          },
+          {
+            "kind": "why",
+            "quote": "Corrected invoices for a few cents would confuse customers and give finance a mess to explain."
+          },
+          {
+            "kind": "but",
+            "quote": "Fix the tax going forward; don't rewrite invoices people already paid."
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T05:03:26.047Z",
+      "usage": {
+        "input": 1294,
+        "output": 121
+      },
+      "ms": 2138
     }
   }
 }

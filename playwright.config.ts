@@ -46,7 +46,7 @@ export default defineConfig({
     // Every tour, start to finish, on the recorded run with no key: what a reviewer gets from a keyless deploy.
     { name: "recorded-desktop", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 1440, height: 1000 } } },
     { name: "recorded-phone", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
-    // The narrowest phone the layout promises (no horizontal scroll at 320px); only stage 2's layout check.
-    { name: "narrow", testMatch: /stage2\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
+    // The narrowest phone the layout promises (no horizontal scroll at 320px): the layout checks only.
+    { name: "narrow", testMatch: /stage[24]\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
   ],
 });

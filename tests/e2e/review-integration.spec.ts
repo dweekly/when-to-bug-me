@@ -6,7 +6,7 @@
 // and rewriting R10 to "just do it" makes the fake model settle it (reversible, free, cleared by a
 // whole rule), so the re-check really would take it off the person's hands.
 import { expect, test } from "@playwright/test";
-import { editRule, freshPage, goSettled, hold, openDecision, option } from "./helpers";
+import { editRule, freshPage, goSettled, hold, openDecision, option, decide } from "./helpers";
 
 const state = async (page: import("@playwright/test").Page) =>
   JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string);
@@ -16,7 +16,7 @@ const R10_CLEARS = "If a task runs past twice its time budget, just do it.";
 
 async function flightToWhy(page: import("@playwright/test").Page) {
   await openDecision(page, "onsite-flight");
-  await option(page, "9:40am flight").click();
+  await decide(page, "9:40am flight");
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
 }
 
@@ -36,7 +36,7 @@ test("an answer given while a re-check is out is not overwritten by it", async (
   await editRule(page, "R10", R10_CLEARS);
   await expect.poll(async () => (await state(page)).pending).toEqual([BUDGET]);
   await openDecision(page, BUDGET);
-  await option(page, "Keep going").click();
+  await decide(page, "Keep going");
   await expect.poll(async () => (await state(page)).answered[BUDGET]?.final).toBe("B");
   release();
   await expect.poll(async () => (await state(page)).pending.length).toBe(0);
