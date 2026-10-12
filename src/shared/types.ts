@@ -52,6 +52,8 @@ export interface Decision {
   visual?: Visual;
   /** Topic tags. Kept guidance re-routes waiting decisions that share a tag with its source decision. */
   tags: string[];
+  /** Hand-authored kind of housekeeping work, for grouping what Bug Me settled (docs/STAGE-6.md). Display only. */
+  work?: "branches" | "updates" | "formatting" | "flaky-tests";
 }
 
 /** A decision briefing, drawn by src/page/visuals.ts. Each kind shows what changes under each option. */
@@ -167,6 +169,11 @@ export interface Card {
   problem: Problem;
   source: Source;
   sealed: string;
+  /** From the fast model, display only; absent when it couldn't be evaluated (docs/STAGE-6.md, 1b). */
+  emoji?: string;
+  title?: string;
+  /** Per option key, what was done if it was taken, in the past tense. */
+  done?: Record<string, string>;
 }
 
 /** What /api/ask returns: an answer from what the agent provided, or what is missing from it. */

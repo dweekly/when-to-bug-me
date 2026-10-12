@@ -3169,6 +3169,974 @@
         "output": 127
       },
       "ms": 2526
+    },
+    "b334103d850c656dfa7a3fafba2113bc9aa4c91644d3e585e762d47da6512791": {
+      "label": "titles sdk-dependency",
+      "output": {
+        "emoji": "📦",
+        "title": "Add schema validation library to SDK",
+        "done": {
+          "A": "Added validation library to SDK",
+          "B": "Hand-wrote validators for 14 types"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:41.629Z",
+      "usage": {
+        "input": 681,
+        "output": 64
+      },
+      "ms": 1711
+    },
+    "bf2f91bb6f076b011fb0bba72d62947ae311baae54694149a6dfac57d01a1e7a": {
+      "label": "titles webhook-rename",
+      "output": {
+        "emoji": "🪝",
+        "title": "Rename webhook created field",
+        "done": {
+          "A": "Renamed created to created_at",
+          "B": "Kept created for consumers"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:41.639Z",
+      "usage": {
+        "input": 666,
+        "output": 56
+      },
+      "ms": 1723
+    },
+    "349589694efa102da3e43b4f1ba84944c81703ebf4ac932d1442d99e9f8565f7": {
+      "label": "titles api-rename",
+      "output": {
+        "emoji": "🏷️",
+        "title": "Rename user_id to account_id in v2",
+        "done": {
+          "A": "Renamed user_id to account_id",
+          "B": "Kept user_id unchanged in v2"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:41.641Z",
+      "usage": {
+        "input": 725,
+        "output": 69
+      },
+      "ms": 1741
+    },
+    "4845974e8e3c56877701f21eb97d5436fcd87c568d064c4c2b04125be09a8192": {
+      "label": "titles free-tier",
+      "output": {
+        "emoji": "🆓",
+        "title": "Set the v2 free tier limit",
+        "done": {
+          "A": "Set free tier to 1,000 requests",
+          "B": "Set free tier to 5,000 requests"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:42.626Z",
+      "usage": {
+        "input": 663,
+        "output": 68
+      },
+      "ms": 996
+    },
+    "1f48d9e3bdcfa73aa74fc880e74b5e9c4df03d57ee5426369a554868965c04f9": {
+      "label": "titles onsite-flight",
+      "output": {
+        "emoji": "✈️",
+        "title": "Pick flight for Denver onsite",
+        "done": {
+          "A": "Booked 6:05am flight to Denver",
+          "B": "Booked 9:40am flight to Denver"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:43.296Z",
+      "usage": {
+        "input": 677,
+        "output": 71
+      },
+      "ms": 1650
+    },
+    "6440182047de3168de0f3aa0108c6d7bad1975de9aac341cec84f2792e165547": {
+      "label": "titles reconciliation-path",
+      "output": {
+        "emoji": "🧾",
+        "title": "Choose tax mapping method for invoices",
+        "done": {
+          "A": "Applied v2 reconciliation, corrected invoices",
+          "B": "Kept legacy T-19 tax mapping"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:43.391Z",
+      "usage": {
+        "input": 700,
+        "output": 77
+      },
+      "ms": 1751
+    },
+    "cb5555e00562e758d7a3e5889a69e85c4ba3d438d7b6ba2057c7184bff329d10": {
+      "label": "titles berlin-sync",
+      "output": {
+        "emoji": "📅",
+        "title": "Accept the Berlin billing sync",
+        "done": {
+          "A": "Accepted weekly 7:30am sync",
+          "B": "Declined and proposed later slot"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:44.130Z",
+      "usage": {
+        "input": 674,
+        "output": 66
+      },
+      "ms": 1504
+    },
+    "8558524735182ab30132e1378da00e654eb539e28907d89c46dec9f9ffe405a4": {
+      "label": "titles branch-cleanup",
+      "output": {
+        "emoji": "🌿",
+        "title": "Delete 41 old merged feature branches",
+        "done": {
+          "A": "Deleted all 41 merged branches",
+          "B": "Kept all 41 branches"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:44.299Z",
+      "usage": {
+        "input": 622,
+        "output": 65
+      },
+      "ms": 1153
+    },
+    "b570c96e88c78ee75c9965eeeeeeb89e5e054265e744107b8bb601bfaf9f11f3": {
+      "label": "titles patch-bumps",
+      "output": {
+        "emoji": "📦",
+        "title": "Bump nine dependencies by patch versions",
+        "done": {
+          "A": "Merged nine dependency patch bumps",
+          "B": "Held dependency bumps for now"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:44.829Z",
+      "usage": {
+        "input": 617,
+        "output": 67
+      },
+      "ms": 1438
+    },
+    "a24b313e60919f68084b61183d3c51bf51b1c32bfd9c2fd0a6a322f8babdbda8": {
+      "label": "titles formatter-run",
+      "output": {
+        "emoji": "🧹",
+        "title": "Run formatter across SDK repo",
+        "done": {
+          "A": "Formatted 412 files in SDK",
+          "B": "Skipped formatting the SDK repo"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:44.938Z",
+      "usage": {
+        "input": 623,
+        "output": 67
+      },
+      "ms": 1641
+    },
+    "2dff24fb4c590df7408d7b30c7b295aa6ff990ffb85cfbc6660562070d2fd892": {
+      "label": "titles ts-sdk-lint",
+      "output": {
+        "emoji": "🧹",
+        "title": "Apply 37 lint auto-fixes to SDK",
+        "done": {
+          "A": "Applied 37 lint auto-fixes",
+          "B": "Left the lint issues unfixed"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:45.448Z",
+      "usage": {
+        "input": 655,
+        "output": 74
+      },
+      "ms": 1149
+    },
+    "b7c66c5c41d2ee534664d08c2afd9c48290de28aaa4adca4aa9ab1f6875b6180": {
+      "label": "titles flaky-test",
+      "output": {
+        "emoji": "🧪",
+        "title": "Quarantine or delete flaky export test",
+        "done": {
+          "A": "Quarantined test with ticket filed",
+          "B": "Deleted test; export covered elsewhere"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:45.678Z",
+      "usage": {
+        "input": 643,
+        "output": 70
+      },
+      "ms": 1548
+    },
+    "da54f2e3db3257ef0d75af4fefdd05c0f233832916c497a46214c0c5ee52f6ec": {
+      "label": "titles py-sdk-format",
+      "output": {
+        "emoji": "🧹",
+        "title": "Run formatter on SDK tests folder",
+        "done": {
+          "A": "Formatted 58 test files, whitespace only",
+          "B": "Skipped formatting the tests folder"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:46.495Z",
+      "usage": {
+        "input": 632,
+        "output": 71
+      },
+      "ms": 1665
+    },
+    "48ca1f44c24cb4d168a94563a59ff1dcbdeffcadbff74b5a1f4f69aad496b03f": {
+      "label": "titles launch-dash-bumps",
+      "output": {
+        "emoji": "📦",
+        "title": "Bump dashboard dependencies by patch versions",
+        "done": {
+          "A": "Merged four patch dependency bumps",
+          "B": "Held dependency bumps for later"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:46.646Z",
+      "usage": {
+        "input": 645,
+        "output": 68
+      },
+      "ms": 1705
+    },
+    "39d0e7a82e5983ed4413116c0f68bcc3552a25fd9118370cece1dcff11a6bdf7": {
+      "label": "titles webhooks-branches",
+      "output": {
+        "emoji": "🌿",
+        "title": "Delete 9 merged webhook branches",
+        "done": {
+          "A": "Deleted 9 merged branches",
+          "B": "Kept all 9 branches"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:46.898Z",
+      "usage": {
+        "input": 621,
+        "output": 64
+      },
+      "ms": 1449
+    },
+    "2358d3a96cd781aa66e55764ff4386357ef9e5fc36b1fc711bc910e64b4479a6": {
+      "label": "titles gateway-branches",
+      "output": {
+        "emoji": "🌿",
+        "title": "Delete 14 merged branches",
+        "done": {
+          "A": "Deleted 14 merged branches",
+          "B": "Kept all 14 branches"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:47.328Z",
+      "usage": {
+        "input": 620,
+        "output": 61
+      },
+      "ms": 832
+    },
+    "828f7be73020c8691b273e15cdf08cc48af037ed536b9c9ae190cc7b5e230c28": {
+      "label": "titles ts-sdk-flaky",
+      "output": {
+        "emoji": "🧪",
+        "title": "Quarantine flaky test_retry_backoff with ticket",
+        "done": {
+          "A": "Quarantined test_retry_backoff with ticket",
+          "B": "Left test_retry_backoff running in CI"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:47.767Z",
+      "usage": {
+        "input": 654,
+        "output": 82
+      },
+      "ms": 1121
+    },
+    "c4d3395084fcfd0a5c77ec11a28766e49e984bb7fe9890a54663d59bbeb7a806": {
+      "label": "titles web-patch-bumps",
+      "output": {
+        "emoji": "📦",
+        "title": "Bump date library and icon set",
+        "done": {
+          "A": "Merged the patch version bumps",
+          "B": "Held the dependency bumps"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:48.465Z",
+      "usage": {
+        "input": 626,
+        "output": 58
+      },
+      "ms": 1545
+    },
+    "9a5bc9e0f25f36b4db3340abfcbc5b7e6b8b1c6dbe50da57d8c5e3ad272f2cbb": {
+      "label": "titles billing-branches",
+      "output": {
+        "emoji": "🌿",
+        "title": "Delete 17 merged billing branches",
+        "done": {
+          "A": "Deleted 17 merged branches",
+          "B": "Kept all branches"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:48.576Z",
+      "usage": {
+        "input": 618,
+        "output": 60
+      },
+      "ms": 808
+    },
+    "549276c8aea8ec308e8e8eca0ed5344a84d1314bee32adf23b29dfbe11a712cc": {
+      "label": "titles billing-gofmt",
+      "output": {
+        "emoji": "🧹",
+        "title": "Run Go formatter on billing scheduler",
+        "done": {
+          "A": "Ran formatter on 19 files",
+          "B": "Skipped the formatter run"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:50.144Z",
+      "usage": {
+        "input": 633,
+        "output": 65
+      },
+      "ms": 1677
+    },
+    "029998c7cc4a36d14102fbb690357214aa4f0dbd02d1d3162ccbd27caf723596": {
+      "label": "titles billing-dash-flaky",
+      "output": {
+        "emoji": "🧪",
+        "title": "Quarantine the flaky dashboard test",
+        "done": {
+          "A": "Skipped flaky test, filed ticket",
+          "B": "Left flaky test running"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:50.250Z",
+      "usage": {
+        "input": 685,
+        "output": 66
+      },
+      "ms": 1674
+    },
+    "6ca7cf9298720a4a2e05408e4f7c7078b1438b9dadde6ff3b726ce50f7f29d2a": {
+      "label": "titles billing-dash-bumps",
+      "output": {
+        "emoji": "📦",
+        "title": "Bump dashboard dependencies by patch versions",
+        "done": {
+          "A": "Merged three patch dependency bumps",
+          "B": "Held the dependency bumps"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:50.323Z",
+      "usage": {
+        "input": 650,
+        "output": 67
+      },
+      "ms": 1857
+    },
+    "d3dcfdfff897a0abdf6a6d631b32354202841cb5f5c868b44a6db0961e8d758f": {
+      "label": "titles tax-mapper-lint",
+      "output": {
+        "emoji": "🧾",
+        "title": "Fix 9 shadowed-variable lint warnings",
+        "done": {
+          "A": "Fixed 9 lint warnings",
+          "B": "Left the lint warnings unfixed"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:50.358Z",
+      "usage": {
+        "input": 649,
+        "output": 73
+      },
+      "ms": 1517
+    },
+    "8b9fc11cf50ea114b91103fbd0d71917d8833524d7979a82596a79b4faa3b82c": {
+      "label": "titles cli-patch-bumps",
+      "output": {
+        "emoji": "📦",
+        "title": "Bump CLI's seven Python dependencies",
+        "done": {
+          "A": "Merged seven patch-level dependency bumps",
+          "B": "Held dependency bumps for now"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:51.629Z",
+      "usage": {
+        "input": 630,
+        "output": 70
+      },
+      "ms": 1270
+    },
+    "596f9be868b75dc03f8b3526edf5226b27680041c0d2ec799fec91deffe6e791": {
+      "label": "titles billing-ci-bumps",
+      "output": {
+        "emoji": "🔧",
+        "title": "Bump billing repo CI actions",
+        "done": {
+          "A": "Merged checkout and cache patch bumps",
+          "B": "Held CI action bumps"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:51.718Z",
+      "usage": {
+        "input": 633,
+        "output": 64
+      },
+      "ms": 1574
+    },
+    "9a020cee300938834c5cecaa3aa91f7ec53aba60dd691293b3db5f51f4a0738f": {
+      "label": "titles ci-yaml-format",
+      "output": {
+        "emoji": "🛠️",
+        "title": "Format CI configuration files across platform",
+        "done": {
+          "A": "Formatted 31 CI configuration files",
+          "B": "Skipped formatting CI configuration files"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:51.920Z",
+      "usage": {
+        "input": 626,
+        "output": 69
+      },
+      "ms": 1597
+    },
+    "912efbd3da00b8ef3d6717522d3adea46b31d885a3a6f25cab63bada93f219de": {
+      "label": "titles cutover-branches",
+      "output": {
+        "emoji": "🌿",
+        "title": "Delete six merged spike branches",
+        "done": {
+          "A": "Deleted 6 merged spike branches",
+          "B": "Kept all spike branches"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:51.956Z",
+      "usage": {
+        "input": 623,
+        "output": 62
+      },
+      "ms": 1705
+    },
+    "886e6cbef2b137ce49a5bacca02cc4cd03e5c674c87acee9eb66aa2659d896cc": {
+      "label": "titles tooling-lint",
+      "output": {
+        "emoji": "🧹",
+        "title": "Apply 44 lint auto-fixes",
+        "done": {
+          "A": "Applied 44 lint auto-fixes",
+          "B": "Left lint fixes unapplied"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:53.244Z",
+      "usage": {
+        "input": 626,
+        "output": 70
+      },
+      "ms": 1526
+    },
+    "41ea42a875d179894b524c784e852676a371b37d12edda2e0de9beb838223f72": {
+      "label": "titles infra-branches",
+      "output": {
+        "emoji": "🌿",
+        "title": "Delete 23 merged infrastructure branches",
+        "done": {
+          "A": "Deleted 23 merged branches",
+          "B": "Kept all 23 branches"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:53.250Z",
+      "usage": {
+        "input": 621,
+        "output": 66
+      },
+      "ms": 1621
+    },
+    "7d651a9402db64d17793367f92e6cce2481680defa7f820b38b1b75373cc2cad": {
+      "label": "titles cache-flaky",
+      "output": {
+        "emoji": "🧪",
+        "title": "Quarantine flaky cache eviction test",
+        "done": {
+          "A": "Skipped test, ticket opened",
+          "B": "Left the test running"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:53.524Z",
+      "usage": {
+        "input": 645,
+        "output": 61
+      },
+      "ms": 1603
+    },
+    "d0b4a63557fe4ef25a96ff1c4773edb5298ca70c9efb2943351cd5b20d0779f6": {
+      "label": "titles admin-import-sort",
+      "output": {
+        "emoji": "📦",
+        "title": "Sort imports across admin tool",
+        "done": {
+          "A": "Sorted imports in 64 files",
+          "B": "Skipped import sorting"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:54.794Z",
+      "usage": {
+        "input": 625,
+        "output": 59
+      },
+      "ms": 1543
+    },
+    "f721d40495bbedd9f93cf00a80fb03fb03fb36235e2eac276aba7199ae762de6": {
+      "label": "titles precommit-bumps",
+      "output": {
+        "emoji": "🪝",
+        "title": "Bump pre-commit hooks by patch versions",
+        "done": {
+          "A": "Merged patch bumps for five hooks",
+          "B": "Held the pre-commit hook bumps"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:54.913Z",
+      "usage": {
+        "input": 629,
+        "output": 73
+      },
+      "ms": 1669
+    },
+    "e2087ddfa5d362380ffbb55521b8b8b63806b438a05fbe0fc01c4760d489694a": {
+      "label": "titles release-branches",
+      "output": {
+        "emoji": "🌿",
+        "title": "Delete 5 old release branches",
+        "done": {
+          "A": "Deleted 5 old release branches",
+          "B": "Kept all 5 release branches"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:54.943Z",
+      "usage": {
+        "input": 627,
+        "output": 62
+      },
+      "ms": 1472
+    },
+    "9eb279bc451d65f9e09f190cb4a1c6289ff6ccc695a0b8c03e33c2075c022232": {
+      "label": "titles agent-go-bumps",
+      "output": {
+        "emoji": "📦",
+        "title": "Bump three Go modules by patch",
+        "done": {
+          "A": "Merged three patch version bumps",
+          "B": "Held the Go module bumps"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:07:55.184Z",
+      "usage": {
+        "input": 626,
+        "output": 60
+      },
+      "ms": 1660
+    },
+    "8a7b83ce5e869bec3c1ac2798d051ccd45d4b7a31564bef71eec0d61ab802e33": {
+      "label": "converse onsite-flight [turn 0]",
+      "output": {
+        "reply": "Got it, the 9:40am flight. What's making you lean that way?",
+        "next": "ask",
+        "ledger": {
+          "choice": "B",
+          "choice_quote": {
+            "turn": 0,
+            "quote": "Let's take the 9:40."
+          },
+          "course": {
+            "turn": 0,
+            "quote": ""
+          },
+          "action": "",
+          "why": [],
+          "conditions": [],
+          "questions": [],
+          "feedback": [],
+          "no_more_questions": false
+        }
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T16:07:57.856Z",
+      "usage": {
+        "input": 3633,
+        "output": 134
+      },
+      "ms": 2670
+    },
+    "bcee7c82118aca78f98d911098196175f97286f3ecaeda2c5492ba921a415de7": {
+      "label": "converse onsite-flight [turn 1]",
+      "output": {
+        "reply": "Book the 9:40am flight, because mornings before 8:30 are school drop-off and you don't take 6am flights, even to save money. Right?",
+        "next": "confirm",
+        "ledger": {
+          "choice": "B",
+          "choice_quote": {
+            "turn": 0,
+            "quote": "Let's take the 9:40."
+          },
+          "course": {
+            "turn": 0,
+            "quote": ""
+          },
+          "action": "",
+          "why": [
+            {
+              "turn": 1,
+              "quote": "Mornings before 8:30 are school drop-off."
+            },
+            {
+              "turn": 1,
+              "quote": "I don't take 6am flights, even to save money."
+            }
+          ],
+          "conditions": [],
+          "questions": [],
+          "feedback": [],
+          "no_more_questions": false
+        }
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T16:08:02.006Z",
+      "usage": {
+        "input": 3706,
+        "output": 217
+      },
+      "ms": 4149
+    },
+    "ed4480e30af1227b416624da414d4d412c9a30e4d3306194dddff71551598637": {
+      "label": "converse api-rename [turn 0]",
+      "output": {
+        "reply": "The agent's material doesn't say how many integrations read that field directly, so I'll ask the agent. So: keep user_id, and note account_id in the docs as the internal name. Right?",
+        "next": "confirm",
+        "ledger": {
+          "choice": "B",
+          "choice_quote": {
+            "turn": 0,
+            "quote": "I'd keep user_id."
+          },
+          "course": {
+            "turn": 0,
+            "quote": ""
+          },
+          "action": "",
+          "why": [
+            {
+              "turn": 0,
+              "quote": "Renaming a field breaks every integrator who already parses v1 responses."
+            },
+            {
+              "turn": 0,
+              "quote": "In anything public, keep existing names; tidiness isn't worth breaking customers."
+            }
+          ],
+          "conditions": [
+            {
+              "turn": 0,
+              "quote": "But note account_id in the docs as the internal name."
+            }
+          ],
+          "questions": [
+            {
+              "turn": 0,
+              "quote": "How many integrations read that field directly?",
+              "answerable": false,
+              "answer": ""
+            }
+          ],
+          "feedback": [],
+          "no_more_questions": false
+        }
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T16:08:06.185Z",
+      "usage": {
+        "input": 3758,
+        "output": 308
+      },
+      "ms": 4177
+    },
+    "fa25d4335a87ca77ef50e788eeb11c8113338a8fc03a879c6ea3f044613817e8": {
+      "label": "converse settings-redesign [turn 0]",
+      "output": {
+        "reply": "Going with one page, because people can scroll straight to API keys and still see everything else, where tabs would hide the other settings behind clicks. Right?",
+        "next": "confirm",
+        "ledger": {
+          "choice": "B",
+          "choice_quote": {
+            "turn": 0,
+            "quote": "One page."
+          },
+          "course": {
+            "turn": 0,
+            "quote": ""
+          },
+          "action": "",
+          "why": [
+            {
+              "turn": 0,
+              "quote": "Everything is on one page, so people scroll straight to API keys and still see what else is there"
+            },
+            {
+              "turn": 0,
+              "quote": "tabs would hide the other settings behind clicks."
+            }
+          ],
+          "conditions": [],
+          "questions": [],
+          "feedback": [],
+          "no_more_questions": false
+        }
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T16:08:09.632Z",
+      "usage": {
+        "input": 3689,
+        "output": 220
+      },
+      "ms": 3444
+    },
+    "de95a5734c0a47ff4457d86e429be53e1022d7edac6026c33415a4a401cb38fa": {
+      "label": "converse reconciliation-path [turn 0]",
+      "output": {
+        "reply": "Keep the T-19 mapping and fix the tax going forward, without rewriting invoices people already paid, because corrected invoices for a few cents would confuse customers and give finance a mess to explain. Right?",
+        "next": "confirm",
+        "ledger": {
+          "choice": "B",
+          "choice_quote": {
+            "turn": 0,
+            "quote": "Keep the T-19 mapping."
+          },
+          "course": {
+            "turn": 0,
+            "quote": ""
+          },
+          "action": "",
+          "why": [
+            {
+              "turn": 0,
+              "quote": "Corrected invoices for a few cents would confuse customers and give finance a mess to explain."
+            }
+          ],
+          "conditions": [
+            {
+              "turn": 0,
+              "quote": "Fix the tax going forward; don't rewrite invoices people already paid."
+            }
+          ],
+          "questions": [],
+          "feedback": [],
+          "no_more_questions": false
+        }
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T16:08:13.836Z",
+      "usage": {
+        "input": 3741,
+        "output": 260
+      },
+      "ms": 4202
+    },
+    "8deb308d94e7518e8b10e089e0b10786949c6217d82a170c67fa0c0ee027db00": {
+      "label": "converse sdk-dependency [turn 0]",
+      "output": {
+        "reply": "Got it, adding the library. What's behind going that way?",
+        "next": "ask",
+        "ledger": {
+          "choice": "A",
+          "choice_quote": {
+            "turn": 0,
+            "quote": ""
+          },
+          "course": {
+            "turn": 0,
+            "quote": ""
+          },
+          "action": "",
+          "why": [],
+          "conditions": [],
+          "questions": [],
+          "feedback": [],
+          "no_more_questions": false
+        }
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T16:08:15.809Z",
+      "usage": {
+        "input": 3662,
+        "output": 119
+      },
+      "ms": 1970
+    },
+    "315e054d0a178dc2ac02da4f49bcded056b5992bffae3f34b2349901a2af4a87": {
+      "label": "converse sdk-dependency [turn 1]",
+      "output": {
+        "reply": "Adding the schema-validation library to the TypeScript SDK. Right?",
+        "next": "confirm",
+        "ledger": {
+          "choice": "A",
+          "choice_quote": {
+            "turn": 0,
+            "quote": ""
+          },
+          "course": {
+            "turn": 0,
+            "quote": ""
+          },
+          "action": "",
+          "why": [],
+          "conditions": [],
+          "questions": [],
+          "feedback": [],
+          "no_more_questions": true
+        }
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-12T16:08:17.750Z",
+      "usage": {
+        "input": 3703,
+        "output": 127
+      },
+      "ms": 1940
+    },
+    "19ef338c781fe5aee4655b80c6b82089f35dcdcc76db390ac7d60a83207c667e": {
+      "label": "titles incident-action-items",
+      "output": {
+        "emoji": "🎫",
+        "title": "File incident review action items",
+        "done": {
+          "A": "Filed five tickets as drafted",
+          "B": "Showed the list first"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:08:25.518Z",
+      "usage": {
+        "input": 627,
+        "output": 54
+      },
+      "ms": 1610
+    },
+    "be162616e3e19043af71249b70a508e4b232cf07fded4e4f7df1c1cfb92d7c47": {
+      "label": "titles settings-redesign",
+      "output": {
+        "emoji": "⚙️",
+        "title": "Choose settings page layout",
+        "done": {
+          "A": "Built tabbed settings page",
+          "B": "Built single scrolling settings page"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:08:29.130Z",
+      "usage": {
+        "input": 699,
+        "output": 59
+      },
+      "ms": 1795
+    },
+    "6a04a844e6a084aeb8a6f0e76a6da5b9ee9362df5138761a620e5a46e5c3bdbb": {
+      "label": "titles settings-ui-format",
+      "output": {
+        "emoji": "🧹",
+        "title": "Run formatter on settings page",
+        "done": {
+          "A": "Formatted 23 files",
+          "B": "Skipped formatting the settings page"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:08:29.172Z",
+      "usage": {
+        "input": 630,
+        "output": 59
+      },
+      "ms": 1822
+    },
+    "680e79476b3f1effbfec8f82c40b1a57a1b083a72cb703369f2eaf8e3fac7af7": {
+      "label": "titles billing-lint",
+      "output": {
+        "emoji": "🧹",
+        "title": "Apply 21 lint fixes to invoices",
+        "done": {
+          "A": "Applied 21 lint fixes",
+          "B": "Left the lint fixes"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:08:31.875Z",
+      "usage": {
+        "input": 642,
+        "output": 65
+      },
+      "ms": 1522
+    },
+    "60fa097f3547e4b82000c05c686505f3dfadbdc48578c58c2a1479344d4f3a82": {
+      "label": "titles checklist-lint",
+      "output": {
+        "emoji": "🧹",
+        "title": "Sort imports and apply lint fixes",
+        "done": {
+          "A": "Sorted imports, linted 6 files",
+          "B": "Left the script unchanged"
+        }
+      },
+      "model": "claude-haiku-5-5",
+      "recorded_at": "2026-10-12T16:08:33.900Z",
+      "usage": {
+        "input": 646,
+        "output": 65
+      },
+      "ms": 1637
     }
   }
 }

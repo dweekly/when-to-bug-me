@@ -23,6 +23,9 @@ export const DAILY_SPEND_CAP_USD = 10;
 /**
  * Worst-case cost reserved before a live call is allowed, so concurrent calls cannot overshoot the cap
  * by much. Heuristic: an 8k-token prompt plus MAX_TOKENS of output at PRICE_PER_MTOK is about $0.11.
+ * Rechecked for stage 6: the largest conversation prompt (six full turns) stays under 24,000 characters,
+ * about 8k tokens (tests/unit/converse.test.ts), so the reservation is unchanged. A title call on the
+ * fast model reserves the same and reconciles to its real cost, a small fraction of a cent.
  */
 export const RESERVE_PER_CALL_USD = 0.12;
 
@@ -81,3 +84,29 @@ export const VOICE_RETRY_BASE_MS = 1000;
 /** Longest wait for a phrase in progress to finish before an answer is sent, in ms. Heuristic: the
  *  speech service usually delivers its final words well within this after being asked to stop. */
 export const VOICE_DRAIN_MS = 1500;
+
+/** The conversation (docs/STAGE-6.md). Bug Me asks at most this many elicitation questions per decision;
+ *  pushback, the guess reveal and the guidance offer don't count. Heuristic: one why, one follow-up. */
+export const MAX_CONVERSE_QUESTIONS = 2;
+
+/** Most of Jordan's turns in one thread, and their total characters; after that only the read-back. */
+export const MAX_CONVERSE_TURNS = 6;
+export const MAX_TRANSCRIPT_CHARS = 2400;
+
+/** Longest Bug Me reply, in characters: two short sentences. Code trims anything longer. */
+export const MAX_REPLY_CHARS = 300;
+
+/** Most characters of Jordan's words (why, conditions, feedback; whole quotes) given to the guidance call. */
+export const MAX_EVIDENCE_CHARS = 900;
+
+/**
+ * The fast, cheap model that gives each decision an emoji and a short title (David, 2026-10-12).
+ * Verified against the claude-api skill's Models table (2026-10-12): Claude Haiku 5.5 is $0.10 input /
+ * $0.50 output per million tokens, effort low through max.
+ */
+export const TITLE_MODEL = "claude-haiku-5-5";
+export const TITLE_PRICE_PER_MTOK = { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 };
+/** Output ceiling for a title call: an emoji, six words, and a short line per option. */
+export const TITLE_MAX_TOKENS = 1000;
+/** Most words in a title, or in a settled item's "done" line. */
+export const MAX_TITLE_WORDS = 6;

@@ -34,9 +34,13 @@ export function surprised(finalChoice: string, guess: Guess): boolean {
   return top.option !== finalChoice && top.p >= WHY_THRESHOLD;
 }
 
-/** Ask "I'm curious: why?" only when surprised and no basis was given yet. Never ask twice. */
-export function shouldAskWhy(finalChoice: string, guess: Guess, basis: string | undefined): boolean {
-  return surprised(finalChoice, guess) && !hasBasis(basis);
+/**
+ * Ask "I'm curious: why?" only when surprised and no basis was given yet. Never ask twice: not when the
+ * conversation already asked (`whyAsked`), and not when the person said to stop asking
+ * (`noMoreQuestions`) (docs/STAGE-6.md, "Close").
+ */
+export function shouldAskWhy(finalChoice: string, guess: Guess, basis: string | undefined, flags: { whyAsked?: boolean; noMoreQuestions?: boolean } = {}): boolean {
+  return surprised(finalChoice, guess) && !hasBasis(basis) && !flags.whyAsked && !flags.noMoreQuestions;
 }
 
 /**
