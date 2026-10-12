@@ -6,7 +6,10 @@ import { EXAMPLES } from "../shared/examples";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { askQuestion, choose, chooseOther, done, finalize, glowEvent, keepFact, next, propose, resume, sendQuestionToAgent, setAside, undoChoice, undoWindowMs } from "./actions";
+import { currentMarks, done, finalize, glowEvent, isSending, keepFact, next, pick, planFor, propose, resume, send, setAside, thinkEdited } from "./actions";
+import { drawableMarks } from "../shared/parse";
+import { MAX_REASON_CHARS } from "../shared/constants";
+import { payloadLine } from "./visuals-layout";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
 import { go } from "./router";
 import { tourAfterRender } from "./tour";
@@ -35,13 +38,16 @@ export function renderNow(): void {
 function voiceTargetFor(): VoiceTarget | null {
   const flow = F;
   if (!flow || S.current !== flow.id) return null;
-  const box = flow.phase === "why" ? "why" : flow.phase === "punting" ? "punt-reason" : flow.phase === "choose" || flow.phase === "pending" ? "basis" : null;
+  // While Send is finishing, the words still go to the think box: the last phrase belongs to the answer.
+  const box = flow.phase === "why" ? "why" : flow.phase === "punting" ? "punt-reason" : flow.phase === "choose" ? "think" : null;
   if (!box || !document.getElementById(box)) return null;
+  const d = byId.get(flow.id)!;
   return {
     key: `${flow.id}:${box}`,
     el: () => document.getElementById(box) as HTMLTextAreaElement | null,
     write: (t) => {
       if (box === "punt-reason") flow.puntReason = t;
+      else if (box === "think") thinkEdited(flow, d, t, "voice");
       else flow.basis = t;
     },
   };
@@ -77,90 +83,55 @@ function drawNow(): void {
   const locked = F!.phase !== "choose";
 
   const notes = new Map((c.option_notes ?? []).map((n) => [n.option, n]));
+  const payload = d.visual?.kind === "payload" ? d.visual : null;
+  const payloadField = payload ? payload.lines.find((l) => l.includes(`"${payload.field}"`)) : undefined;
+  // Each option's column holds everything about it: its prototype, then its card (label, its line of
+  // the payload, pros and cons, consequence). On a phone that reads A's, then B's.
   const opts = h(
     "div",
-    { class: "options", role: "group", "aria-label": "Options: choosing one decides" },
+    { class: "options", role: "group", "aria-label": "Options: click one to pick it, then Send" },
     ...d.options.map((o) => {
       const n = notes.get(o.key);
+      const line = payload && payloadField ? payloadLine(payloadField, payload.field, payload.variants[o.key] ?? payload.field) : null;
+      const proto = d.explore?.kind === "variants" ? d.explore.variants[o.key] : undefined;
       return h(
-        "button",
-        {
-          type: "button",
-          class: "opt",
-          "data-key": o.key,
-          "aria-pressed": String(flow.choice === o.key),
-          disabled: locked,
-          onclick: () => choose(flow, d, route, o.key),
-        },
-        h("span", { class: "key", "aria-hidden": "true" }, o.key),
-        h("b", { class: "opt-label" }, o.label),
-        n && (n.pros.length || n.cons.length)
-          ? h("ul", { class: "procon" }, ...n.pros.map((t) => h("li", { class: "pro" }, h("span", { class: "sr-only" }, "For: "), t)), ...n.cons.map((t) => h("li", { class: "con" }, h("span", { class: "sr-only" }, "Against: "), t)))
-          : o.description
-            ? h("span", { class: "opt-desc" }, o.description)
-            : null,
-        n?.consequence ? h("span", { class: "consequence" }, n.consequence) : null,
-        o.key === d.recommended ? h("i", { class: "agent-pick" }, "the agent's pick") : null,
+        "div",
+        { class: "opt-col" },
+        proto
+          ? h(
+              "figure",
+              { class: "variant", style: "margin:0" },
+              h("h4", {}, h("span", {}, `${o.key}. ${o.label}`), h("span", {}, "built on a preview branch")),
+              h("iframe", { src: `/variants/${proto}`, title: `Clickable prototype, option ${o.key}`, sandbox: "allow-scripts", loading: "lazy" }),
+            )
+          : null,
+        h(
+          "button",
+          {
+            type: "button",
+            class: "opt",
+            "data-key": o.key,
+            "aria-pressed": String(flow.choice === o.key),
+            disabled: locked,
+            onclick: () => pick(flow, o.key),
+          },
+          h("span", { class: "key", "aria-hidden": "true" }, o.key),
+          h("b", { class: "opt-label" }, o.label),
+          line ? h("code", { class: "snippet" }, `${line.before}${line.key}${line.after}`.replace(/,\s*$/, "")) : null,
+          n && (n.pros.length || n.cons.length)
+            ? h("ul", { class: "procon" }, ...n.pros.map((t) => h("li", { class: "pro" }, h("span", { class: "sr-only" }, "For: "), t)), ...n.cons.map((t) => h("li", { class: "con" }, h("span", { class: "sr-only" }, "Against: "), t)))
+            : o.description
+              ? h("span", { class: "opt-desc" }, o.description)
+              : null,
+          n?.consequence ? h("span", { class: "consequence" }, n.consequence) : null,
+          o.key === d.recommended ? h("i", { class: "agent-pick" }, "the agent's pick") : null,
+        ),
       );
     }),
   );
-
-  const variants =
-    d.explore?.kind === "variants"
-      ? h(
-          "div",
-          { class: "variants" },
-          ...Object.entries(d.explore.variants).map(([k, file]) =>
-            h(
-              "figure",
-              { class: "variant", style: "margin:0" },
-              h("h4", {}, h("span", {}, `${k}. ${d.options.find((o) => o.key === k)?.label ?? k}`), h("span", {}, "built on a preview branch")),
-              h("iframe", { src: `/variants/${file}`, title: `Clickable prototype, option ${k}`, sandbox: "allow-scripts", loading: "lazy" }),
-            ),
-          ),
-        )
-      : null;
-
-  // The Why panel: optional, to the side. In "Yes, but…" mode it holds the conditions instead.
-  const conditionsMode = flow.mode === "conditions";
-  const whyLabel = conditionsMode ? "Your conditions, then choose the option they go with" : d.explore ? "Why? (optional) In a sentence, what happens next?" : "Why? (optional)";
-  const ta = h("textarea", { id: "basis", rows: 4, placeholder: conditionsMode ? "Yes, as long as…" : "Say it or type it. A reason becomes guidance every agent follows.", disabled: !["choose", "pending"].includes(flow.phase) }) as HTMLTextAreaElement;
-  ta.value = flow.basis;
-  ta.addEventListener("input", () => (flow.basis = ta.value));
-  const whyPanel = h(
-    "aside",
-    { class: `why-panel${conditionsMode ? " conditions" : ""}` },
-    h("label", { for: "basis" }, whyLabel),
-    h("div", { class: "basis-row" }, ta),
-    flow.phase === "choose" ? exampleButton(d, ta) : null,
-  );
-
-  const chosenLabel = d.options.find((o) => o.key === flow.choice)?.label ?? "";
-  const pendingBar =
-    flow.phase === "pending"
-      ? h(
-          "div",
-          { class: "undo-bar", role: "status" },
-          h("span", {}, `Decided: ${chosenLabel}${conditionsMode && flow.basis.trim() ? ", with your conditions" : ""}`),
-          h("button", { type: "button", class: "linkish undo", onclick: () => undoChoice(flow) }, "Undo"),
-          h("span", { class: "drain", "aria-hidden": "true", style: `--undo-ms: ${undoWindowMs()}ms` }),
-        )
-      : null;
-
-  const otherWays =
-    flow.phase === "choose"
-      ? h(
-          "div",
-          { class: "other-ways", role: "group", "aria-label": "Other ways to answer" },
-          h("button", { type: "button", class: "way", "aria-pressed": String(conditionsMode), onclick: () => toggleMode(flow, "conditions") }, "Yes, but…"),
-          h("button", { type: "button", class: "way", "aria-pressed": String(flow.mode === "other"), onclick: () => toggleMode(flow, "other") }, "Something else"),
-          h("button", { type: "button", class: "way", "aria-pressed": String(flow.mode === "ask"), onclick: () => toggleMode(flow, "ask") }, "Ask a question"),
-          h("button", { type: "button", class: "linkish not-now", onclick: () => startPunt(flow) }, "Not now"),
-        )
-      : flow.phase === "pushback"
-        ? h("div", { class: "other-ways" }, h("button", { type: "button", class: "linkish not-now", onclick: () => startPunt(flow) }, "Not now"))
-        : null;
-  const modePanel = flow.phase === "choose" ? (flow.mode === "other" ? otherPanel(flow, d, route) : flow.mode === "ask" ? askPanel(flow, d) : null) : null;
+  // A figure that describes both options (a timeline, bars, a chart, clocks) comes before them.
+  const shared = d.visual && !payload ? drawnOnce(id, renderVisual(d.visual, d, flow.choice)) : null;
+  const reach = payload ? h("p", { class: "reach quiet" }, payload.reach) : null;
 
   const lastPunt = !S.answered[id] ? S.puntHistory[id]?.[S.puntHistory[id].length - 1] : undefined;
   const why = c.adjusted
@@ -185,16 +156,10 @@ function drawNow(): void {
       ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
       : null,
     S.changes[id] ? h("p", { class: "change-note" }, S.changes[id]) : null,
-    flow.message && ["choose", "pending"].includes(flow.phase) ? h("p", { class: "adjusted", role: "status" }, flow.message) : null,
-    h(
-      "div",
-      { class: "decide-grid" },
-      h("div", { class: "decide-main" }, opts, d.visual ? drawnOnce(id, renderVisual(d.visual, d, flow.choice)) : null, variants),
-      flow.phase === "punting" ? null : whyPanel,
-    ),
-    pendingBar,
-    flow.phase === "punting" ? puntPanel(flow, d) : otherWays,
-    modePanel,
+    shared,
+    opts,
+    reach,
+    flow.phase === "punting" ? puntPanel(flow, d) : thinkArea(flow, d, route),
     h(
       "details",
       { class: "more" },
@@ -208,64 +173,138 @@ function drawNow(): void {
     flow.phase === "punting" ? null : followup(d, route),
   );
   arrived.add(id);
+  // The think box is the same element across renders, so typing keeps its focus, caret and undo history.
+  const focused = document.activeElement?.id === "think" ? (document.activeElement as HTMLTextAreaElement) : null;
+  const sel = focused ? [focused.selectionStart, focused.selectionEnd] : null;
   root.append(card);
+  if (focused && sel && document.getElementById("think") === focused) {
+    focused.focus();
+    focused.setSelectionRange(sel[0], sel[1]);
+  }
+  paintThink();
   tourAfterRender();
 }
 
-/** Open or close one of the other ways to answer; only one is open at a time. */
-function toggleMode(flow: Flow, mode: NonNullable<Flow["mode"]>): void {
-  flow.mode = flow.mode === mode ? null : mode;
-  flow.error = "";
-  renderNow();
-  const focus = { conditions: "basis", other: "other", ask: "question" }[mode];
-  if (flow.mode) (document.getElementById(focus) as HTMLTextAreaElement | null)?.focus();
-}
+/** The think-out-loud area, kept per decision so a re-render moves it rather than rebuilding it. */
+const thinkNodes = new Map<string, { el: HTMLElement; route: RouteKind }>();
 
-/** "Something else": write the option you want instead. */
-function otherPanel(flow: Flow, d: Decision, route: RouteKind): HTMLElement {
-  const ta = h("textarea", { id: "other", rows: 2, placeholder: "What should the agent do instead?" }) as HTMLTextAreaElement;
-  ta.value = flow.other;
-  ta.addEventListener("input", () => (flow.other = ta.value));
-  return h(
-    "div",
-    { class: "mode-panel" },
-    h("label", { for: "other" }, "Something else"),
-    ta,
-    flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
-    h("div", { class: "row" }, h("button", { type: "button", class: "primary", onclick: () => void chooseOther(flow, d, route) }, "Send this instead")),
-  );
-}
-
-/** "Ask a question": Claude answers from what the agent provided, or says what is missing. */
-function askPanel(flow: Flow, d: Decision): HTMLElement {
-  const ta = h("textarea", { id: "question", rows: 2, placeholder: "What would you need to know?" }) as HTMLTextAreaElement;
-  ta.value = flow.question;
+function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | null {
+  if (flow.phase !== "choose" && !flow.think.trim()) return null;
+  const kept = thinkNodes.get(flow.id);
+  if (kept && kept.route === route && (kept.el.querySelector("textarea") as HTMLTextAreaElement).value === flow.think) return kept.el;
+  const ta = h("textarea", {
+    id: "think",
+    rows: 2,
+    maxlength: MAX_REASON_CHARS,
+    placeholder: "Talk it through, or pick one.",
+    "aria-label": "Think out loud: which way you lean, why, any conditions, and any questions",
+  }) as HTMLTextAreaElement;
+  ta.value = flow.think;
   ta.addEventListener("input", () => {
-    flow.question = ta.value;
-    // An answer belongs to the question that was asked; editing the question retires it.
-    if (flow.askAnswer) {
-      flow.askAnswer = null;
-      document.querySelector("#now .ask-answer")?.remove();
-    }
+    thinkEdited(flow, d, ta.value, "typing");
+    fit(ta);
   });
-  const a = flow.askAnswer;
-  return h(
-    "div",
-    { class: "mode-panel" },
-    h("label", { for: "question" }, "Ask a question"),
-    ta,
-    flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
-    h("div", { class: "row" }, h("button", { type: "button", class: "ghost", onclick: () => void askQuestion(flow, d) }, "Ask"), flow.message ? h("span", { class: "quiet" }, flow.message) : null),
-    a
-      ? h(
-          "div",
-          { class: `ask-answer${a.answerable ? "" : " missing"}`, role: "status" },
-          h("p", {}, a.answer),
-          h("p", { class: "quiet" }, a.answerable ? `${SOURCE_LABEL[a.source]}. Choose an option above when you're ready.` : SOURCE_LABEL[a.source]),
-          a.answerable ? null : h("button", { type: "button", class: "ghost", onclick: () => sendQuestionToAgent(flow, d) }, "Ask the agent, and set this aside"),
-        )
-      : null,
+  const ex = EXAMPLES.find((e) => e.id === d.id);
+  const el = h(
+    "section",
+    { class: "think", "aria-label": "Think out loud" },
+    h("div", { class: "think-field" }, h("div", { class: "think-marks", "aria-hidden": "true" }), ta),
+    h("ul", { class: "answers", "aria-live": "polite" }),
+    h("p", { class: "think-msg adjusted", role: "status" }),
+    h(
+      "div",
+      { class: "think-actions" },
+      h("button", { type: "button", class: "primary send", onclick: () => void send(flow, d, route) }, "Send"),
+      ex && Q.mode !== "live"
+        ? h(
+            "p",
+            { class: "example" },
+            h(
+              "button",
+              {
+                type: "button",
+                class: "linkish",
+                onclick: () => {
+                  ta.value = ex.narration;
+                  thinkEdited(flow, d, ex.narration, "voice");
+                  fit(ta);
+                },
+              },
+              "Use Jordan's words",
+            ),
+            " (recorded; live calls are off)",
+          )
+        : null,
+      h("button", { type: "button", class: "linkish not-now", onclick: () => startPunt(flow) }, "Not now"),
+    ),
   );
+  thinkNodes.set(flow.id, { el, route });
+  return el;
+}
+
+/** Grow the textarea with its words, so the marks layer behind it always lines up. */
+function fit(ta: HTMLTextAreaElement): void {
+  ta.style.height = "auto";
+  ta.style.height = `${ta.scrollHeight}px`;
+}
+
+/**
+ * Bring the card in front of the person up to date in place: the lit option, the marks behind the
+ * words, the answers to questions, the Send label, any message. No element is replaced, so typing
+ * and voice carry on undisturbed.
+ */
+export function paintThink(): void {
+  const flow = F;
+  const area = document.querySelector<HTMLElement>("#now .think");
+  if (!flow || !area || S.current !== flow.id) return;
+  const d = byId.get(flow.id)!;
+  for (const b of document.querySelectorAll<HTMLButtonElement>("#now .opt")) b.setAttribute("aria-pressed", String(flow.choice === b.dataset.key));
+  const ta = area.querySelector("textarea")!;
+  const choosing = flow.phase === "choose";
+  ta.disabled = !choosing;
+  fit(ta);
+
+  // The marks: the same text, transparent, with the marked phrases wrapped.
+  const layer = area.querySelector(".think-marks")!;
+  const text = flow.think;
+  const parts: Child[] = [];
+  let at = 0;
+  for (const m of drawableMarks(text, currentMarks(flow))) {
+    parts.push(text.slice(at, m.start), h("mark", { class: `m-${m.kind}` }, text.slice(m.start, m.end)));
+    at = m.end;
+  }
+  parts.push(text.slice(at), "\n");
+  layer.replaceChildren(...parts.map((p) => (typeof p === "string" ? document.createTextNode(p) : (p as Node))));
+
+  // Answers to the questions still in the words, in reading order.
+  const answers = area.querySelector(".answers")!;
+  const asks = currentMarks(flow).filter((m) => m.kind === "ask" && flow.asks[m.quote]);
+  answers.replaceChildren(
+    ...asks.map((m) => {
+      const a = flow.asks[m.quote];
+      const words = a.status === "pending" ? "Looking at what the agent provided…" : a.status === "missing" ? `${a.answer} Send can ask the agent.` : a.answer;
+      return h("li", { class: a.status, title: a.source ? SOURCE_LABEL[a.source] : "" }, words);
+    }),
+  );
+
+  const plan = planFor(flow, d);
+  const btn = area.querySelector<HTMLButtonElement>(".send");
+  if (btn) {
+    btn.hidden = !choosing;
+    btn.textContent = plan.label;
+    btn.disabled = plan.kind === "nothing" || isSending(flow);
+  }
+  const msg = area.querySelector(".think-msg")!;
+  msg.textContent = flow.error || (choosing ? flow.message : "");
+  for (const el of area.querySelectorAll<HTMLElement>(".example, .not-now")) el.hidden = !choosing;
+
+  // A figure that colours the picked option follows the pick.
+  const fig = document.querySelector<HTMLElement>("#now .viz");
+  if (fig && d.visual && d.visual.kind !== "payload" && (fig.dataset.selected ?? null) !== (flow.choice && flow.choice !== "other" ? flow.choice : null)) {
+    const next = renderVisual(d.visual, d, flow.choice && flow.choice !== "other" ? flow.choice : null);
+    next.classList.add("drawn");
+    fig.replaceWith(next);
+  }
 }
 
 /** A read-only card for a decision that is answered, or set aside and waiting for Resume. */

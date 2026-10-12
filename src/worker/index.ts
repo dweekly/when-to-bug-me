@@ -5,6 +5,7 @@
 //   POST /api/answer  check a choice for pushback, or finalize it and open the sealed guess
 //   POST /api/fact    turn a stated reason into proposed guidance and the decisions to re-route
 //   POST /api/ask     answer a clarifying question from what the agent provided, or say what is missing
+//   POST /api/parse   pick the choice, reasons, conditions and questions out of the person's thinking out loud
 //
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
@@ -13,7 +14,7 @@ import { MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
-import { type Env, ModelUnavailable, NeedsSession, askFor, factFor, routeFor } from "./model";
+import { type Env, ModelUnavailable, NeedsSession, askFor, factFor, parseFor, routeFor } from "./model";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
 import { SealError, importSealKey, seal, sha256Hex, unseal } from "./seal";
@@ -195,6 +196,16 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
     const d = decisionOf(b.id);
     const question = cleanText(b.question, MAX_REASON_CHARS, "question");
     const { out, source } = await askFor(env, canSpend, d, question);
+    return json({ ...out, source });
+  }
+
+  if (path === "/api/parse") {
+    const d = decisionOf(b.id);
+    // Not whitespace-collapsed: marks must be literal quotes of exactly what the person said.
+    if (typeof b.text !== "string") throw new BadRequest("text must be a string");
+    const text = b.text.trim();
+    if (!text || text.length > MAX_REASON_CHARS) throw new BadRequest(`text must be 1 to ${MAX_REASON_CHARS} characters`);
+    const { out, source } = await parseFor(env, canSpend, d, text);
     return json({ ...out, source });
   }
 

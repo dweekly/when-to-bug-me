@@ -7,6 +7,8 @@
 import type { Decision, Fact, Persona, Rule } from "./types";
 
 export const PROMPT_VERSION = "2026-10-09.6";
+/** The think-out-loud parse prompt has its own version, so changing it leaves every other recording valid. */
+export const PARSE_PROMPT_VERSION = "2026-10-12.1";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -263,3 +265,50 @@ export const ASK_SCHEMA = {
   required: ["answerable", "answer"],
   properties: { answerable: { type: "boolean" }, answer: { type: "string" } },
 } as const;
+
+/**
+ * Thinking out loud: pick out of the person's own words which option they lean to, their reasons, any
+ * conditions and any questions. Every mark is an exact quote; code drops any that isn't (parse.ts).
+ */
+export function parsePrompt(p: Persona, d: Decision, text: string): string {
+  const n = p.first_name;
+  return `You are Bug Me, a chief of staff that sits between one person and their fleet of AI agents. ${head(p)}
+
+${n} is looking at a decision an agent brought and is thinking out loud about it, by voice or typing. The words may be unfinished, rambling or self-correcting. Read them and pick out:
+
+- choice: the option key ${n} has settled on, judged from the whole text (a later "actually…" overrides an earlier lean). "other" when ${n} wants a course that is neither option. "none" when ${n} hasn't chosen yet, is only weighing, or only asked questions. Never infer a choice ${n} did not express.
+- marks: phrases copied exactly, character for character, from ${n}'s words, each with a kind:
+  - "choice": the words where ${n} states the choice, or the different course when choice is "other" (only when choice is not "none");
+  - "why": a reason for the choice;
+  - "but": a condition, caveat or extra instruction that goes with it ("as long as…", "but also…");
+  - "ask": a question ${n} wants answered before or while deciding.
+  Mark whole clauses, not single words. Leave filler ("hmm", "honestly") unmarked. At most 8 marks; none is fine.
+
+${decisionBlock(d)}
+
+=== ${n}'s words, exactly ===
+${text}
+
+Reply with the JSON object only.`;
+}
+
+/** The parse schema for one decision: choice is one of its option keys, "other" or "none". */
+export function parseSchema(keys: string[]) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["choice", "marks"],
+    properties: {
+      choice: { type: "string", enum: [...keys, "other", "none"] },
+      marks: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["kind", "quote"],
+          properties: { kind: { type: "string", enum: ["choice", "why", "but", "ask"] }, quote: { type: "string" } },
+        },
+      },
+    },
+  } as const;
+}

@@ -63,9 +63,14 @@ export const REROUTE_CONCURRENCY = 4;
 /** Most pros, and most cons, shown under one option: enough to see the trade-off at a glance. Heuristic. */
 export const MAX_OPTION_NOTES = 2;
 
-/** How long the Undo bar stays after clicking an option, before the answer is sent. Long enough to
- *  catch a misclick, short enough that the next card isn't kept waiting. Heuristic. */
-export const UNDO_WINDOW_MS = 4000;
+/** Most marks one parse may return: enough for a choice, reasons, a condition and a question. Heuristic. */
+export const MAX_MARKS = 8;
+
+/** Quiet time after typing stops before the text is parsed, in ms. Heuristic: a pause, not a keystroke gap. */
+export const PARSE_TYPING_IDLE_MS = 1200;
+
+/** Longest Send waits for the parse of the final words, in ms, before answering without it. Heuristic. */
+export const PARSE_SEND_WAIT_MS = 5000;
 
 /** Consecutive speech-service failures (network and the like) before voice stops and says so. Heuristic. */
 export const VOICE_MAX_FAILURES = 3;

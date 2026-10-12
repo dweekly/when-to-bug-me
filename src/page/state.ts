@@ -5,7 +5,7 @@
 
 import { GLOW_START, type Guess, type Mood } from "../shared/lifecycle";
 import type { Punt, PuntKind } from "../shared/punt";
-import type { Card, Decision, Fact, FactOutput, Persona, RouteKind, Rule, Source } from "../shared/types";
+import type { Card, Decision, Fact, FactOutput, Mark, Persona, RouteKind, Rule, Source } from "../shared/types";
 
 export type Unavailable = { id: string; unavailable: string };
 export type AnyCard = Card | Unavailable;
@@ -31,10 +31,13 @@ export interface Answer {
   pushback: string | null;
   send_down: string;
   marks: string[];
-  /** "Yes, but…": conditions the person attached to the option they chose. */
+  /** The person's "but…" phrases, verbatim, sent down with the option they chose. */
   conditions?: string;
-  /** "Something else": the option the person wrote instead (final is then "other"). */
+  /** "Something else": the course the person described instead (final is then "other"), verbatim. */
   other?: string;
+  /** Everything the person said or typed thinking it through, and what Bug Me picked out of it. */
+  narration?: string;
+  narrationMarks?: Mark[];
 }
 
 /** One entry in the record: every guess made before an answer, the answer, the basis and the marks. */
@@ -86,20 +89,39 @@ export let Q: Queue;
 export let S: State;
 export let byId = new Map<string, Decision>();
 
-/** The in-progress answer on the card in front of the person (not persisted mid-flow). */
+/** What Bug Me made of the person's words: for one exact revision of the text. */
+export interface Parsed {
+  rev: number;
+  choice: string;
+  marks: Mark[];
+  source: Source;
+}
+
+/** A question picked out of the person's words, asked once of what the agent provided. */
+export interface Asked {
+  status: "pending" | "answered" | "missing" | "failed";
+  answer: string;
+  source: Source | null;
+}
+
+/** The in-progress answer on the card in front of the person. */
 export interface Flow {
   id: string;
+  /** The option picked so far (a click or the person's words), or "other". Nothing is sent until Send. */
   choice: string | null;
+  /** Where the pick came from: a click stays until another click or a newly stated choice. */
+  choiceBy: "click" | "words" | null;
+  /** The reason given to the answer path; in the "why?" phase, the text of that box. */
   basis: string;
-  /** "pending": an option was clicked and the Undo window is open; nothing has been sent yet. */
-  phase: "choose" | "pending" | "busy" | "pushback" | "why" | "proposal" | "done" | "punting";
-  /** Which other way of answering is open on the card, if any. */
-  mode: "conditions" | "other" | "ask" | null;
-  /** "Something else": the option the person is writing. */
-  other: string;
-  /** "Ask a question": the question, and Claude's answer once it arrives. */
-  question: string;
-  askAnswer: { answerable: boolean; answer: string; source: Source } | null;
+  phase: "choose" | "busy" | "pushback" | "why" | "proposal" | "done" | "punting";
+  /** Thinking out loud: the words, their revision (bumped on every edit), and the latest parse of them. */
+  think: string;
+  rev: number;
+  parsed: Parsed | null;
+  /** Questions from the words, by exact quote. */
+  asks: Record<string, Asked>;
+  /** The person's "but…" phrases as sent with the answer. */
+  conditions: string;
   /** While setting the decision aside: the kind chosen and the sentence so far. */
   puntKind: PuntKind | null;
   puntReason: string;
@@ -122,7 +144,7 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, basis: "", phase: "choose", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null, mode: null, other: "", question: "", askAnswer: null };
+  return { id, choice: null, choiceBy: null, basis: "", phase: "choose", think: "", rev: 0, parsed: null, asks: {}, conditions: "", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
 }
 
 /** A follow-up still waiting on the person after they answered (or while a request is out). */
@@ -185,10 +207,13 @@ export function load(q: Queue): State {
         const flows: Record<string, Flow> = {};
         for (const [id, saved] of Object.entries(s.flows ?? {})) {
           const f = { ...newFlow(id), ...saved }; // fields added since this morning was saved get defaults
+          // A question that was out when the page reloaded is asked again when the words are next read.
+          for (const [q, a] of Object.entries(f.asks)) if (a.status === "pending") delete f.asks[q];
           if (f.phase === "punting") flows[id] = { ...f, phase: f.puntFrom ?? "choose" };
-          // An Undo window open when the page reloaded was never sent: the choice comes back unsent.
-          else if (f.phase === "pending") flows[id] = { ...f, phase: "choose", message: "The page reloaded before that answer was sent; choose again." };
+          // Saved by an earlier version mid-Undo: the choice comes back unsent.
+          else if ((f.phase as string) === "pending") flows[id] = { ...f, phase: "choose" };
           else if (f.phase !== "busy") flows[id] = f;
+          else if (!s.answered[id]) flows[id] = { ...f, phase: "choose", message: "The page reloaded before that was sent; send it again." };
           else if (s.answered[id]) flows[id] = { ...f, phase: "done", message: "The page reloaded before this finished; your answer and reason are recorded." };
         }
         return { ...base, ...s, punts: s.punts ?? {}, puntHistory: s.puntHistory ?? {}, sessionProject: s.sessionProject ?? null, flows, evaluated: s.evaluated ?? {}, changes, cards: { ...base.cards, ...kept }, pending: [], pendingCause: {} };
