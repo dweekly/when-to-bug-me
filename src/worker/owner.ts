@@ -25,6 +25,15 @@ export class OwnerQueue extends DurableObject {
     return this.q().setContext(rules, facts);
   }
 
+  /** One call, so no other request can change the rules between the save and the read. */
+  async snapshot(rules?: Rule[], facts?: Fact[]): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }> {
+    return this.q().snapshot(rules, facts);
+  }
+
+  async recentlyAnswered(): Promise<Ticket[]> {
+    return this.q().recentlyAnswered();
+  }
+
   async ticket(id: string): Promise<Ticket | undefined> {
     return this.q().get(id);
   }
@@ -33,8 +42,8 @@ export class OwnerQueue extends DurableObject {
     return this.q().shown();
   }
 
-  async add(decision: Decision, card: Card, instruction: string, rev: number, unrouted?: string): Promise<Ticket> {
-    return this.q().add(decision, card, instruction, rev, new Date(), unrouted);
+  async add(decision: Decision, card: Card, instruction: string, rev: number, unrouted?: string, projectName?: string): Promise<Ticket> {
+    return this.q().add(decision, card, instruction, rev, new Date(), unrouted, projectName);
   }
 
   async reroute(id: string, card: Card, instruction: string, rev: number): Promise<Ticket | undefined> {

@@ -16,8 +16,10 @@ import { basename } from "node:path";
 import { createInterface } from "node:readline";
 
 const POLL_MS = 3000;
-/** One request to Bug Me, separately from the overall wait. */
+/** One poll of a ticket, separately from the overall wait. */
 const REQUEST_TIMEOUT_MS = 20_000;
+/** Asking routes the question (and titles it) before answering: two model calls, each up to 45 s on the Worker. */
+const ASK_TIMEOUT_MS = 120_000;
 const DEFAULT_WAIT_MIN = 5;
 const MAX_WAIT_MIN = 10;
 
@@ -39,9 +41,9 @@ function baseUrl() {
   return u.replace(/\/+$/, "");
 }
 
-async function call(method, path, body) {
+async function call(method, path, body, timeoutMs = REQUEST_TIMEOUT_MS) {
   const res = await fetch(`${baseUrl()}${path}`, {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
     method,
     headers: { authorization: `Bearer ${ownerToken()}`, ...(body ? { "content-type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
@@ -67,7 +69,12 @@ async function waitFor(first, minutes, requestId) {
   const until = Date.now() + Math.min(Math.max(0, Number(minutes) || 0), MAX_WAIT_MIN) * 60_000;
   while (r.status === "pending" && Date.now() < until && !cancelled.has(requestId)) {
     await sleep(POLL_MS);
-    r = await call("GET", `/api/me/tickets/${r.ticket}`);
+    try {
+      r = await call("GET", `/api/me/tickets/${r.ticket}`);
+    } catch {
+      // The ask exists; losing a poll mustn't lose its handle.
+      return { ...r, note: `Couldn't reach Bug Me just now. The question is asked (ticket ${r.ticket}); call check_bug_me with it later. Don't guess the answer.` };
+    }
   }
   if (r.status === "pending") {
     r.note = "David hasn't answered yet. Carry on with work that doesn't depend on this, and call check_bug_me with this ticket later. Don't guess the answer.";
@@ -144,7 +151,7 @@ async function runTool(name, args, requestId) {
       context: args.context,
       project: args.project || project,
       session: args.session || `Claude Code in ${project}`,
-    });
+    }, ASK_TIMEOUT_MS);
     return waitFor(first, args.wait_minutes ?? DEFAULT_WAIT_MIN, requestId);
   }
   if (name === "check_bug_me") {
