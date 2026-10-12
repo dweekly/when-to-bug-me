@@ -105,6 +105,18 @@ describe("advance: the model proposes, code disposes", () => {
     expect(advance(api, [...seen, j("Yes.")], "Ok.", "close", two).next).toBe("close");
   });
 
+  it("a read-back too long to show is replaced by code's, never clipped (fourth review)", () => {
+    const l = L({ choice: "B", conditions: [q(0, "do not deploy before Friday.")] });
+    const r = advance(api, [j("Keep user_id, do not deploy before Friday.")], `So: ${"keep user_id and ".repeat(30)}do not deploy before Friday. Right?`, "confirm", l);
+    expect(r).toMatchObject({ next: "confirm", reply: "So: keep user_id, do not deploy before Friday. Right?", forced: "read-back too long" });
+  });
+
+  it("never asks a question the thread has no room to answer (fourth review)", () => {
+    const five = Array.from({ length: 5 }, (_, i) => [j(`Reason ${i}.`), bug("Noted.", "confirm", "x")]).flat();
+    const r = advance(api, [...five, j("Actually, keep user_id.")], "Why that one?", "ask", L({ choice: "B" }));
+    expect(r).toMatchObject({ next: "confirm", forced: "thread limit" });
+  });
+
   it("a close after a read-back with nothing to send stays a read-back", () => {
     const r = advance(api, [j("Hmm"), bug("Want to set this aside for now?", "confirm"), j("Yes")], "Ok.", "close", L({}));
     expect(r.next).toBe("confirm");
@@ -258,6 +270,8 @@ describe("fakeConverse, the labeled stand-in", () => {
   });
   it('"neither, …" is another course; "why are we … at all" rejects the question', () => {
     expect(fake(api, [j("Neither, test both with five customers first.")]).ledger).toMatchObject({ choice: "other", course: { quote: "test both with five customers first." } });
+    // A "neither" that rejects the premise is a rejection, not another course (fourth review).
+    expect(fake(api, [j("Neither; why are we renaming in v2 at all?")]).ledger).toMatchObject({ choice: "reject" });
     expect(fake(api, [j("Why are we renaming anything in v2 at all?")]).ledger.choice).toBe("reject");
   });
   it("feedback about the question is captured", () => {

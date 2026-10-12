@@ -55,13 +55,14 @@ export function fakeConverse(d: Decision, turns: ConvTurn[]): { reply: string; n
       if (m.kind === "ask") questions.push({ turn: i, quote: m.quote, answerable: false, answer: "" });
     }
     for (const s of sentences(t.text)) {
-      if (NEITHER.test(s) && s.replace(NEITHER, "").trim()) {
-        choice = "other";
-        course = { turn: i, quote: s.replace(NEITHER, "").trim() };
-        choice_quote = course;
-      } else if (REJECT.test(s)) {
+      // Rejecting the premise is checked first: "Neither; why are we … at all?" rejects the question.
+      if (REJECT.test(s)) {
         choice = "reject";
         course = { turn: i, quote: s };
+        choice_quote = course;
+      } else if (NEITHER.test(s) && s.replace(NEITHER, "").trim()) {
+        choice = "other";
+        course = { turn: i, quote: s.replace(NEITHER, "").trim() };
         choice_quote = course;
       }
       for (const [rx, kind] of FEEDBACK) if (rx.test(s)) feedback.push({ turn: i, quote: s, kind });

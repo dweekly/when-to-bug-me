@@ -260,9 +260,14 @@ export function advance(d: Decision, turns: ConvTurn[], reply: string, next: Nex
   if (next === "ask") {
     if (ledger.no_more_questions) return confirm(readBack(d, ledger), "asked to stop asking");
     if (questionsAsked(turns) >= MAX_CONVERSE_QUESTIONS) return confirm(readBack(d, ledger), "question cap");
+    // A question Jordan couldn't answer within the thread's limits is never asked.
+    const js = jordanTurns(turns);
+    if (js.length >= MAX_CONVERSE_TURNS || js.reduce((n, t) => n + t.text.length, 0) >= MAX_TRANSCRIPT_CHARS - 40) return confirm(readBack(d, ledger), "thread limit");
     return { reply: clip(reply.trim()), next: "ask", ledger };
   }
-  return confirm(clip(reply.trim()) || readBack(d, ledger));
+  // A read-back too long to show whole is replaced by code's, never clipped: Jordan confirms only what was shown.
+  const said = reply.trim();
+  return confirm(said && said.length <= MAX_REPLY_CHARS ? said : readBack(d, ledger), said.length > MAX_REPLY_CHARS ? "read-back too long" : undefined);
 }
 
 /** Everything the close path is given from a confirmed thread, all in Jordan's words. */
