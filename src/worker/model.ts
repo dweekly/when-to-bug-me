@@ -37,15 +37,20 @@ import {
   titleSchema,
 } from "../shared/prompts";
 import { parseAskOutput } from "../shared/ask";
-import { parseRouteOutput } from "../shared/route";
+import { type SettleLimits, parseRouteOutput } from "../shared/route";
 import { parseFactOutput } from "../shared/fact";
-import type { AskOutput, Decision, Fact, FactOutput, ParseOutput, RouteOutput, Rule, Source } from "../shared/types";
+import type { AskOutput, Decision, Fact, FactOutput, ParseOutput, Persona, RouteOutput, Rule, Source } from "../shared/types";
 import { persona } from "./data";
+import type { OwnerQueue } from "./owner";
 import type { SpendCounter } from "./spend";
 
 export interface Env {
   ASSETS: Fetcher;
   SPEND: DurableObjectNamespace<SpendCounter>;
+  /** The live queue (docs/STAGE-7.md): one Durable Object per owner. */
+  OWNER?: DurableObjectNamespace<OwnerQueue>;
+  /** The owner's secret. Without it, every /api/me/* path is 404. */
+  LIVE_TOKEN?: string;
   SEAL_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   /** Any non-empty value switches every model call to the deterministic fake. */
@@ -80,6 +85,19 @@ function priceOf(u: Anthropic.Usage, price: typeof PRICE_PER_MTOK): number {
   );
 }
 
+/**
+ * Whose world a call is made in. The public simulation is Jordan's, may use the recorded run and the
+ * response cache. The live owner's (docs/STAGE-7.md) never reads or writes either, so nothing from a
+ * real queue is stored outside the owner's Durable Object.
+ */
+export interface ModelCtx {
+  persona: Persona;
+  store: boolean;
+  /** Stricter settle limits, for the live queue (docs/STAGE-7.md). */
+  settle?: SettleLimits;
+}
+export const PUBLIC_CTX: ModelCtx = { persona, store: true };
+
 /** Which model a call uses. Everything but the titles uses MODEL; the titles use the fast model. */
 interface CallModel {
   model: string;
@@ -106,13 +124,14 @@ async function ask<T>(
   validate: (raw: unknown) => T,
   promptVersion: string = PROMPT_VERSION,
   m: CallModel = MAIN,
+  store = true,
 ): Promise<{ out: T; source: Source }> {
   const key = await modelCacheKey({ model: m.model, effort: EFFORT, maxTokens: m.maxTokens, promptVersion, schema, prompt });
-  const rec = RECORDED[key];
+  const rec = store ? RECORDED[key] : undefined;
   if (rec) return { out: validate(rec.output), source: "recorded" };
 
   const cache = (caches as unknown as { default: Cache }).default;
-  const hit = await cache.match(cacheUrl(key));
+  const hit = store ? await cache.match(cacheUrl(key)) : undefined;
   if (hit) {
     try {
       return { out: validate(await hit.json()), source: "cached" };
@@ -137,7 +156,7 @@ async function ask<T>(
       messages: [{ role: "user", content: prompt }],
     });
   } catch (e) {
-    console.error("live call failed", e instanceof Anthropic.APIError ? `${e.status} ${e.message}` : e);
+    console.error("live call failed", e instanceof Anthropic.APIError ? (store ? `${e.status} ${e.message}` : `${e.status}`) : store ? e : "(details withheld)");
     throw new ModelUnavailable("the live model call failed");
   }
   await counter.reconcile(r.state.day, RESERVE_PER_CALL_USD, priceOf(msg.usage, m.price));
@@ -150,16 +169,17 @@ async function ask<T>(
     raw = JSON.parse(text);
     out = validate(raw);
   } catch (e) {
-    console.error("live answer rejected", e instanceof Error ? e.message : e);
+    // A validation message can quote the model's text; from the live queue, that is the owner's data.
+    console.error("live answer rejected", store && e instanceof Error ? e.message : "(details withheld)");
     throw new ModelUnavailable("the model's answer did not pass validation");
   }
-  await cache.put(cacheUrl(key), new Response(JSON.stringify(raw), { headers: { "cache-control": "max-age=604800" } }));
+  if (store) await cache.put(cacheUrl(key), new Response(JSON.stringify(raw), { headers: { "cache-control": "max-age=604800" } }));
   return { out, source: "live" };
 }
 
-export async function routeFor(env: Env, canSpend: boolean, d: Decision, rules: Rule[], facts: Fact[]): Promise<{ out: RouteOutput; source: Source }> {
+export async function routeFor(env: Env, canSpend: boolean, d: Decision, rules: Rule[], facts: Fact[], ctx: ModelCtx = PUBLIC_CTX): Promise<{ out: RouteOutput; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeRoute(d, rules, facts), source: "code" };
-  return ask(env, canSpend, routePrompt(persona, rules, facts, d), routeSchema(d.options.map((o) => o.key)), (raw) => parseRouteOutput(raw, d));
+  return ask(env, canSpend, routePrompt(ctx.persona, rules, facts, d), routeSchema(d.options.map((o) => o.key)), (raw) => parseRouteOutput(raw, d), PROMPT_VERSION, MAIN, ctx.store);
 }
 
 export async function factFor(
@@ -172,20 +192,21 @@ export async function factFor(
   facts: Fact[],
   waiting: Decision[],
   outside?: { kind: "other" | "rejected"; course: string },
+  ctx: ModelCtx = PUBLIC_CTX,
 ): Promise<{ out: FactOutput; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeFact(d, reason, waiting, facts), source: "code" };
-  return ask(env, canSpend, factPrompt(persona, rules, facts, d, choice, reason, waiting, outside), FACT_SCHEMA, (raw) => parseFactOutput(raw, facts));
+  return ask(env, canSpend, factPrompt(ctx.persona, rules, facts, d, choice, reason, waiting, outside), FACT_SCHEMA, (raw) => parseFactOutput(raw, facts), PROMPT_VERSION, MAIN, ctx.store);
 }
 
-export async function askFor(env: Env, canSpend: boolean, d: Decision, question: string): Promise<{ out: AskOutput; source: Source }> {
+export async function askFor(env: Env, canSpend: boolean, d: Decision, question: string, ctx: ModelCtx = PUBLIC_CTX): Promise<{ out: AskOutput; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeAsk(d, question), source: "code" };
-  return ask(env, canSpend, askPrompt(persona, d, question), ASK_SCHEMA, parseAskOutput);
+  return ask(env, canSpend, askPrompt(ctx.persona, d, question), ASK_SCHEMA, parseAskOutput, PROMPT_VERSION, MAIN, ctx.store);
 }
 
-export async function parseFor(env: Env, canSpend: boolean, d: Decision, text: string): Promise<{ out: ParseOutput; source: Source }> {
+export async function parseFor(env: Env, canSpend: boolean, d: Decision, text: string, ctx: ModelCtx = PUBLIC_CTX): Promise<{ out: ParseOutput; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeParse(d, text), source: "code" };
   const keys = d.options.map((o) => o.key);
-  return ask(env, canSpend, parsePrompt(persona, d, text), parseSchema(keys), (raw) => parseParseOutput(raw, d, text), PARSE_PROMPT_VERSION);
+  return ask(env, canSpend, parsePrompt(ctx.persona, d, text), parseSchema(keys), (raw) => parseParseOutput(raw, d, text), PARSE_PROMPT_VERSION, MAIN, ctx.store);
 }
 
 /**
@@ -201,6 +222,7 @@ export async function converseFor(
   turns: ConvTurn[],
   rules: Rule[],
   facts: Fact[],
+  ctx: ModelCtx = PUBLIC_CTX,
 ): Promise<{ out: ConverseResult; source: Source }> {
   const finish = (raw: unknown): ConverseResult => {
     if (!raw || typeof raw !== "object") throw new Error("not an object");
@@ -211,11 +233,11 @@ export async function converseFor(
   };
   if (env.FAKE_MODEL) return { out: finish(fakeConverse(d, turns)), source: "code" };
   const keys = d.options.map((o) => o.key);
-  return ask(env, canSpend, conversePrompt(persona, rules, facts, d, card, turns), converseSchema(keys), finish, CONVERSE_PROMPT_VERSION);
+  return ask(env, canSpend, conversePrompt(ctx.persona, rules, facts, d, card, turns), converseSchema(keys), finish, CONVERSE_PROMPT_VERSION, MAIN, ctx.store);
 }
 
 /** A decision's emoji, title and "done" lines, from the fast model. */
-export async function titlesFor(env: Env, canSpend: boolean, d: Decision): Promise<{ out: Titles; source: Source }> {
+export async function titlesFor(env: Env, canSpend: boolean, d: Decision, ctx: ModelCtx = PUBLIC_CTX): Promise<{ out: Titles; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeTitles(d), source: "code" };
-  return ask(env, canSpend, titlePrompt(d), titleSchema(d.options.map((o) => o.key)), (raw) => parseTitles(raw, d), TITLE_PROMPT_VERSION, FAST);
+  return ask(env, canSpend, titlePrompt(d), titleSchema(d.options.map((o) => o.key)), (raw) => parseTitles(raw, d), TITLE_PROMPT_VERSION, FAST, ctx.store);
 }
