@@ -177,9 +177,9 @@ test("decide: pick, then Send", async ({ page }) => {
   await expect.poll(async () => (await answered(page, "incident-action-items"))?.final).toBe("B");
 });
 
-test("Not now is a quiet link, not a button competing with the options", async ({ page }) => {
+test("Skip is a quiet link, not a button competing with the options", async ({ page }) => {
   await openDecision(page, "onsite-flight");
-  const notNow = page.locator("#now .not-now");
+  const notNow = page.locator("#now .skip-q");
   await expect(notNow).toBeVisible();
   await expect(notNow).toHaveClass(/linkish/);
 });
@@ -328,14 +328,14 @@ test("a morning saved by an earlier version starts fresh, even one naming a ques
   expect(await answered(page, "incident-action-items")).toBeUndefined();
 });
 
-test("Not now is off while a Send is out, so a Send can't be left armed behind the panel", async ({ page }) => {
+test("Skip is off while a Send is out, so a Send can't be left armed behind the panel", async ({ page }) => {
   await openDecision(page, "incident-action-items");
   await option(page, "File all five as drafted").click();
   const release = await hold(page, "/api/parse");
   await page.locator("#think").fill("Show me the list first.");
   await page.locator("#now .send").click();
   await expect(page.locator("#now .think-msg")).toHaveText("Reading what you said…");
-  await expect(page.locator("#now .not-now")).toBeDisabled();
+  await expect(page.locator("#now .skip-q")).toBeDisabled();
   release();
   await expect.poll(async () => (await answered(page, "incident-action-items"))?.final).toBeTruthy();
 });

@@ -115,27 +115,28 @@ function renderHome(view: HTMLElement): void {
   // The piles: one per project with work waiting, in agenda order. The first is the recommendation,
   // drawn large with its reason and one Start button, for someone who just wants to begin.
   const piles = queue.filter((g) => g.items.length);
-  const agentsLabel = (n: number) => `unblocks ${n} agent${n === 1 ? "" : "s"}`;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const agentsLabel = (n: number) => (n ? `unblocks ${plural(n, "agent")}` : "unblocks no agents");
   const pileCard = ({ s, items }: (typeof queue)[number], i: number) => {
     const rec = i === 0;
     const name = s.project.name;
     return h(
       "section",
       { class: rec ? "pile rec" : "pile", id: rec ? "start-card" : undefined, "data-project": s.project.id, "aria-labelledby": `pile-${s.project.id}` },
-      rec ? h("p", { class: "eyebrow" }, `Start with ${name}`) : null,
-      h("h2", { id: `pile-${s.project.id}` }, rec ? `${items.length} question${items.length === 1 ? "" : "s"} · about ${s.minutes} min` : name),
-      h("p", { class: "quiet" }, rec ? s.section_reason : `${items.length} · about ${s.minutes} min · ${agentsLabel(s.unblocks)}`),
+      rec ? h("p", { class: "eyebrow" }, "Suggested first") : null,
+      h("h2", { id: `pile-${s.project.id}` }, `${name} project`),
+      h("p", { class: "quiet" }, `${plural(items.length, "question")} · about ${s.minutes} min · ${rec ? s.section_reason : agentsLabel(s.unblocks)}`),
       h(
         "p",
         { class: "tally" },
-        h("span", { "aria-hidden": "true" }, `${GLYPH.decide} ${s.decisions.length} decision${s.decisions.length === 1 ? "" : "s"}   ${GLYPH.check_in} ${s.check_ins.length} quick check${s.check_ins.length === 1 ? "" : "s"}`),
-        h("span", { class: "sr-only" }, `${s.decisions.length} decisions, ${s.check_ins.length} quick checks`),
+        h("span", { "aria-hidden": "true" }, [s.decisions.length ? `${GLYPH.decide} ${plural(s.decisions.length, "decision")}` : "", s.check_ins.length ? `${GLYPH.check_in} ${plural(s.check_ins.length, "quick check")}` : ""].filter(Boolean).join("   ")),
+        h("span", { class: "sr-only" }, [s.decisions.length ? plural(s.decisions.length, "decision") : "", s.check_ins.length ? plural(s.check_ins.length, "quick check") : ""].filter(Boolean).join(", ")),
       ),
       rec ? h("ul", { class: "peek" }, ...items.slice(0, 3).map((it) => h("li", {}, headline(it.id)))) : null,
       h(
         "button",
         { type: "button", class: rec ? "primary big" : "ghost", id: rec ? "start" : undefined, onclick: () => startSession(items[0].id) },
-        rec ? `Start ${name} →` : `Start ${name}`,
+        rec ? `Begin ${name} →` : `Begin ${name}`,
       ),
     );
   };
@@ -357,7 +358,7 @@ export function renderRules(): void {
       ta.addEventListener("input", () => (draft.text = ta.value));
       const saveBtn = h("button", { type: "button", class: "ghost", onclick: () => void editRule(r.id, ta.value) }, "Save and re-route");
       const cancel = h("button", { type: "button", class: "linkish", onclick: () => { ruleDraft = null; renderRules(); } }, "cancel");
-      li.append(h("div", {}, ta, draft.error ? h("p", { class: "change-note", role: "alert" }, draft.error) : null, h("div", { class: "row" }, saveBtn, cancel)));
+      li.append(h("div", {}, ta, draft.error ? h("p", { class: "change-note", role: "alert" }, draft.error) : null, h("div", { class: "row" }, cancel, saveBtn)));
       root.append(li);
       if (draft.focus) {
         draft.focus = false;

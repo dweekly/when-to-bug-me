@@ -78,10 +78,10 @@ test("listening pauses on Home and resumes on the next card", async ({ page }) =
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
 });
 
-test("in Not now, speech goes to the reason, not the answer", async ({ page }) => {
+test("in Skip, speech goes to the reason, not the answer", async ({ page }) => {
   await openDecision(page, "api-rename");
   await page.locator("#voice-btn").click();
-  await page.locator("#now .not-now").click();
+  await page.locator("#now .skip-q").click();
   await page.locator(".chip-btn").first().click();
   await say(page, "the SDK owners' view on renames");
   await expect(page.locator("#punt-reason")).toHaveValue("the SDK owners' view on renames");
@@ -222,7 +222,7 @@ test("skip while a spoken reason finishes: nothing is sent, and a second click s
 test("leaving the card while a set-aside reason finishes does not set it aside or pull you back", async ({ page }) => {
   await openDecision(page, "api-rename");
   await page.locator("#voice-btn").click();
-  await page.locator("#now .not-now").click();
+  await page.locator("#now .skip-q").click();
   await page.locator(".chip-btn").first().click();
   await page.locator("#punt-reason").fill("What the SDK owners think of renames.");
   await holdPhrase(page, "and the", "and the docs team", 800);
@@ -238,7 +238,9 @@ test("there is one firefly: off, the corner firefly shows the morning's glow, no
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "off");
   await expect(page.locator("#voice")).toHaveAttribute("data-mood", "attentive");
   await expect(page.locator("#voice video source").first()).toHaveAttribute("src", "/firefly/clay/attentive_safari.mp4");
-  await page.locator("#voice-btn").click();
+  // The microphone lives in the box speech fills, not on the firefly.
+  await expect(page.locator("#voice-btn")).toHaveCount(0);
   await openDecision(page, "api-rename");
+  await page.locator("#now .think-field #voice-btn").click();
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
 });

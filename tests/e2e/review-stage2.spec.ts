@@ -21,7 +21,7 @@ test("Back onto an answered decision shows it read-only; it cannot be answered a
 
 async function setAside(page: import("@playwright/test").Page, id: string) {
   await openDecision(page, id);
-  await page.locator("#now").getByRole("button", { name: "Not now" }).click();
+  await page.locator("#now").locator(".skip-q").click();
   await page.locator(".chip-btn").nth(0).click();
   await page.locator("#punt-reason").fill("The full list of the five items and their owners first.");
   await page.locator("#now .punt .primary").click();

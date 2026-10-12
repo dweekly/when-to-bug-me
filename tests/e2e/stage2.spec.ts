@@ -1,6 +1,6 @@
 // Stage 2 views (docs/STAGE-2.md, "What the person sees" and "Contracts"): home is an overview with
 // nothing to decide on it; focus shows exactly one decision; Start and Next keep the person inside a
-// project until its active queue is clear, then pause between projects; "Not now" needs a reason,
+// project until its active queue is clear, then pause between projects; "Skip" needs a reason,
 // moves the decision to Set aside (kept across reloads, never settled automatically) and Resume brings
 // it back with what was said; direct links, unknown ids and Back/Forward behave; nothing scrolls
 // sideways at 320px.
@@ -40,10 +40,10 @@ async function answerQuickly(page: Page): Promise<void> {
   await expect(now.getByRole("button", { name: "Next decision" })).toBeVisible();
 }
 
-/** Open "Not now" on the card in focus, pick a kind of reason, give a sentence, and set it aside. */
+/** Open "Skip" on the card in focus, pick a kind of reason, give a sentence, and set it aside. */
 async function setAside(page: Page, chip: string, reason: string): Promise<void> {
   const now = page.locator("#now");
-  await now.getByRole("button", { name: "Not now" }).click();
+  await now.locator(".skip-q").click();
   await now.getByRole("button", { name: chip }).click();
   await now.locator("#punt-reason").fill(reason);
   await now.getByRole("button", { name: "Set aside" }).click();
@@ -80,7 +80,8 @@ test.describe("views", () => {
     const href = (await first.getAttribute("href"))!;
     const text = (await first.locator(".q").innerText()).trim();
     const firstProject = (await page.locator("#agenda .pname").first().innerText()).trim();
-    await expect(page.locator("#start-card .eyebrow")).toHaveText(new RegExp(`Start with ${firstProject}`, "i"));
+    await expect(page.locator("#start-card .eyebrow")).toHaveText("Suggested first");
+    await expect(page.locator("#start-card h2")).toHaveText(new RegExp(`^${firstProject} project$`, "i"));
     await expect(page.locator("#start-card .peek li").first()).toHaveText(text);
     await page.locator("#start").click();
     await expect(page).toHaveURL(new RegExp(`${href.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`));
@@ -91,7 +92,7 @@ test.describe("views", () => {
   test("each other pile's Start opens that pile's first item", async ({ page }) => {
     const pile = page.locator('.pile[data-project="platform"]');
     const firstHref = (await projectGroup(page, "Platform").locator("a.item").first().getAttribute("href"))!;
-    await pile.getByRole("button", { name: "Start Platform" }).click();
+    await pile.getByRole("button", { name: "Begin Platform" }).click();
     await expect(page).toHaveURL(new RegExp(`${firstHref.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`));
   });
 
@@ -204,11 +205,11 @@ test.describe("Next", () => {
   });
 });
 
-test.describe("Not now", () => {
+test.describe("Skip", () => {
   test("needs a kind and a real sentence, then sets the decision aside and opens the next one", async ({ page }) => {
     await openDecision(page, "onsite-flight");
     const now = page.locator("#now");
-    await now.getByRole("button", { name: "Not now" }).click();
+    await now.locator(".skip-q").click();
     await expect(now.getByText("What would you need to decide this?")).toBeVisible();
     const chips = now.locator(".punt .chip-btn");
     await expect(chips).toHaveCount(4);
@@ -266,7 +267,7 @@ test.describe("Not now", () => {
   test("Cancel returns to the card without setting anything aside", async ({ page }) => {
     await openDecision(page, "onsite-flight");
     const now = page.locator("#now");
-    await now.getByRole("button", { name: "Not now" }).click();
+    await now.locator(".skip-q").click();
     await now.getByRole("button", { name: "Not urgent yet" }).click();
     await now.getByRole("button", { name: "Cancel" }).click();
     await expect(now.locator(".punt")).toHaveCount(0);
@@ -293,7 +294,7 @@ test.describe("Not now", () => {
     await expect(resumed).toContainText("The agent was asked to:");
     await expect(resumed).toContainText("Nothing new has been gathered");
     // It is a live decision again.
-    await expect(page.locator("#now").getByRole("button", { name: "Not now" })).toBeVisible();
+    await expect(page.locator("#now").locator(".skip-q")).toBeVisible();
 
     const s = (await stored(page))!;
     expect(s.punts["onsite-flight"]).toBeUndefined();
@@ -318,7 +319,7 @@ test.describe("Not now", () => {
     await decide(page, "Add the library");
     const push = page.locator("#now .followup.push");
     await expect(push).toBeVisible();
-    await push.getByRole("button", { name: "Not now" }).click();
+    await push.locator(".skip-q").click();
     await page.locator("#now").getByRole("button", { name: "I'm not sure what I think" }).click();
     await page.locator("#punt-reason").fill("Whether vendoring a validator is really less work than the dependency.");
     await page.locator("#now").getByRole("button", { name: "Set aside" }).click();
@@ -328,11 +329,11 @@ test.describe("Not now", () => {
     expect(s.record.find((r) => r.id === "sdk-dependency" && typeof r.instruction === "string")).toMatchObject({ from_phase: "pushback" });
     expect(s.answered["sdk-dependency"]).toBeUndefined();
 
-    // Once an answer is final, the follow-up has no Not now.
+    // Once an answer is final, the decision can't be set aside; the follow-up's own Skip only skips the why.
     await openDecision(page, "onsite-flight");
     await decide(page, "9:40am flight");
     await expect(page.getByText("I'm curious: why?")).toBeVisible();
-    await expect(page.locator("#now").getByRole("button", { name: "Not now" })).toHaveCount(0);
+    await expect(page.locator("#now .skip-q")).toHaveCount(0);
     s = (await stored(page))!;
     expect(s.answered["onsite-flight"]?.final).toBe("B");
   });
@@ -390,8 +391,8 @@ test.describe("narrow layout", () => {
       await openDecision(page, id);
       await noHScroll(page, id);
     }
-    await page.locator("#now").getByRole("button", { name: "Not now" }).click();
+    await page.locator("#now").locator(".skip-q").click();
     await page.locator("#now").getByRole("button", { name: "I need someone else's input" }).click();
-    await noHScroll(page, "Not now panel");
+    await noHScroll(page, "Skip panel");
   });
 });
