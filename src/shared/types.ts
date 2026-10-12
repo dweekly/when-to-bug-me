@@ -175,6 +175,19 @@ export interface AskOutput {
   answer: string;
 }
 
+/** One phrase Bug Me picked out of what the person said, copied exactly from their words. */
+export interface Mark {
+  kind: "choice" | "why" | "but" | "ask";
+  quote: string;
+}
+
+/** What /api/parse returns for the person's thinking out loud: their choice, if any, and the marks. */
+export interface ParseOutput {
+  /** An option key, "other" for a different course (its words are the choice marks), or "none". */
+  choice: string;
+  marks: Mark[];
+}
+
 /**
  * What /api/fact returns: new guidance, a replacement for a named existing fact, or nothing durable
  * ("just this once", a misclick). Nothing is applied until the person keeps it.
