@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Decided for you mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --night: #0f1226; --night-2: #171b33; --night-3: #1f2442; --line: #2a2f4d;
+  --ink: #ecebf5; --ink-2: #9a9cb8; --ink-3: #8a8eae; --glow: #ffd84d; --glow-soft: rgba(255,216,77,.14);
+  --display: "Bricolage Grotesque", system-ui, sans-serif; --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--night); color: var(--ink); font: 16px/1.5 var(--body); }
+.page { max-width: 760px; margin: 0 auto; padding: 40px 16px 80px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 40px; letter-spacing: -.01em; margin: 0 0 6px; }
+.lede { color: var(--ink-2); margin: 0 0 28px; }
+.group { border-top: 1px solid var(--line); }
+.group:last-child { border-bottom: 1px solid var(--line); }
+.group > summary { list-style: none; display: grid; grid-template-columns: 28px 1fr auto; gap: 14px; align-items: center; padding: 16px 4px; cursor: pointer; }
+.group > summary::-webkit-details-marker { display: none; }
+.group > summary .ic { color: var(--ink-2); }
+.group[open] > summary .ic { color: var(--glow); }
+.gt { font-weight: 700; }
+.gs { color: var(--ink-3); font-size: 14px; }
+.count { font-family: var(--display); font-size: 20px; color: var(--ink-2); }
+.chev { transition: transform .15s; color: var(--ink-3); }
+.group[open] .chev { transform: rotate(90deg); }
+.rule { margin: -6px 0 6px 46px; font-size: 14px; color: var(--ink-3); }
+ul { list-style: none; margin: 0 0 12px; padding: 0 0 0 46px; }
+li { display: flex; align-items: center; gap: 12px; padding: 7px 8px; margin: 0 -8px; border-radius: 10px; }
+li .what { flex: 1; }
+li .what b { font-weight: 400; }
+li .what span { color: var(--ink-3); }
+.acts { display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
+li:hover, li.demo-hover { background: var(--night-2); }
+li:hover .acts, li:focus-within .acts, li.demo-hover .acts { opacity: 1; }
+.acts button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid transparent; color: var(--ink-2); font: 13px var(--body); padding: 5px 9px; border-radius: 8px; cursor: pointer; }
+.acts button:hover { border-color: var(--line); color: var(--ink); background: var(--night-3); }
+.acts button:focus-visible { outline: 2px solid var(--glow); outline-offset: 1px; }
+svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic svg { width: 22px; height: 22px; }
+@media (hover: none) { .acts { opacity: 1; } .acts button span { display: none; } }
+@media (max-width: 560px) { .acts button span { display: none; } h1 { font-size: 32px; } ul { padding-left: 0; } .rule { margin-left: 0; } }
+.note { margin-top: 40px; font-size: 13px; color: var(--ink-3); border-left: 2px solid var(--line); padding-left: 12px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <h1>Decided for you</h1>
+  <p class="lede">31 small jobs, each one undoable and covered by one of your rules.</p>
+
+  <details class="group" open>
+    <summary>
+      <span class="ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 4-6 3-12 7"/></svg></span>
+      <span><span class="gt">Deleted merged branches</span><br /><span class="gs">115 branches in 7 places</span></span>
+      <span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+    </summary>
+    <p class="rule">Your rule: housekeeping in your own repos, just do it.</p>
+    <ul>
+      <li class="demo-hover"><span class="what"><b>Main repo</b> <span>· 41, merged months ago</span></span>
+        <span class="acts">
+          <button title="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button title="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button title="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+        </span></li>
+      <li><span class="what"><b>Infrastructure</b> <span>· 23</span></span><span class="acts"><button><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button><button><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button><button><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button></span></li>
+      <li><span class="what"><b>Billing</b> <span>· 17</span></span></li>
+      <li><span class="what"><b>API gateway</b> <span>· 14</span></span></li>
+      <li><span class="what"><b>Webhooks service</b> <span>· 9</span></span></li>
+      <li><span class="what"><b>Billing cutover planning</b> <span>· 6 experiments</span></span></li>
+      <li><span class="what"><b>Releases</b> <span>· 5, merged and tagged</span></span></li>
+    </ul>
+  </details>
+
+  <details class="group">
+    <summary>
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg></span>
+      <span><span class="gt">Took patch updates</span><br /><span class="gs">8 projects, 35 packages</span></span>
+      <span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+    </summary>
+  </details>
+
+  <details class="group">
+    <summary>
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h8"/></svg></span>
+      <span><span class="gt">Tidied formatting and lint</span><br /><span class="gs">12 projects, on branches, merged after CI</span></span>
+      <span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+    </summary>
+  </details>
+
+  <details class="group">
+    <summary>
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 001.8 3h10.4a2 2 0 001.8-3l-5-9V3"/><path d="M7.5 15h9"/></svg></span>
+      <span><span class="gt">Set flaky tests aside</span><br /><span class="gs">4 tests, each with a ticket</span></span>
+      <span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+    </summary>
+  </details>
+
+  <p class="note">Mock. One sentence says what these are, once. Groups are closed until opened; a group's rule shows once, inside it. Actions appear on hover or focus (always on touch, icon only on phones). Undo puts the job back and asks Jordan; Ask! says it should have come to Jordan; Disagree means right to decide, wrong call.</p>
+</main>
+</body>
+</html>
