@@ -22,45 +22,101 @@ The intent: every question Jordan sees is resolved through a short conversation 
 
 The card becomes a thread, read top to bottom:
 
-1. **Bug Me's opening.** The briefing, why it came to Jordan (the routed card's reason, in plain words), "More context" (folded), the question, and the options in columns, exactly as the stage 4 card lays them out. Nothing here calls the model.
-2. **The conversation.** Jordan's turns are right-aligned, Bug Me's left with the small firefly. A composer sits under the last turn: a text box with the microphone button inside it. Clicking an option still picks it (the column lights); the pick travels with the next turn.
-3. **The actions row**, bottom of the composer: "Skip" at the left, the primary action at the right ("Send", then "Yes, send: keep user_id" once Bug Me has read it back).
+1. **Bug Me's opening.** The briefing, why it came to Jordan (the routed card's reason, in plain words), "More context" (folded), the question, and the options in columns, as the stage 4 card lays them out. Nothing here calls the model. The routed card is captured into the flow when the thread starts, and that snapshot is used for every turn and for the answer.
+2. **The conversation.** Jordan's turns are right-aligned, Bug Me's left with the small firefly; each Bug Me turn carries its source label (live, recorded, stand-in). A composer sits under the last turn: a text box with the microphone inside it. Clicking an option picks it (the column lights); the pick travels with the next turn.
+3. **The actions row**, under the composer: "Skip" at the far left, the primary action at the right. The primary action is the decision itself once Bug Me has read it back: "Keep user_id", "Take the 9:40am flight". Until then it is "Send". For a listed option the label is the option's label (no model call); for "other" and "reject" it is the short `action` phrase from the conversation.
 
-**Each of Jordan's turns** goes to a new endpoint, `/api/converse`, with the decision, the routed card, Jordan's rules and facts, the transcript, the ledger so far, the turn count and the seconds spent. Claude returns, under a JSON schema:
+#### The turn contract
 
-- `reply`: Bug Me's next turn, at most two sentences and at most one question;
-- `ledger`: what it heard so far:
-  - `choice`: an option key, `"other"` (a different course), `"reject"` (Jordan rejects the question or its framing), or `"none"`;
-  - `course`: Jordan's own words for "other" or "reject";
+A turn of Jordan's is `{ text, pick? }`: the words (typed or spoken; may be empty when there is a pick) and the option clicked since the last turn. A pick is stored in the transcript as an action, never as an invented quote. Words in the same turn that say otherwise override the pick ("actually, the other one").
+
+`/api/converse` takes the decision id, the captured card's content (never `sealed` or `source`), Jordan's rules and facts, the transcript, and the ledger. These fields, and only these, are the model input and the recording key, so replay does not depend on timing, seals or labels. No elapsed time is sent; pacing is the question cap below. Claude returns, under a JSON schema:
+
+- `reply`: Bug Me's next turn, at most 300 characters and at most one question;
+- `ledger`: the **current interpretation** of everything Jordan has said, replacing the previous one (corrections replace superseded choices, reasons and conditions; the transcript itself never changes):
+  - `choice`: an option key, `"other"`, `"reject"` (Jordan rejects the question or its framing), or `"none"`;
+  - `choice_quote`: the words that made the choice, when it came from words rather than a click;
+  - `course`: Jordan's words for "other" or "reject" (required, verified and non-empty for those two; otherwise the choice falls back to `"none"`);
+  - `action`: for "other" or "reject", an imperative of at most five words for the button;
   - `why`, `conditions`: quotes;
-  - `questions`: Jordan's questions, each with the answer from the agent's material or `null` when the material doesn't say;
+  - `questions`: Jordan's questions, each with the answer from the agent's material, or `null` when the material doesn't say;
   - `feedback`: quotes about the question itself, each tagged `priority` (more or less urgent than framed) or `routing` (should or shouldn't have come to Jordan);
-- `next`: `"ask"` (Bug Me needs one more thing), `"confirm"` (the reply reads the outcome back), or `"close"` (Jordan confirmed).
+  - `no_more_questions`: true when Jordan has asked Bug Me to stop asking ("just do it");
+- `next`: `"ask"`, `"confirm"`, or `"close"`.
 
-Every quote must be a literal substring of one of Jordan's turns (`findQuote`, as for parse); unverified quotes are dropped. The verified quotes are drawn as marks on Jordan's sent turns, with the same four styles as stage 4.
+Every quote carries the index of the turn it came from and must be a literal substring of that turn (`findQuote`); unverified quotes are dropped. Verified quotes are drawn as marks on Jordan's sent turns: the stage 4 styles for choice, why, but and ask, plus a wavy underline for feedback.
 
-**Persistence, enforced by code as well as the prompt.**
-- A bare pick, with no why, gets one light follow-up ("Why that one?").
-- Bug Me asks at most two questions per decision. After the second, code forces `next` to `"confirm"` whatever the model said.
-- "Just do it", "skip it", or a pick with "no more questions" is respected at once: the reply goes straight to the read-back.
-- The read-back always comes before close. Jordan can confirm with the primary button or correct it in words; a correction is a normal turn.
+#### Who decides what happens next
 
-**Close.** When Jordan confirms, the ledger feeds the existing path unchanged in substance:
-- choice, reason (the `why` quotes joined), conditions and narration (all of Jordan's turns) go through `answer` → pushback → `finalize` → `propose`;
-- a pushback, the hidden guess ("My guess, hidden until now…"), "I'm curious: why?", and "Remember this for every agent?" become Bug Me turns in the same thread, with their buttons in the actions row (primary on the right);
-- `feedback` quotes join the evidence given to `/api/fact`, so "you shouldn't have asked me this" can become a rule;
-- `"other"` goes through `chooseOther` with `course`; `"reject"` is recorded as its own outcome (`rejected`, with Jordan's words sent down to the agent verbatim);
-- unanswered `questions` with no choice go through `sendQuestionToAgent`, as today.
+One shared function, `advance(transcript, ledger, modelResponse)` in `src/shared/converse.ts`, decides both the next state and the visible reply. The model proposes; code disposes:
 
-"I'm curious: why?" rarely fires now, because the conversation already asked; it stays as the backstop.
+- **The question cap.** Bug Me asks at most two elicitation questions per decision (counted from Bug Me's turns actually shown). Pushback, the guess reveal and the guidance offer don't count. Jordan always gets to answer the second question; after that answer, `advance` forces a read-back.
+- **No more questions.** With `no_more_questions`, the reply goes straight to a read-back.
+- **The read-back always comes before close.** A model `"close"` without a read-back the person confirmed becomes `"confirm"`. When code overrides the model, it writes the read-back itself from the verified ledger (a fixed template per outcome, below), so the visible reply never asks a question code has just ruled out.
+- **Confirmation is bound to the ledger revision Jordan saw.** Any new words or another click is a new turn and invalidates it.
 
-**What goes.** The as-you-type parse (`/api/parse` from the page) and the per-quote `/api/ask` calls go: the conversation does both jobs once per turn. The endpoints and their recordings stay for the eval and history until a later cleanup (ROADMAP).
+**Terminal read-backs**, one per outcome:
 
-**Without a key.**
-- The fake model gets a deterministic `fakeConverse`: a bare option label gets "Why that one?"; a turn with "because"/"since" gets the read-back; a "?" gets the first sentence of the context or "I don't know; I'll ask the agent"; "yes"/"right"/"send it" closes; "neither"/"wrong question" marks a reject.
-- Recorded mode replays exact transcripts. Each tour decision gets a scripted conversation (two or three of Jordan's turns). `scripts/record.ts` plays them against live Claude and records every call, and fails if a recorded `next` differs from the script's expectation. Tours offer "Use Jordan's words" per turn, on live servers too: an exact replay is free and deterministic. That also fixes today's bug, where the tour text says "Or use Jordan's words" on a live server that hides the button.
+| Outcome | Read-back | Primary button |
+| --- | --- | --- |
+| A listed option | "So: {label}, {conditions}. Right?" | the option's label |
+| Other | "So: not either option. {course}. Right?" | `action` |
+| Reject | "So you're rejecting the question: {course}. I'll tell the agent. Right?" | `action` |
+| Questions the material can't answer, no choice | "I'll ask the agent: {questions}, and set this aside." | "Ask the agent" |
+| No choice, no open questions | "Want to set this aside for now?" | "Skip" (opens the Skip panel) |
 
-**Cost.** One model call per turn of Jordan's, about $0.02–0.04 at effort low. A decision is usually two or three turns. The daily spend cap stays.
+**Skip** keeps the existing panel (a kind of reason and a sentence). Saying "skip it" with a clear choice is `no_more_questions`; without one it is the last row of the table.
+
+#### Close
+
+When Jordan confirms, the ledger feeds the existing path:
+
+- **A listed option**: `answer` → pushback → `finalize` → `propose`. The reason is the `why` quotes joined; the conditions are the `conditions` quotes; the narration is all of Jordan's turns.
+- **The why backstop** ("I'm curious: why?") is suppressed when the conversation already asked why or Jordan said `no_more_questions`. This is a deliberate change to the guidance rules (`shouldAskWhy` gains the two flags).
+- **Feedback** is a reason to propose standing guidance (a fact, via `/api/fact`), even when Jordan agreed with the recommendation, so "you shouldn't have asked me this" can be remembered.
+- **Other** goes through `chooseOther` with `course`, and **reject** through a new `rejected` outcome. Both can propose guidance when there is feedback or a why. `/api/answer` stays option-only. `/api/fact` gains an `outcome` field (`"option" | "other" | "rejected"`) with the course in Jordan's words, so neither is ever mapped onto a listed option. `Answer` gets one `outcome` field, used by the flow, the record and export, the closed card, and the agenda (rejected and other count as resolved).
+- **Ask the agent** goes through `sendQuestionToAgent`, as today.
+
+#### Limits and cost
+
+Each turn of Jordan's is at most 600 characters (`MAX_REASON_CHARS`). A thread holds at most 6 of Jordan's turns and 2,400 characters of them; after that the composer offers only the read-back. The fact evidence (the why, conditions and feedback quotes) is capped at 900 characters: whole quotes, in order, never cut mid-quote. `/api/fact`'s limit rises to match. The spend reservation per call is recalculated for the largest converse prompt. Each Bug Me reply is one call at effort low, about $0.02–0.04, usually two or three per decision; the daily cap stays.
+
+#### Persistence and re-routes
+
+The transcript, every Bug Me reply, and the ledger are saved in the flow while the thread is open and in the `Answer` (or the set-aside record) once it closes. They are included in export, and a closed thread re-opens read-only. Storage moves to `bugme.state.v4`, and older mornings start fresh, as in stage 5. A reload restores the thread, the question count, `no_more_questions`, and any pending read-back. A decision with an open thread (at least one turn) is left out of re-routes, so it can't move into Decided for you under Jordan. The stage 4 protections stay for every turn: a stale response is dropped, and a second click does nothing. The voice target key includes the turn number, so late words can't land in the next turn; `drainVoice` runs before each send.
+
+#### Focus and announcements
+
+Only the new Bug Me turn is announced (a polite live region). A draft typed while Bug Me is replying is kept. The thread scrolls to the new turn only when Jordan is already near the bottom. Focus stays in the composer. During pushback and guidance, the composer is replaced by those turns' buttons (and the guidance text box).
+
+#### What goes
+
+The as-you-type parse (`/api/parse` from the page) and the per-quote `/api/ask` calls go: the conversation does both jobs once per turn. The endpoints and their recordings stay for the eval and history until a later cleanup (ROADMAP).
+
+#### Without a key
+
+- **The stand-in.** The fake model gets a deterministic, stateful `fakeConverse`, clearly labeled as a stand-in:
+  - a bare option label gets "Why that one?";
+  - a turn with "because"/"since" and a resolvable outcome gets the read-back;
+  - "?" gets "I don't know; I'll ask the agent";
+  - "yes"/"right"/"send it" closes, but only after a read-back;
+  - "neither, …" with a course is "other"; "wrong question"/"why are we … at all" is "reject".
+- **Recorded mode** replays on the projection above. Each tour decision gets a scripted conversation (two or three of Jordan's turns), shared by the recorder and the tours in `src/shared/examples.ts`. `scripts/record.ts`:
+  - plays each script against live Claude, advancing on the response after `advance`, exactly as the browser receives it;
+  - derives the fact and re-route calls that follow;
+  - re-validates entries already recorded;
+  - fails when an outcome differs from the script's expectation.
+  
+  The SDK pushback tour gets its own script. Tours offer "Use Jordan's words" per turn on live servers too, since an exact replay costs nothing. That also fixes today's bug, where the tour text says "Or use Jordan's words" on a live server that hides the button.
+
+### 1b. An emoji and a short title for every decision
+
+David (2026-10-12): a fast, cheap classifier gives each decision an emoji and a short title. When the morning is routed, Claude Haiku 5.5 (`claude-haiku-5-5`) returns, per decision:
+- `emoji`: one;
+- `title`: at most six words ("Rename the v2 user field");
+- `done`: for settled items, at most six words in the past tense ("Deleted 41 merged branches").
+
+These are recorded like every other call, and are fixture-checked in tests (one emoji, word limits). They are used on Home's piles and queue, the thread header, and Decided for you's rows. They never feed routing.
 
 ### 2. Smaller fixes, from the same review
 
@@ -75,25 +131,25 @@ Every quote must be a literal substring of one of Jordan's turns (`findQuote`, a
 
 A still mock first (`docs/stage-6/decided-mockup.html`, with a screenshot). It follows David's principles:
 - one plain sentence at the top, said once: what these are and why Bug Me could decide them;
-- items grouped by kind of work, each group with an icon (branch cleanup, dependency updates, formatting, flaky tests, and so on);
-- one short line per item: what was done;
-- three icon buttons per item, with labels: Undo, Ask!, Disagree;
-- no rings, no codes, no per-item Why. The rule that allowed an item shows only on request, in plain words.
+- items grouped by kind of work, each group with an icon. The kind is a hand-authored `work` field on each fixture (branches, updates, formatting, flaky tests), since the category is "Code: housekeeping" for nearly all of them;
+- one short line per item: Haiku's `done` line;
+- three icon buttons on every row, labeled Undo, Ask!, Disagree, with accessible names and 44px touch targets. They wrap on phones rather than losing their labels;
+- no rings, no codes, no per-item Why. The rule that allowed an item shows only on request, in plain words, and a group shows a shared rule only when it applies to every item.
 
 It is built only after David approves the mock.
 
 ## Where the work happens
 
-Three PRs, each under the review size cap:
-- `stage/6a-fixes`: section 2, and section 3 once the mock is approved.
-- `stage/6b-converse`: the endpoint, prompt, schema, `fakeConverse`, recorder, eval, unit tests.
-- `stage/6c-thread`: the thread UI, the close path, tours re-scripted, e2e. Based on 6b.
+PRs under the review size cap (2,000 changed lines, not counting `fixtures/captures/*.json` and lockfiles):
+- `stage/6a-fixes`: section 2. Section 3 follows in its own PR once the mock is approved, if 6a would go over the cap.
+- `stage/6b-converse`: the endpoint, prompt, schema, `advance`, `fakeConverse`, the request projection, the shared scripts, the recorder, the eval, Haiku titles, and unit tests including the close-path mapping.
+- `stage/6c-thread`: the thread UI, the close path, persistence, tours re-scripted, README and explainer copy, e2e. Based on 6a and 6b.
 
 ## Graduation gates
 
 ```bash
-npm run typecheck && npm test        # converse: schema per decision, quote verification, the two-question cap, the forced read-back, close-path mapping (option, other, reject, ask-the-agent), fakeConverse
-npm run e2e                          # desktop, phone and 320px on the stand-in; every tour on the keyless recorded server at desktop and phone
+npm run typecheck && npm test        # converse: schema per decision, quote verification by turn, advance (cap, forced read-back with its template, premature close, click-only turns, no-choice exhaustion, confirmation invalidated by a new turn), close-path mapping (option, other, reject, ask-the-agent, set aside), the why backstop's flags, fakeConverse; titles: one emoji, word limits
+npm run e2e                          # desktop, phone and 320px (the narrow project gains stage 6) on the stand-in; every tour on the keyless recorded server at desktop and phone, and on a live-configured server where Jordan's scripted turns make no paid call; click-only send; opt-out then a surprising choice; feedback on a recommended answer reaching guidance; a correction removing a condition; other and reject through record, reload and export
 npm run eval:converse                # 8 scripted conversations x 3 live trials, expectations written first (below)
 python3 scripts/scan.py
 ```
@@ -108,9 +164,13 @@ python3 scripts/scan.py
 7. Routing feedback ("this shouldn't have come to me"): captured as `routing` feedback.
 8. A correction after the read-back: the ledger changes, and a new read-back follows.
 
-On every turn: at most one question mark in the reply, and no unverified quote.
+On every turn: at most one question mark in the reply, and no quote in the raw model output that fails verification (checked before sanitizing, so the check can fail). Each trial is a sequential conversation, independent of the other trials.
 
 Plus: Lighthouse accessibility at 100 on a thread at phone width; screenshots of a three-turn thread at 1280 and 390 wide, checked by eye; David's real-microphone check on staging.
+
+## Plan review
+
+Codex reviewed this plan once (2026-10-12). Folded in above: the turn contract with clicks, `advance` owning both the state and the reply, terminal read-backs, the backstop flags, Skip versus "skip it", turn-referenced quotes and the ledger as current interpretation, feedback as a reason for guidance, the outcome field for other and reject, limits, the request projection for replay, persistence, the card snapshot and re-route protection, focus rules, the extra gates, the mock's phone and label fixes, and hand-authored work kinds. Its roadmap items (the full lifecycle for "other", real agent delivery, conversation quality beyond the designed cases, durable server-side threads, adaptive ordering and streaming) are in `ROADMAP.md`.
 
 ## Out of scope
 

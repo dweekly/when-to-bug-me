@@ -25,6 +25,14 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Real question delivery.** `/api/ask` answers only from what the agent supplied, and unanswered questions are sent back as a simulation. Agents that fetch evidence and answer back belong with real execution.
 - **Parser quality at scale.** Six designed narrations are a demonstration gate. Held-out language, long or rambling sessions, adversarial input, and the cost of a parse per phrase over a whole morning.
 
+## From the stage 6 plan review
+
+- **Choosing what to raise next from what was just said.** David's "next best thing" idea: the next decision is the one an answer just made most urgent or most changed, not the next card in a project pile, with an eye on how long Jordan has spent.
+- **Conversation quality beyond the designed cases.** Eight scripted conversations demonstrate the mechanism. Held-out people, implicit reasons, contradictory accounts, long sessions and adversarial material need a broader eval.
+- **Server-owned threads.** Today the transcript, question count and ledger live in the browser. Accounts, multi-device recovery and idempotent turns belong with durable records.
+- **Streaming Bug Me's replies,** token by token, once a reply's latency is measured on real use.
+- **Retire `/api/parse` and `/api/ask`** once nothing records or evals through them.
+
 ## Tech debt to schedule
 
 - Re-routing candidates come from topic tags plus the model's suggestions; a rule edit re-checks everything waiting. A cheaper, more complete dependency signal would help.
