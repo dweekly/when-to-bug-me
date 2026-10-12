@@ -4,16 +4,20 @@ import decisionsJson from "../../fixtures/decisions.json";
 import factsJson from "../../fixtures/facts.json";
 import personaJson from "../../fixtures/persona.json";
 import rulesJson from "../../fixtures/rules.json";
+import retiredJson from "../../fixtures/retired-decisions.json";
 import type { Decision, Fact, Persona, RouteOutput, Rule } from "../../src/shared/types";
 
 export const decisions = decisionsJson as Decision[];
+/** Decisions retired from the demo morning in stage 5 but kept for their pictures (a chart, two bar
+ *  charts) and their cost boundaries, so those code paths stay tested. Not served by the Worker. */
+export const retiredDecisions = retiredJson as Decision[];
 export const rules = rulesJson as Rule[];
 export const facts = factsJson as Fact[];
 export const persona = personaJson as unknown as Persona;
 
 /** A fresh deep copy of one fixture decision, so a test can modify it without touching others. */
 export function decision(id: string): Decision {
-  const d = decisions.find((x) => x.id === id);
+  const d = decisions.find((x) => x.id === id) ?? retiredDecisions.find((x) => x.id === id);
   if (!d) throw new Error(`no fixture decision ${id}`);
   return structuredClone(d);
 }

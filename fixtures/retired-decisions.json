@@ -1,0 +1,200 @@
+[
+  {
+    "id": "outage-chart",
+    "category": "Reporting",
+    "project": "launch",
+    "agent": [
+      "launch-coordinator",
+      "deck-builder"
+    ],
+    "waiting_minutes": 120,
+    "unblocks": 1,
+    "question": "Leave the three-hour outage on September 30 out of the latency chart in the launch-readiness deck? It's an outlier and makes the trend hard to read.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Leave it out",
+        "description": "Cleaner trend line; the outage is mentioned in a footnote."
+      },
+      {
+        "key": "B",
+        "label": "Keep it in, annotated",
+        "description": "The chart shows the spike with a label explaining it."
+      }
+    ],
+    "recommended": "A",
+    "context": "The deck goes to the company's leadership team and two design-partner customers.",
+    "bounds": {
+      "A": {
+        "reversible": "partly",
+        "cost_usd": 0
+      },
+      "B": {
+        "reversible": "yes",
+        "cost_usd": 0
+      }
+    },
+    "tags": [
+      "reporting",
+      "honesty"
+    ],
+    "visual": {
+      "kind": "chart",
+      "unit": "p95 latency, ms",
+      "series": [
+        182,
+        175,
+        190,
+        186,
+        179,
+        184,
+        177,
+        188,
+        192,
+        181,
+        176,
+        185,
+        183,
+        178,
+        187,
+        191,
+        180,
+        174,
+        189,
+        186,
+        182,
+        177,
+        184,
+        188,
+        179,
+        183,
+        176,
+        2400,
+        185,
+        181
+      ],
+      "spike": 27,
+      "spike_label": "Sep 30: 3-hour outage",
+      "variants": {
+        "A": "omit",
+        "B": "annotate"
+      }
+    }
+  },
+  {
+    "id": "provider-contract",
+    "category": "Contracts and documents",
+    "project": "billing",
+    "agent": [
+      "billing-lead",
+      "vendor-analyst"
+    ],
+    "waiting_minutes": 360,
+    "unblocks": 3,
+    "question": "Accept the payments provider's three-year commitment in exchange for a 20% lower processing rate?",
+    "options": [
+      {
+        "key": "A",
+        "label": "Sign the three-year commitment",
+        "description": "Saves about $38,000 a year at current volume."
+      },
+      {
+        "key": "B",
+        "label": "Stay month to month",
+        "description": "Higher rate; free to switch providers later."
+      }
+    ],
+    "recommended": "A",
+    "context": "Termination before three years costs the remaining minimum fees. The integration is not yet live.",
+    "bounds": {
+      "A": {
+        "reversible": "no",
+        "cost_usd": 0
+      },
+      "B": {
+        "reversible": "yes",
+        "cost_usd": 0
+      }
+    },
+    "tags": [
+      "money",
+      "contracts"
+    ],
+    "visual": {
+      "kind": "bars",
+      "unit": "processing cost a year, at current volume",
+      "items": [
+        {
+          "option": "A",
+          "value": 152000,
+          "label": "$38,000 less",
+          "note": "locked in for 3 years"
+        },
+        {
+          "option": "B",
+          "value": 190000,
+          "label": "today's rate",
+          "note": "free to switch"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ci-runners",
+    "category": "Expenses and purchasing",
+    "project": "platform",
+    "agent": [
+      "platform-lead",
+      "ci-tuner"
+    ],
+    "waiting_minutes": 340,
+    "unblocks": 1,
+    "question": "Upgrade the CI runner plan from $200 to $480 a month to cut build time by about 40%?",
+    "options": [
+      {
+        "key": "A",
+        "label": "Upgrade to $480 a month",
+        "description": "Median CI run drops from 14 to 8 minutes."
+      },
+      {
+        "key": "B",
+        "label": "Stay on $200, cache better",
+        "description": "The ci-tuner estimates a 20% gain from caching alone."
+      }
+    ],
+    "recommended": "A",
+    "context": "Agents spend a lot of wall-clock time waiting on CI; there are about 160 runs a day.",
+    "bounds": {
+      "A": {
+        "reversible": "yes",
+        "cost_usd": 3360
+      },
+      "B": {
+        "reversible": "yes",
+        "cost_usd": 0
+      }
+    },
+    "tags": [
+      "money",
+      "ci"
+    ],
+    "visual": {
+      "kind": "bars",
+      "unit": "per month",
+      "items": [
+        {
+          "option": "A",
+          "value": 480,
+          "label": "$480",
+          "note": "median CI 8 min"
+        },
+        {
+          "option": "B",
+          "value": 200,
+          "label": "$200",
+          "note": "about 20% faster with caching"
+        }
+      ]
+    }
+  }
+]
