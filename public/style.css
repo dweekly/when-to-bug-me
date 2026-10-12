@@ -133,9 +133,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 
 /* The briefing comes before the question; the options are the big, obvious way to decide. */
 .briefing { font-size: 17px; line-height: 1.6; color: var(--ink); margin: 12px 0 8px; max-width: 64ch; }
-.decide-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 18px; align-items: start; margin: 6px 0 10px; }
-.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 0 0 14px; }
+/* Options side by side, each holding everything about itself; stacked on phones. */
+.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 6px 0 10px; }
 .opt {
+  display: flex; flex-direction: column; justify-content: flex-start;
   position: relative; text-align: left; cursor: pointer; border-radius: 16px; padding: 18px 18px 16px;
   border: 2px solid var(--line); background: var(--night-2); color: var(--ink);
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
@@ -153,31 +154,36 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .procon li.con::before { content: "−"; position: absolute; left: 3px; color: #e8a0a0; font-weight: 700; }
 .consequence { display: block; margin-top: 10px; font-size: 13.5px; color: var(--ink); }
 .consequence::before { content: "⏱ "; color: var(--ink-3); }
+.opt .snippet { display: block; font: 13px/1.6 var(--mono); color: var(--ink); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 0 0 12px; overflow-wrap: anywhere; }
 .opt .agent-pick { display: inline-block; font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 8px; font-style: normal; }
 
-/* Why: optional, to the side. */
-.why-panel { border: 1px dashed var(--line); border-radius: 14px; padding: 12px; }
-.why-panel label { display: block; font-size: 14px; color: var(--ink-2); margin: 0 0 8px; }
-.why-panel.conditions { border-style: solid; border-color: var(--glow); }
-.why-panel .basis-row { flex-direction: column; }
-.why-panel .mic { width: 100%; height: 40px; }
-.why-panel .example { font-size: 13px; margin: 8px 0 0; }
-
-/* Undo: a bar that drains while the answer waits to be sent. */
-.undo-bar { position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px; margin: 4px 0 12px; padding: 12px 16px; border-radius: 12px; background: var(--night-3); border: 1px solid var(--line); }
-.undo-bar .undo { color: var(--glow); font-weight: 700; }
-.drain { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--glow); transform-origin: left; animation: drain var(--undo-ms, 4s) linear forwards; }
-@keyframes drain { to { transform: scaleX(0); } }
-
-/* Other ways to answer: quieter than the options. Not now is a plain link. */
-.other-ways { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 8px; }
-.way { border: 1px solid var(--line); background: none; color: var(--ink-2); border-radius: 999px; padding: 6px 14px; font-size: 14px; cursor: pointer; }
-.way:hover, .way[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-3); }
+/* Think out loud: the person's words, marked up as Bug Me reads them. The marks sit on a layer behind
+   a transparent-text textarea with the same metrics, so the textarea stays a plain, editable box. The
+   choice is the one lit thing; reasons, conditions and questions are underlines that differ by shape. */
+.think { margin: 22px 0 8px; padding-top: 18px; border-top: 1px solid var(--line); }
+.think-field { position: relative; }
+.think-field textarea, .think-marks {
+  font: 19px/2 var(--body); padding: 0; margin: 0; border: 0; width: 100%; letter-spacing: normal;
+  white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
+}
+.think-field textarea {
+  position: relative; display: block; min-height: 2em; resize: none; overflow: hidden;
+  background: transparent; color: var(--ink); caret-color: var(--ink); outline: none;
+}
+.think-field textarea::placeholder { color: var(--ink-3); }
+.think-field:focus-within { box-shadow: 0 2px 0 var(--line); }
+.think-marks { position: absolute; inset: 0; color: transparent; pointer-events: none; }
+.think-marks mark { color: transparent; background: none; border-radius: 4px; text-decoration-thickness: 1px; text-underline-offset: 7px; text-decoration-color: var(--ink-3); transition: background 0.4s; }
+.think-marks mark.m-choice { background: var(--glow-soft); box-shadow: 0 0 0 2px var(--glow-soft); }
+.think-marks mark.m-why { text-decoration-line: underline; text-decoration-style: solid; }
+.think-marks mark.m-but { text-decoration-line: underline; text-decoration-style: dashed; }
+.think-marks mark.m-ask { text-decoration-line: underline; text-decoration-style: dotted; }
+.answers { margin: 4px 0 0; padding: 0; list-style: none; }
+.answers li { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin: 6px 0; padding-left: 14px; border-left: 2px solid var(--line); }
+.think-msg:empty { display: none; }
+.think-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; }
+.think-actions .example { margin: 0; font-size: 13px; color: var(--ink-3); }
 .not-now { margin-left: auto; color: var(--ink-3); font-size: 14px; }
-.mode-panel { margin: 4px 0 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--night-2); }
-.mode-panel label { display: block; font-size: 14px; color: var(--ink-2); margin: 0 0 8px; }
-.mode-panel textarea { width: 100%; }
-.mode-panel .row { display: flex; gap: 12px; align-items: center; margin-top: 10px; }
 .ask-answer { margin-top: 12px; padding: 12px 14px; border-left: 2px solid var(--glow); background: var(--night-3); border-radius: 0 10px 10px 0; }
 .ask-answer.missing { border-left-color: var(--ink-3); }
 .ask-answer p { margin: 0 0 6px; }
@@ -298,10 +304,6 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .tour-item:hover { background: var(--night-3); }
 .tour-blurb { display: block; color: var(--ink-2); font-size: 14px; margin-top: 2px; }
 
-@media (max-width: 760px) {
-  .decide-grid { grid-template-columns: 1fr; }
-}
-
 @media (max-width: 560px) {
   /* Phone bar: logo and the synthetic label on the first line (clear of the corner firefly, which
      is 64px tall), then the views as one row that scrolls sideways instead of wrapping. */
@@ -319,6 +321,7 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .basis-row { flex-direction: column; }
   .mic { width: 100%; height: 46px; }
   .variant iframe { height: 340px; }
+  .think-field textarea, .think-marks { font-size: 17px; }
   .actions .ghost { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {

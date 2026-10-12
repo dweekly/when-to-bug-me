@@ -4,7 +4,8 @@
 // redraws through views.ts / card.ts.
 
 import { nextInSession } from "../shared/agenda";
-import { MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, REROUTE_CONCURRENCY, UNDO_WINDOW_MS } from "../shared/constants";
+import { MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, PARSE_SEND_WAIT_MS, PARSE_TYPING_IDLE_MS, REROUTE_CONCURRENCY } from "../shared/constants";
+import { type SendPlan, answerParts, guidanceText, presentMarks, sendPlan } from "../shared/parse";
 import { type Punt, puntInstruction, puntProblem } from "../shared/punt";
 import {
   type GlowEvent,
@@ -19,14 +20,14 @@ import {
   shouldPushBack,
   substantiveBasis,
 } from "../shared/lifecycle";
-import type { AskOutput, Card, Decision, FactOutput, RouteKind, Source } from "../shared/types";
+import type { AskOutput, Card, Decision, FactOutput, Mark, ParseOutput, RouteKind, Source } from "../shared/types";
 import { api } from "./api";
 import { drainVoice } from "./voice";
-import { renderNow } from "./card";
+import { paintThink, renderNow } from "./card";
 import { ROUTE_LABEL, agenda, routeOf, waitingIds } from "./derive";
 import { announce } from "./dom";
 import { go } from "./router";
-import { type Flow, type State, F, Q, S, byId, log, newFlow, save, setF } from "./state";
+import { type Asked, type Flow, type Parsed, type State, F, Q, S, byId, log, newFlow, save, setF } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
 
 export function glowEvent(e: GlowEvent): void {
@@ -54,161 +55,264 @@ export function alive(s0: State, flow?: Flow): boolean {
 }
 
 /**
- * The Undo window, in ms. Tests shorten it through localStorage ("bugme.undoMs") so the suite does
- * not wait seconds per answer; the product always uses UNDO_WINDOW_MS.
+ * The answer machinery for thinking out loud. The words live in the flow (`think`), with a revision
+ * that every edit bumps. A parse is asked for one exact revision and applied only if the words are
+ * still that revision; questions in the words are asked once each; Send claims the answer at once and
+ * then waits for the parse of the final words. Updates in this section repaint the card in place
+ * (card.ts paintThink), so typing never loses focus; lifecycle steps re-render as before.
  */
-export function undoWindowMs(): number {
-  try {
-    const v = Number(localStorage.getItem("bugme.undoMs"));
-    return Number.isFinite(v) && localStorage.getItem("bugme.undoMs") !== null && v >= 0 ? v : UNDO_WINDOW_MS;
-  } catch {
-    return UNDO_WINDOW_MS;
-  }
+
+/** The parse in flight for each flow (by identity: a reset morning's flow never shares one): which
+ *  revision it is for, and its result once it lands. */
+const parsing = new WeakMap<Flow, { rev: number; done: Promise<Parsed | null> }>();
+/** The typing pause timer for each flow. */
+const idle = new Map<string, ReturnType<typeof setTimeout>>();
+/** Flows whose Send has been claimed and not yet finished (a second click does nothing). */
+const sending = new WeakSet<Flow>();
+
+export function isSending(flow: Flow): boolean {
+  return sending.has(flow);
 }
 
-/** The one open Undo window, if any: which flow it belongs to and the timer that will send it. */
-let pendingAnswer: { flow: Flow; timer: ReturnType<typeof setTimeout> } | null = null;
-
-/**
- * Clicking an option decides. Nothing is sent yet: the flow enters "pending" bound to this card and
- * its sealed guess, the Undo bar shows, and the answer goes out when the window closes, unless the
- * person undoes it, leaves the card, or the card is re-routed in the meantime.
- */
-export function choose(flow: Flow, d: Decision, route: RouteKind, key: string): void {
-  if (flow.phase !== "choose") return;
-  cancelPending();
-  const s0 = S;
-  const card = S.cards[d.id] as Card;
-  flow.choice = key;
-  flow.card = card;
-  flow.phase = "pending";
-  flow.message = "";
-  save(); // a reload during the Undo window brings the choice back unsent, with the reason (state.ts)
-  renderNow();
-  pendingAnswer = {
-    flow,
-    timer: setTimeout(async () => {
-      const mine = pendingAnswer; // this Undo window; a later one on the same card is a different object
-      // A phrase still being spoken belongs to this answer: let it finish first (voice.ts).
-      await drainVoice();
-      if (!mine || pendingAnswer !== mine) return; // undone, cancelled or replaced while the phrase finished
-      pendingAnswer = null;
-      if (!alive(s0, flow) || flow.phase !== "pending") return;
-      if (!showing(flow)) {
-        flow.phase = "choose";
-        flow.message = "Not sent: you left the card before the answer went out.";
-        return;
-      }
-      if (S.cards[d.id] !== card) {
-        flow.phase = "choose";
-        flow.message = "Not sent: this question was re-checked while you were deciding. Have another look.";
-        renderNow();
-        return;
-      }
-      flow.phase = "choose"; // answer() starts from a chosen, unsent card
-      void answer(d, route);
-    }, undoWindowMs()),
-  };
-}
-
-/** Undo: the choice is withdrawn before anything was sent; the reason typed so far is kept. */
-export function undoChoice(flow: Flow): void {
-  if (flow.phase !== "pending") return;
-  cancelPending();
-  flow.phase = "choose";
-  flow.choice = null;
+/** The words changed. A finished voice phrase is read at once; typing, after a pause. */
+export function thinkEdited(flow: Flow, d: Decision, text: string, by: "voice" | "typing"): void {
+  if (text === flow.think) return;
+  flow.think = text;
+  flow.rev++;
+  flow.error = "";
+  clearTimeout(idle.get(flow.id));
   save();
-  announce("Undone. Nothing was sent.");
-  renderNow();
+  if (by === "voice") void readWords(flow, d);
+  else idle.set(flow.id, setTimeout(() => void readWords(flow, d), PARSE_TYPING_IDLE_MS));
+  repaint(flow);
 }
 
-/** Close any open Undo window without sending (used when the card in front of the person changes). */
-export function cancelPending(): void {
-  if (!pendingAnswer) return;
-  clearTimeout(pendingAnswer.timer);
-  const f = pendingAnswer.flow;
-  pendingAnswer = null;
-  if (f.phase === "pending") {
-    f.phase = "choose";
-    f.message = "Not sent: you left the card before the answer went out.";
-    save();
-  }
-}
-
-/** Navigation away from the card whose answer is waiting in its Undo window cancels that answer. */
-export function cancelPendingUnlessOn(id: string | null): void {
-  if (pendingAnswer && pendingAnswer.flow.id !== id) cancelPending();
-}
-
-/**
- * "Something else": the person writes their own option. It is recorded as the answer and is what the
- * agent is told (simulated). Bug Me's sealed guess stays sealed: it only ever guessed among A and B.
- */
-export async function chooseOther(flow: Flow, d: Decision, route: RouteKind): Promise<void> {
-  const s0 = S;
-  await drainVoice(); // a reason still being spoken goes with it
-  if (!alive(s0, flow) || flow.phase !== "choose" || !showing(flow)) return;
-  const text = flow.other.trim().replace(/\s+/g, " ");
-  if (text.length < 4) {
-    flow.error = "Say what you'd like the agent to do instead.";
-    renderNow();
-    return;
+/** Ask for a parse of the words as they are now (or reuse the one already out for this revision). */
+function readWords(flow: Flow, d: Decision): Promise<Parsed | null> {
+  const rev = flow.rev;
+  const text = flow.think.trim();
+  const out = parsing.get(flow);
+  if (out && out.rev === rev) return out.done;
+  flow.parseError = null;
+  if (flow.parsed?.rev === rev) return Promise.resolve(flow.parsed);
+  if (!text) {
+    applyParse(flow, d, { rev, choice: "none", marks: [], source: "code" });
+    return Promise.resolve(flow.parsed);
   }
   if (text.length > MAX_REASON_CHARS) {
-    flow.error = `Please keep it under ${MAX_REASON_CHARS} characters.`;
-    renderNow();
+    flow.error = `That's more than ${MAX_REASON_CHARS} characters; the gist is enough.`;
+    repaint(flow);
+    return Promise.resolve(null);
+  }
+  const s0 = S;
+  const done = api<ParseOutput & { source: Source }>("/api/parse", { id: d.id, text })
+    .then((r) => {
+      const p: Parsed = { rev, choice: r.choice, marks: r.marks, source: r.source };
+      // Only onto the same words, still unanswered: once an answer has gone out, a late parse changes nothing.
+      if (alive(s0, flow) && flow.rev === rev && flow.phase === "choose") applyParse(flow, d, p);
+      return p;
+    })
+    .catch((e: Error) => {
+      if (alive(s0, flow) && flow.rev === rev && flow.phase === "choose") {
+        flow.parseError = { rev, message: e.message };
+        repaint(flow);
+      }
+      return null;
+    })
+    .finally(() => {
+      if (parsing.get(flow)?.rev === rev) parsing.delete(flow);
+    });
+  parsing.set(flow, { rev, done });
+  return done;
+}
+
+/**
+ * A parse of the current words: its marks are shown, and its choice picks unless a click came after
+ * the last stated choice. A newly stated choice overrides a click; a deleted one clears a pick that
+ * came from the words, never a click. New questions are asked.
+ */
+function applyParse(flow: Flow, d: Decision, p: Parsed): void {
+  const before = flow.parsed?.choice ?? "none";
+  flow.parsed = p;
+  if (p.choice !== before) {
+    if (p.choice !== "none") {
+      flow.choice = p.choice;
+      flow.choiceBy = "words";
+    } else if (flow.choiceBy === "words") {
+      flow.choice = null;
+      flow.choiceBy = null;
+    }
+  }
+  for (const m of p.marks) if (m.kind === "ask" && !flow.asks[m.quote]) void askOne(flow, d, m.quote);
+  save();
+  repaint(flow);
+}
+
+/** Click an option: it lights and is the pick. Nothing is sent until Send. */
+export function pick(flow: Flow, key: string): void {
+  if (flow.phase !== "choose" || sending.has(flow)) return;
+  flow.choice = key;
+  flow.choiceBy = "click";
+  flow.message = "";
+  save();
+  repaint(flow);
+}
+
+/** Ask one question from the words of what the agent provided. Asked once per exact quote. */
+async function askOne(flow: Flow, d: Decision, question: string): Promise<void> {
+  const s0 = S;
+  flow.asks[question] = { status: "pending", answer: "", source: null };
+  repaint(flow);
+  let next: Asked;
+  try {
+    const r = await api<AskOutput & { source: Source }>("/api/ask", { id: d.id, question: question.slice(0, MAX_REASON_CHARS) });
+    if (!alive(s0, flow) || !flow.asks[question]) return; // a reset morning never records it
+    next = { status: r.answerable ? "answered" : "missing", answer: r.answer, source: r.source };
+    log("question", { id: d.id, question, answerable: r.answerable, answer: r.answer, source: r.source });
+  } catch (e) {
+    if (!alive(s0, flow) || !flow.asks[question]) return;
+    next = { status: "failed", answer: `Couldn't reach Claude for that (${(e as Error).message}).`, source: null };
+  }
+  flow.asks[question] = next;
+  save();
+  repaint(flow);
+}
+
+/** The marks of the latest parse that still occur in the words. */
+export function currentMarks(flow: Flow): Mark[] {
+  return flow.parsed ? presentMarks(flow.think, flow.parsed.marks) : [];
+}
+
+/** Questions still in the words whose answer came back missing from what the agent provided. */
+export function unansweredQuestions(flow: Flow): string[] {
+  return currentMarks(flow).filter((m) => m.kind === "ask" && flow.asks[m.quote]?.status === "missing").map((m) => m.quote);
+}
+
+/** Ask again any question still in the words whose request was lost (a reload while it was out). */
+export function resumeAsks(flow: Flow, d: Decision): void {
+  if (flow.phase !== "choose") return;
+  // Words restored without a reading of them (a reload in the typing pause, or a draft from an earlier version) are read now.
+  if (flow.think.trim() && flow.parsed?.rev !== flow.rev && !parsing.get(flow) && !flow.parseError) void readWords(flow, d);
+  for (const m of currentMarks(flow)) if (m.kind === "ask" && !flow.asks[m.quote]) void askOne(flow, d, m.quote);
+}
+
+/** The words couldn't be read just now and nothing is picked: Send reads them again instead. */
+export function needsReread(flow: Flow): boolean {
+  return Boolean(flow.parseError && flow.parseError.rev === flow.rev && flow.think.trim()) && planKind(flow) === "nothing";
+}
+
+function planKind(flow: Flow): SendPlan["kind"] {
+  const d = byId.get(flow.id);
+  return d ? planFor(flow, d).kind : "nothing";
+}
+
+export function planFor(flow: Flow, d: Decision): SendPlan {
+  return sendPlan(d, flow.choice, currentMarks(flow), unansweredQuestions(flow));
+}
+
+function repaint(flow: Flow): void {
+  if (showing(flow)) paintThink();
+}
+
+/** Resolves to null after `ms`, so Send never waits on a parse forever. */
+const timeout = (ms: number) => new Promise<null>((r) => setTimeout(() => r(null), ms));
+
+/**
+ * Send. Claimed at once (a second click does nothing). The microphone keeps writing here while the
+ * last phrase finishes; then the words are snapshotted and read (at most PARSE_SEND_WAIT_MS), and
+ * after every wait the flow, the card on screen and the routed card must be unchanged.
+ */
+export async function send(flow: Flow, d: Decision, route: RouteKind): Promise<void> {
+  if (flow.phase !== "choose" || sending.has(flow)) return;
+  if (needsReread(flow)) {
+    void readWords(flow, d); // "Read it again": reads, never sends
+    repaint(flow);
     return;
   }
-  cancelPending();
-  flow.error = "";
+  sending.add(flow);
+  const s0 = S;
+  const card = S.cards[d.id];
+  // Leaving the card cancels this Send for good, even if the person comes back before it would have gone out.
+  let left = false;
+  const leave = () => (left = true);
+  window.addEventListener("hashchange", leave);
+  const still = () => !left && alive(s0, flow) && showing(flow) && flow.phase === "choose" && S.cards[d.id] === card;
+  flow.message = "";
+  repaint(flow);
+  try {
+    await drainVoice();
+    if (!still()) return;
+    clearTimeout(idle.get(flow.id));
+    const text = flow.think.trim();
+    const rev = flow.rev;
+    let parsed: Parsed | null = flow.parsed?.rev === rev ? flow.parsed : null;
+    if (text && !parsed) {
+      flow.message = "Reading what you said…";
+      repaint(flow);
+      parsed = await Promise.race([readWords(flow, d), timeout(PARSE_SEND_WAIT_MS)]);
+      if (!still()) return;
+      flow.message = "";
+      if (flow.rev !== rev) {
+        flow.message = "You added something while that was being read. Send again when you're done.";
+        return;
+      }
+    }
+    if (text.length > MAX_REASON_CHARS) {
+      flow.error = `That's more than ${MAX_REASON_CHARS} characters; the gist is enough.`;
+      return;
+    }
+    const marks = parsed ? presentMarks(text, parsed.marks) : [];
+    const parts = answerParts(marks);
+    const plan = parsed ? planFor(flow, d) : flow.choiceBy === "click" && flow.choice ? planFor({ ...flow, parsed: null }, d) : null;
+    if (!plan || plan.kind === "nothing") {
+      flow.message = parsed ? "Pick an option, or say which way you'd go." : "Couldn't read what you said just now. Pick an option, or try Send again.";
+      return;
+    }
+    flow.basis = parsed ? parts.reason : text;
+    flow.conditions = parsed ? parts.conditions : "";
+    const narration = { narration: text, narrationMarks: marks, unparsed: !parsed && Boolean(text) };
+    flow.narration = narration; // saved with the flow, so a reload at pushback still sends unparsed words whole
+    if (plan.kind === "ask-agent") return sendQuestionToAgent(flow, d, plan.questions);
+    if (plan.kind === "other") return chooseOther(flow, d, route, parts.course, narration);
+    flow.choice = plan.key;
+    flow.card = card as Card;
+    await answer(flow, d, route, narration);
+  } finally {
+    window.removeEventListener("hashchange", leave);
+    sending.delete(flow);
+    if (showing(flow) && flow.phase === "choose") paintThink();
+  }
+}
+
+/** The person's words as kept with the answer. `unparsed`: they couldn't be read, so they go down whole. */
+export interface Narration {
+  narration: string;
+  narrationMarks: Mark[];
+  unparsed: boolean;
+}
+
+/**
+ * "Something else": the person described a course that is neither option. It is recorded as the
+ * answer and is what the agent is told (simulated), in their words. Bug Me's sealed guess stays
+ * sealed: it only ever guessed among the listed options.
+ */
+export function chooseOther(flow: Flow, d: Decision, route: RouteKind, course: string, n: Narration): void {
   const basis = flow.basis.trim();
-  const send_down = `${Q.persona.first_name} chose neither option. Instead: ${text}`;
-  S.answered[d.id] = { initial: "other", final: "other", other: text, basis, guess: [], route, pushback: null, send_down, marks: [] };
-  log("answer", { id: d.id, route, initial: "other", final: "other", other: text, basis, guess_before_answer: null, source: S.cards[d.id] && "source" in S.cards[d.id]! ? (S.cards[d.id] as Card).source : null });
-  glowEvent({ kind: "answered", route, basis: substantiveBasis(basis || text), againstRecommendation: true });
+  const conditions = flow.conditions.trim();
+  const send_down = `${Q.persona.first_name} chose neither option. Instead: ${course}${conditions ? ` Conditions: ${conditions}` : ""}`;
+  S.answered[d.id] = { initial: "other", final: "other", other: course, basis, guess: [], route, pushback: null, send_down, marks: [], narration: n.narration, narrationMarks: n.narrationMarks, ...(conditions ? { conditions } : {}) };
+  log("answer", { id: d.id, route, initial: "other", final: "other", other: course, basis, conditions: conditions || undefined, narration: n.narration, guess_before_answer: null, source: isCardLike(S.cards[d.id]) ? (S.cards[d.id] as Card).source : null });
+  glowEvent({ kind: "answered", route, basis: substantiveBasis(basis || course), againstRecommendation: true });
   flow.choice = "other";
   flow.send_down = send_down;
   done(flow, "");
 }
 
-/** The latest question asked on each card; a response to an earlier one is dropped. */
-const askSeq = new Map<string, number>();
+const isCardLike = (c: unknown): boolean => Boolean(c) && typeof c === "object" && "source" in (c as object);
 
-/** "Ask a question": Claude answers from what the agent provided, or says what is missing. */
-export async function askQuestion(flow: Flow, d: Decision): Promise<void> {
-  const q = flow.question.trim();
-  const seq = (askSeq.get(flow.id) ?? 0) + 1;
-  askSeq.set(flow.id, seq);
-  if (q.length < 4) {
-    flow.error = "Type or say your question first.";
-    renderNow();
-    return;
-  }
-  const s0 = S;
-  flow.error = "";
-  flow.askAnswer = null;
-  flow.message = "Looking at what the agent provided…";
-  renderNow();
-  try {
-    const r = await api<AskOutput & { source: Source }>("/api/ask", { id: d.id, question: q });
-    if (!alive(s0, flow) || askSeq.get(flow.id) !== seq || flow.question.trim() !== q) return;
-    flow.askAnswer = r;
-    flow.message = "";
-    log("question", { id: d.id, question: q, answerable: r.answerable, answer: r.answer, source: r.source });
-  } catch (e) {
-    if (!alive(s0, flow) || askSeq.get(flow.id) !== seq || flow.question.trim() !== q) return;
-    flow.askAnswer = { answerable: false, answer: `Couldn't reach Claude for that (${(e as Error).message}).`, source: "code" };
-    flow.message = "";
-  }
-  save();
-  if (showing(flow)) renderNow();
-}
-
-/** An unanswered question goes back to the asking agent, and the decision waits for the answer. */
-export function sendQuestionToAgent(flow: Flow, d: Decision): void {
-  // The question was already accepted by Ask, so it is forwarded as is: the set-aside minimum
-  // (MIN_PUNT_CHARS, for a reason typed from scratch) does not apply to it.
-  const question = flow.question.trim().replace(/\s+/g, " ");
+/** Questions the agent's material didn't answer go back to the asking agent, and the decision waits. */
+export function sendQuestionToAgent(flow: Flow, d: Decision, questions: string[]): void {
+  const question = questions.join(" ").replace(/\s+/g, " ").trim();
   const punt: Punt = { id: d.id, kind: "info", reason: question, at: new Date().toISOString(), instruction: puntInstruction("info", question, Q.persona.first_name) };
   S.punts[d.id] = punt;
   log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: "ask" });
@@ -219,13 +323,13 @@ export function sendQuestionToAgent(flow: Flow, d: Decision): void {
   next();
 }
 
-export async function answer(d: Decision, route: RouteKind): Promise<void> {
-  const flow = F;
-  if (!flow || !flow.choice) return;
+export async function answer(flow: Flow, d: Decision, route: RouteKind, n: Narration): Promise<void> {
+  if (!flow.choice) return;
   const choice = flow.choice;
   const s0 = S;
   // The card is captured now: a re-route finishing mid-answer must not swap the sealed guess.
   const c = (flow.card = S.cards[d.id] as Card);
+  flow.narration = n;
   flow.initial = choice;
   flow.phase = "busy";
   flow.message = "Checking against your record…";
@@ -270,11 +374,28 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
   if (!alive(s0, flow)) return;
   flow.guess = r.guess;
   const basis = flow.basis.trim();
-  // "Yes, but…": the conditions travel with the answer to the agent, and count as its reason.
-  const conditions = flow.mode === "conditions" && basis ? basis : "";
-  const send_down = conditions ? `${r.send_down} Conditions from ${Q.persona.first_name}: ${conditions}` : r.send_down;
+  // The person's "but…" phrases travel with the answer to the agent, verbatim. Words that couldn't be
+  // read go down whole, labeled as such, so nothing they said is lost.
+  const conditions = flow.conditions.trim();
+  const n = flow.narration ?? undefined;
+  const send_down = [
+    r.send_down,
+    conditions ? `Conditions from ${Q.persona.first_name}: ${conditions}` : "",
+    n?.unparsed ? `${Q.persona.first_name}'s words, as said: “${n.narration}”` : "",
+  ].filter(Boolean).join(" ");
   flow.send_down = send_down;
-  S.answered[d.id] = { initial: flow.initial ?? choice, final: choice, basis, guess: r.guess, route, pushback: flow.pushback, send_down, marks: [], ...(conditions ? { conditions } : {}) };
+  S.answered[d.id] = {
+    initial: flow.initial ?? choice,
+    final: choice,
+    basis,
+    guess: r.guess,
+    route,
+    pushback: flow.pushback,
+    send_down,
+    marks: [],
+    ...(conditions ? { conditions } : {}),
+    ...(n?.narration ? { narration: n.narration, narrationMarks: n.narrationMarks } : {}),
+  };
   log("answer", {
     id: d.id,
     route,
@@ -285,11 +406,12 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     pushback: flow.pushback,
     pushback_outcome: pushbackOutcome,
     conditions: conditions || undefined,
+    narration: n?.narration || undefined,
     source: c.source,
   });
   glowEvent({ kind: "answered", route, basis: substantiveBasis(basis), againstRecommendation: choice !== d.recommended });
   save();
-  if (shouldAskWhy(choice, r.guess, basis)) {
+  if (shouldAskWhy(choice, r.guess, guidanceText({ reason: basis, conditions }))) {
     flow.phase = "why";
     save(); // saved before it is shown, so a reload keeps the question
     if (showing(flow)) {
@@ -330,18 +452,20 @@ export async function propose(flow: Flow, d: Decision): Promise<void> {
   // Skipped, or already sent by an earlier click, while the phrase finished: nothing more to do.
   if (!alive(s0, flow) || flow.phase !== phase0) return;
   const basis = flow.basis.trim();
-  if (!hasBasis(basis)) {
+  // Guidance is proposed from the reason and the conditions, both in the person's words.
+  const evidence = guidanceText({ reason: basis, conditions: flow.conditions.trim() });
+  if (!hasBasis(evidence)) {
     done(flow, "");
     return;
   }
-  if (basis.length > MAX_REASON_CHARS) {
+  if (evidence.length > MAX_REASON_CHARS) {
     flow.phase = flow.phase === "busy" ? "why" : flow.phase;
-    flow.error = `Please keep it under ${MAX_REASON_CHARS} characters (it's ${basis.length}); the gist is enough.`;
+    flow.error = `Please keep it under ${MAX_REASON_CHARS} characters (it's ${evidence.length}); the gist is enough.`;
     if (showing(flow)) renderNow();
     return;
   }
   flow.error = "";
-  recordLateReason(d, basis);
+  if (basis) recordLateReason(d, basis);
   flow.phase = "busy";
   flow.message = "Turning that into guidance…";
   save();
@@ -350,7 +474,7 @@ export async function propose(flow: Flow, d: Decision): Promise<void> {
     const p = await api<FactOutput & { reroute: string[]; source: Source }>("/api/fact", {
       id: d.id,
       choice: flow.choice,
-      reason: basis,
+      reason: evidence,
       rules: S.rules,
       facts: S.facts,
       waiting: waitingIds().filter((x) => x !== d.id),

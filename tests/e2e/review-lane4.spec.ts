@@ -2,7 +2,7 @@
 // survive re-renders, late reasons reach the record, over-long guidance is refused, and re-routed
 // cards survive a reload.
 import { expect, test } from "@playwright/test";
-import { editRule, freshPage, goRules, goSettled, openDecision, openFromAgenda, option, stored, waitForLoad } from "./helpers";
+import { editRule, freshPage, goRules, goSettled, openDecision, openFromAgenda, option, stored, waitForLoad, decide, think } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 async function flightNo(page: import("@playwright/test").Page): Promise<void> {
   await openDecision(page, "onsite-flight");
-  await option(page, "9:40am flight").click();
+  await decide(page, "9:40am flight");
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
 }
 
@@ -23,10 +23,10 @@ test("an answer in flight stays with its own card when another card is opened", 
     await route.continue();
   });
   await openDecision(page, "onsite-flight");
-  await option(page, "9:40am flight").click();
+  await decide(page, "9:40am flight");
   // While the flight's check is held, open another decision and answer it too (clicking decides).
   await openFromAgenda(page, "File the five action items");
-  await option(page, "File all five as drafted").click();
+  await decide(page, "File all five as drafted");
   release();
   await expect.poll(async () => (await stored(page))?.answered["onsite-flight"]?.final).toBe("B");
   // Each answer stays with its own card: the held flight answer never lands on the other decision.
@@ -81,14 +81,14 @@ test("a re-routed card whose route did not change survives a reload", async ({ p
   // The API rename is first on the agenda, so Start opens it.
   await page.locator("#start").click();
   await expect(page.locator("#now-q")).toContainText("user_id");
-  await page.locator("#basis").fill("Renames break every integrator; keep existing field names in anything public.");
-  await option(page, "Keep user_id").click();
+  await think(page, "Keep user_id because renames break every integrator; keep existing field names in anything public.");
+  await decide(page, "Keep user_id");
   await page.getByRole("button", { name: "Keep it" }).click();
   const quoted = async () =>
-    (JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string).cards["webhook-rename"].fact_quoted as string);
+    (JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v2')")) as string).cards["webhook-rename"].fact_quoted as string);
   await expect.poll(quoted).toContain("keep existing field names");
   // Remove the presentation note, so only the "re-evaluated" record can keep this card across a reload.
-  await page.evaluate(`(() => { const s = JSON.parse(localStorage.getItem('bugme.state.v1')); delete s.changes['webhook-rename']; localStorage.setItem('bugme.state.v1', JSON.stringify(s)); })()`);
+  await page.evaluate(`(() => { const s = JSON.parse(localStorage.getItem('bugme.state.v2')); delete s.changes['webhook-rename']; localStorage.setItem('bugme.state.v2', JSON.stringify(s)); })()`);
   await page.reload();
   await waitForLoad(page);
   expect(await quoted()).toContain("keep existing field names");
@@ -118,7 +118,7 @@ test("a newer edit takes over an unfinished re-route pass instead of abandoning 
   await editRule(page, "R4", "Anything customers will see comes to me before it goes out.");
   held = false;
   release();
-  const state = async () => JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v1')")) as string);
+  const state = async () => JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v2')")) as string);
   await expect.poll(async () => (await state()).pending.length, { timeout: 20_000 }).toBe(0);
   const s = await state();
   const total = Object.keys(s.cards).length;

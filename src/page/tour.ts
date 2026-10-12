@@ -161,7 +161,8 @@ function exampleText(step: TourStep): string | null {
   if (step.example.text) return step.example.text;
   // A recorded reason is only needed when live calls are off; with a live model, people use their own words.
   if (Q.mode === "live") return null;
-  return EXAMPLES.find((e) => e.id === step.example!.decision)?.reason ?? null;
+  const ex = EXAMPLES.find((e) => e.id === step.example!.decision);
+  return (step.example.textarea === "#think" ? ex?.narration : ex?.reason) ?? null;
 }
 
 function show(r: Running, step: TourStep, el: Element): void {

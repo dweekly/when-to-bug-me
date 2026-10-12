@@ -21,8 +21,7 @@ import {
   projectGroup,
   stored,
   waitForHome,
-  waitForLoad,
-} from "./helpers";
+  waitForLoad, decide, think } from "./helpers";
 
 /** Platform's waiting (unsettled) decisions in the fixtures. */
 const PLATFORM = ["ci-runners", "candidate-rejections", "peer-review", "incident-action-items", "onsite-flight", "test-runner-major"];
@@ -37,6 +36,7 @@ function focusedId(page: Page): string {
 async function answerQuickly(page: Page): Promise<void> {
   const now = page.locator("#now");
   await now.locator(".options .opt").first().click();
+  await now.locator(".send").click();
   await expect(now.getByRole("button", { name: "Next decision" })).toBeVisible();
 }
 
@@ -314,8 +314,8 @@ test.describe("Not now", () => {
 
   test("is offered at pushback, and not once an answer is final", async ({ page }) => {
     await openDecision(page, "sdk-dependency");
-    await page.locator("#basis").fill("Generated validators stay in sync with the OpenAPI spec for free.");
-    await option(page, "Add the library").click();
+    await think(page, "Because generated validators stay in sync with the OpenAPI spec for free.");
+    await decide(page, "Add the library");
     const push = page.locator("#now .followup.push");
     await expect(push).toBeVisible();
     await push.getByRole("button", { name: "Not now" }).click();
@@ -330,7 +330,7 @@ test.describe("Not now", () => {
 
     // Once an answer is final, the follow-up has no Not now.
     await openDecision(page, "onsite-flight");
-    await option(page, "9:40am flight").click();
+    await decide(page, "9:40am flight");
     await expect(page.getByText("I'm curious: why?")).toBeVisible();
     await expect(page.locator("#now").getByRole("button", { name: "Not now" })).toHaveCount(0);
     s = (await stored(page))!;
