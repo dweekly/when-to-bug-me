@@ -8,20 +8,53 @@
 //   POST /api/parse   pick the choice, reasons, conditions and questions out of the person's thinking out loud
 //   POST /api/converse one turn of the decision conversation: Bug Me's reading of the thread and its next turn
 //
+// The live queue (docs/STAGE-7.md), for the one owner, all 404 unless LIVE_TOKEN is set:
+//   GET  /me                    the same app, in live mode
+//   POST /api/me/login          trade the token for the owner cookie
+//   POST /api/me/tickets        an agent's ask (the MCP server): routed, settled by rule or queued
+//   GET  /api/me/tickets/<id>   what the asking session is told now
+//   GET  /api/me/queue          the owner's queue, in /api/queue's shape
+//   POST /api/me/resolve        the owner's answer, sent back to the asking session
+//   POST /api/me/context        save the owner's rules and facts
+//   POST /api/me/{route,answer,fact,ask,parse,converse}  the same calls as above, in the owner's world
+//
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
 
 import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES } from "../shared/constants";
 import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
-import type { Card, Decision, Fact, Rule } from "../shared/types";
+import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
+import type { Titles } from "../shared/titles";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
-import { type Env, ModelUnavailable, NeedsSession, askFor, converseFor, factFor, parseFor, routeFor, titlesFor } from "./model";
+import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, factFor, parseFor, routeFor, titlesFor } from "./model";
+import { AskError, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askProjectName, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
+import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
 import { SealError, importSealKey, seal, sha256Hex, unseal } from "./seal";
 
 export { SpendCounter } from "./spend";
+export { OwnerQueue } from "./owner";
+
+/**
+ * Whose decisions a call is about. The public world is the simulation (Jordan's fixtures, the visitor's
+ * rules and facts in each request). The owner's world is the live queue: decisions are tickets, and the
+ * rules and facts are the owner's, saved whenever a request carries them.
+ */
+interface World {
+  ctx: ModelCtx;
+  decisionOf(id: unknown): Promise<Decision>;
+  /** Every other decision the fact prompt lists, and the ones still waiting. */
+  others(d: Decision): Promise<Decision[]>;
+  defaults(): Promise<{ rules: Rule[]; facts: Fact[] }>;
+  /**
+   * The owner's world saves a request's rules and facts and reads back the current ones with their
+   * revision in one step, so routing never pairs old rules with a newer revision.
+   */
+  snapshot?(rules?: Rule[], facts?: Fact[]): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }>;
+  canSpend: boolean;
+}
 
 
 
@@ -49,6 +82,49 @@ function decisionOf(id: unknown): Decision {
   return d;
 }
 
+function publicWorld(canSpend: boolean): World {
+  return {
+    ctx: PUBLIC_CTX,
+    decisionOf: async (id) => decisionOf(id),
+    // The fact prompt lists every other decision, not just the ones still waiting, so its wording (and
+    // so a recorded answer) does not depend on what the visitor happened to answer first.
+    others: async (d) => decisions.filter((x) => x.id !== d.id),
+    defaults: async () => ({ rules: defaultRules, facts: defaultFacts }),
+    canSpend,
+  };
+}
+
+function ownerQueue(env: Env) {
+  if (!env.OWNER) throw new Error("the OWNER Durable Object is not bound");
+  return env.OWNER.get(env.OWNER.idFromName("owner"));
+}
+
+/** The owner's persona, with the projects their tickets name. */
+function ownerPersonaOf(tickets: Pick<Ticket, "decision" | "project_name">[]): Persona {
+  const byId = new Map(tickets.map((t) => [t.decision.project, t.project_name ?? t.decision.project]));
+  return ownerPersona([...byId].map(([id, name]) => ({ id, name })));
+}
+
+async function ownerWorld(env: Env): Promise<World> {
+  const q = ownerQueue(env);
+  const shown = await q.shown();
+  const open = shown.filter((t) => t.status === "open" || t.status === "reopened").map((t) => t.decision);
+  return {
+    // Never the recorded run or the response cache: nothing from a real queue is stored outside it.
+    ctx: { persona: ownerPersonaOf(shown), store: false, settle: OWNER_SETTLE_LIMITS },
+    decisionOf: async (id) => {
+      const t = typeof id === "string" ? await q.ticket(id) : undefined;
+      if (!t) throw new BadRequest("unknown ticket");
+      return t.decision;
+    },
+    others: async (d) => open.filter((x) => x.id !== d.id).slice(-MAX_OTHERS_IN_PROMPT),
+    defaults: () => q.context(),
+    snapshot: (rules, facts) => q.snapshot(rules, facts),
+    // The signed-in owner may make live calls without a human check; the daily cap still applies.
+    canSpend: true,
+  };
+}
+
 function cleanText(v: unknown, max: number, field: string): string {
   if (typeof v !== "string") throw new BadRequest(`${field} must be a string`);
   const t = v.replace(/\s+/g, " ").trim();
@@ -56,10 +132,19 @@ function cleanText(v: unknown, max: number, field: string): string {
   return t;
 }
 
-/** The visitor's rules and facts, bounded; absent means the defaults. */
-function context(b: Record<string, unknown>): { rules: Rule[]; facts: Fact[] } {
-  const rules = b.rules === undefined ? defaultRules : b.rules;
-  const facts = b.facts === undefined ? defaultFacts : b.facts;
+/** The rules and facts a request carries, bounded; absent means the world's own. The owner's are saved. */
+async function contextIn(b: Record<string, unknown>, w: World): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }> {
+  const c = context(b, await w.defaults());
+  if (!w.snapshot) return { ...c, rev: 0 };
+  return b.rules !== undefined || b.facts !== undefined ? w.snapshot(c.rules, c.facts) : w.snapshot();
+}
+
+/** A fact's scope is "all" or a project id; a live project's id can be as long as its name (60). */
+const MAX_SCOPE_CHARS = 60;
+
+function context(b: Record<string, unknown>, defaults: { rules: Rule[]; facts: Fact[] }): { rules: Rule[]; facts: Fact[] } {
+  const rules = b.rules === undefined ? defaults.rules : b.rules;
+  const facts = b.facts === undefined ? defaults.facts : b.facts;
   if (!Array.isArray(rules) || rules.length > MAX_RULES) throw new BadRequest(`rules must be a list of at most ${MAX_RULES}`);
   if (!Array.isArray(facts) || facts.length > MAX_FACTS) throw new BadRequest(`facts must be a list of at most ${MAX_FACTS}`);
   return {
@@ -68,7 +153,7 @@ function context(b: Record<string, unknown>): { rules: Rule[]; facts: Fact[] } {
       id: cleanText(f?.id, 12, `facts[${i}].id`),
       text: cleanText(f?.text, MAX_RULE_CHARS, `facts[${i}].text`),
       source: cleanText(f?.source ?? "", 200, `facts[${i}].source`),
-      scope: cleanText(f?.scope ?? "all", 20, `facts[${i}].scope`),
+      scope: cleanText(f?.scope ?? "all", MAX_SCOPE_CHARS, `facts[${i}].scope`),
     })),
   };
 }
@@ -78,12 +163,50 @@ export async function contextVersion(rules: Rule[], facts: Fact[]): Promise<stri
 }
 
 /** Route one decision and turn the result into a public card with its hidden part sealed. */
-async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, rules: Rule[], facts: Fact[]): Promise<Card> {
+async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, rules: Rule[], facts: Fact[], ctx: ModelCtx = PUBLIC_CTX): Promise<Card> {
   // The emoji and title are display only: a card without them still works, so their failure is not the
   // card's. Routing goes first, so the title's spend reservation can never crowd out the route itself.
-  const { out, source } = await routeFor(env, canSpend, d, rules, facts);
-  const titles = await titlesFor(env, canSpend, d).catch(() => null);
-  const inv = enforceSettleInvariant(out, d, rules, facts);
+  const { out, source } = await routeFor(env, canSpend, d, rules, facts, ctx);
+  const titles = await titlesFor(env, canSpend, d, ctx).catch(() => null);
+  return cardFromRoute(key, d, out, source, rules, facts, titles, ctx);
+}
+
+/**
+ * The route for an ask that couldn't be routed (docs/STAGE-7.md): the owner's decision, with no guess
+ * and each option sent down as itself, so it can still be answered without a model call.
+ */
+function unroutedRoute(d: Decision, why: string): RouteOutput {
+  return {
+    route: "decide",
+    settle_option: "",
+    reversible: "no",
+    cost: "moderate",
+    clearing_rule: "",
+    rule_quoted: "",
+    fact_quoted: "",
+    why_here: `Bug Me couldn't route this (${why}), so it's yours.`,
+    headline: d.question,
+    in_your_terms: "",
+    briefing: d.context.slice(0, 400),
+    option_notes: d.options.map((o) => ({ option: o.key, pros: [], cons: [], consequence: "" })),
+    problem: "fine",
+    guess: d.options.map((o) => ({ option: o.key, p: 1 / d.options.length })),
+    conflicts: [],
+    send_down: d.options.map((o) => ({ option: o.key, instruction: `David chose: ${o.label}.` })),
+  };
+}
+
+async function cardFromRoute(
+  key: CryptoKey,
+  d: Decision,
+  out: RouteOutput,
+  source: Source,
+  rules: Rule[],
+  facts: Fact[],
+  titles: { out: Titles } | null,
+  ctx: ModelCtx,
+): Promise<Card> {
+  const inv = enforceSettleInvariant(out, d, rules, facts, ctx.settle);
   const quotes = verifiedQuotes(out, rules, facts);
   const version = await contextVersion(rules, facts);
   const conflicts = verifiedConflicts(out, rules, facts);
@@ -114,6 +237,11 @@ async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, ru
 }
 
 async function handleApi(req: Request, env: Env, path: string): Promise<Response> {
+  // The live queue doesn't exist without its token, whatever else is configured.
+  if (path === "/api/me" || path.startsWith("/api/me/")) {
+    if (!usableToken(env.LIVE_TOKEN) || !env.OWNER) return json({ error: "not found" }, 404);
+    return handleOwner(req, env, path, await importSealKey(env.SEAL_KEY));
+  }
   const key = await importSealKey(env.SEAL_KEY);
 
   if (path === "/api/queue" && req.method === "GET") {
@@ -155,15 +283,34 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
 
   // Live calls need a session only when the Turnstile gate is configured.
   const canSpend = !env.TURNSTILE_SECRET || (await sessionValid(env.SEAL_KEY!, req.headers.get("x-bugme-session")));
+  return (await modelCall(env, key, path.slice("/api".length), b, publicWorld(canSpend))) ?? json({ error: "not found" }, 404);
+}
 
-  if (path === "/api/route") {
-    const d = decisionOf(b.id);
-    const { rules, facts } = context(b);
-    return json(await card(env, canSpend, key, d, rules, facts));
+/**
+ * The calls the page makes about one decision, in either world. Returns null for a path that isn't
+ * one of them. `onCard` lets the owner's world keep a re-routed card.
+ */
+async function modelCall(
+  env: Env,
+  key: CryptoKey,
+  path: string,
+  b: Record<string, unknown>,
+  w: World,
+  /** The owner's world stores a re-routed card and answers with the card the ticket now has. */
+  onCard?: (c: Card, d: Decision, rev: number) => Promise<Card | undefined>,
+): Promise<Response | null> {
+  const { canSpend, ctx } = w;
+
+  if (path === "/route") {
+    const d = await w.decisionOf(b.id);
+    // The rules this card is routed under, with their revision: if they change before it is stored, it can't settle anything.
+    const { rules, facts, rev } = await contextIn(b, w);
+    const c = await card(env, canSpend, key, d, rules, facts, ctx);
+    return json((await onCard?.(c, d, rev)) ?? c);
   }
 
-  if (path === "/api/answer") {
-    const d = decisionOf(b.id);
+  if (path === "/answer") {
+    const d = await w.decisionOf(b.id);
     const choice = typeof b.choice === "string" ? b.choice : "";
     if (!d.options.some((o) => o.key === choice)) throw new BadRequest("choice is not an option of this decision");
     const opened = await unseal(key, String(b.sealed ?? ""), d.id, d.options.map((o) => o.key));
@@ -176,9 +323,9 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
     return json({ guess: opened.guess, conflicts: opened.conflicts, send_down: send?.instruction ?? "" });
   }
 
-  if (path === "/api/fact") {
-    const d = decisionOf(b.id);
-    const { rules, facts } = context(b);
+  if (path === "/fact") {
+    const d = await w.decisionOf(b.id);
+    const { rules, facts } = await contextIn(b, w);
     // A thread can end outside the listed options (docs/STAGE-6.md): Jordan's own course, or the
     // question rejected. Those carry the course in Jordan's words and never a listed option's key.
     const outcome = b.outcome ?? "option";
@@ -188,42 +335,40 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
     const outside = outcome === "option" ? undefined : { kind: outcome as "other" | "rejected", course: cleanText(b.course, MAX_REASON_CHARS, "course") };
     if (outside && !outside.course) throw new BadRequest("course is required for other and rejected");
     const reason = cleanText(b.reason, MAX_EVIDENCE_CHARS, "reason");
+    const others = await w.others(d);
+    const byOther = new Map(others.map((x) => [x.id, x]));
     const waitingIds = Array.isArray(b.waiting) ? b.waiting.filter((x): x is string => typeof x === "string") : [];
-    const waiting = waitingIds.map((id) => byId.get(id)).filter((x): x is Decision => Boolean(x) && x!.id !== d.id);
-    // The prompt lists every other decision, not just the ones still waiting, so its wording (and so a
-    // recorded answer) does not depend on what the visitor happened to answer first; code then keeps
-    // only suggestions that are actually waiting.
-    const others = decisions.filter((x) => x.id !== d.id);
-    const { out, source } = await factFor(env, canSpend, d, choice, reason, rules, facts, others, outside);
+    const waiting = waitingIds.map((id) => byOther.get(id)).filter((x): x is Decision => Boolean(x));
+    const { out, source } = await factFor(env, canSpend, d, choice, reason, rules, facts, others, outside, ctx);
     // Re-route candidates: decisions sharing a topic tag with this one, plus the model's suggestions,
     // limited to known waiting ids and capped, so one fact costs a bounded number of calls.
-    const known = new Set(waiting.map((w) => w.id));
-    const byTag = waiting.filter((w) => w.tags.some((t) => d.tags.includes(t))).map((w) => w.id);
+    const known = new Set(waiting.map((x) => x.id));
+    const byTag = waiting.filter((x) => x.tags.some((t) => d.tags.includes(t))).map((x) => x.id);
     const suggested = out.may_affect.filter((id) => known.has(id));
     const reroute = out.kind === "none" ? [] : [...new Set([...suggested, ...byTag])].slice(0, MAX_REROUTES_PER_FACT);
     return json({ ...out, may_affect: suggested, reroute, source });
   }
 
-  if (path === "/api/ask") {
-    const d = decisionOf(b.id);
+  if (path === "/ask") {
+    const d = await w.decisionOf(b.id);
     const question = cleanText(b.question, MAX_REASON_CHARS, "question");
-    const { out, source } = await askFor(env, canSpend, d, question);
+    const { out, source } = await askFor(env, canSpend, d, question, ctx);
     return json({ ...out, source });
   }
 
-  if (path === "/api/parse") {
-    const d = decisionOf(b.id);
+  if (path === "/parse") {
+    const d = await w.decisionOf(b.id);
     // Not whitespace-collapsed: marks must be literal quotes of exactly what the person said.
     if (typeof b.text !== "string") throw new BadRequest("text must be a string");
     const text = b.text.trim();
     if (!text || text.length > MAX_REASON_CHARS) throw new BadRequest(`text must be 1 to ${MAX_REASON_CHARS} characters`);
-    const { out, source } = await parseFor(env, canSpend, d, text);
+    const { out, source } = await parseFor(env, canSpend, d, text, ctx);
     return json({ ...out, source });
   }
 
-  if (path === "/api/converse") {
-    const d = decisionOf(b.id);
-    const { rules, facts } = context(b);
+  if (path === "/converse") {
+    const d = await w.decisionOf(b.id);
+    const { rules, facts } = await contextIn(b, w);
     let req: ReturnType<typeof parseConverseRequest>;
     try {
       req = parseConverseRequest(b, d);
@@ -231,16 +376,131 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
       if (e instanceof ConverseError) throw new BadRequest(e.message);
       throw e;
     }
-    const { out, source } = await converseFor(env, canSpend, d, req.card, req.turns, rules, facts);
+    const { out, source } = await converseFor(env, canSpend, d, req.card, req.turns, rules, facts, ctx);
     return json({ ...out, source });
   }
 
-  return json({ error: "not found" }, 404);
+  return null;
+}
+
+/** The send-down instruction for the option a card settles on, from inside its seal. */
+async function settleInstruction(key: CryptoKey, d: Decision, c: Card): Promise<string> {
+  if (c.route !== "settle") return "";
+  const opened = await unseal(key, c.sealed, d.id, d.options.map((o) => o.key));
+  return opened.send_down.find((s) => s.option === c.settle_option)?.instruction ?? "";
+}
+
+/** The live queue (docs/STAGE-7.md). Without LIVE_TOKEN, none of it exists. */
+async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey): Promise<Response> {
+  const liveKey = env.LIVE_TOKEN!;
+  const jsonBody = (req.headers.get("content-type") ?? "").startsWith("application/json");
+
+  if (path === "/api/me/login" && req.method === "POST") {
+    if (!jsonBody) return json({ error: "expected JSON" }, 415);
+    const b = await body(req);
+    if (typeof b.k !== "string" || !sameString(b.k, liveKey)) return json({ error: "that link is not valid" }, 403);
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": await ownerCookie(liveKey) },
+    });
+  }
+  if (!(await isOwner(req, liveKey))) return json({ error: "sign in with your link first", needs_owner: true }, 401);
+  // A JSON body (with SameSite=Strict on the cookie) is what keeps another site from posting here.
+  if (req.method === "POST" && !jsonBody) return json({ error: "expected JSON" }, 415);
+
+  const q = ownerQueue(env);
+  const ticketPath = path.match(/^\/api\/me\/tickets\/(t-[a-z0-9]{1,32})$/);
+  if (ticketPath && req.method === "GET") {
+    const t = await q.ticket(ticketPath[1]);
+    return t ? json(reply(t)) : json({ error: "unknown ticket" }, 404);
+  }
+
+  if (path === "/api/me/queue" && req.method === "GET") {
+    const shown = await q.shown();
+    const answered = await q.recentlyAnswered();
+    const { rules, facts } = await q.context();
+    const now = new Date();
+    return json({
+      persona: ownerPersonaOf([...shown, ...answered]),
+      rules,
+      facts,
+      decisions: shown.map((t) => publicDecision({ ...t.decision, waiting_minutes: waitingMinutes(t, now) })),
+      cards: shown.map((t) => t.card),
+      // Set aside on any device: the page lists them, and Resume brings them back.
+      aside: shown.filter((t) => t.status === "set-aside" && t.aside).map((t) => ({ id: t.decision.id, ...t.aside })),
+      // Answered in the last day: not waiting, but the page keeps their follow-ups (a late reason, guidance) working.
+      answered: answered.map((t) => ({ decision: publicDecision(t.decision), card: t.card })),
+      live_available: Boolean(env.ANTHROPIC_API_KEY) && !env.FAKE_MODEL,
+      mode: env.FAKE_MODEL ? "fake" : env.ANTHROPIC_API_KEY ? "live" : "recorded",
+      owner: true,
+      turnstile_site_key: null,
+    });
+  }
+
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  const b = await body(req);
+
+  if (path === "/api/me/tickets") {
+    let d: Decision;
+    try {
+      d = decisionFromAsk(b, ticketId());
+    } catch (e) {
+      if (e instanceof AskError) throw new BadRequest(e.message);
+      throw e;
+    }
+    const projectName = askProjectName(b);
+    const { rules, facts, rev } = await q.snapshot();
+    const ctx: ModelCtx = { persona: ownerPersonaOf([...(await q.shown()), { decision: d, project_name: projectName }]), store: false, settle: OWNER_SETTLE_LIMITS };
+    // Routing can fail (no key, today's budget spent, a bad answer): the ask is kept, as the owner's to decide.
+    let c: Card;
+    let unrouted: string | undefined;
+    try {
+      c = await card(env, true, key, d, rules, facts, ctx);
+    } catch (e) {
+      if (!(e instanceof ModelUnavailable || e instanceof NeedsSession)) throw e;
+      unrouted = e.message;
+      c = await cardFromRoute(key, d, unroutedRoute(d, e.message), "code", rules, facts, null, ctx);
+    }
+    const t = await q.add(d, c, await settleInstruction(key, d, c), rev, unrouted, projectName);
+    return json(reply(t));
+  }
+
+  if (path === "/api/me/resolve") {
+    const t = await q.ticket(String(b.id ?? ""));
+    if (!t) throw new BadRequest("unknown ticket");
+    try {
+      return json(reply(await q.resolve(t.decision.id, parseResolution(b, t.decision))));
+    } catch (e) {
+      if (e instanceof AskError) throw new BadRequest(e.message);
+      throw e;
+    }
+  }
+
+  if (path === "/api/me/context") {
+    const c = context(b, await q.context());
+    await q.setContext(c.rules, c.facts);
+    return json({ ok: true });
+  }
+
+  const w = await ownerWorld(env);
+  const res = await modelCall(env, key, path.slice("/api/me".length), b, w, async (c, d, rev) => {
+    // The page gets the card the ticket now has: a settled ticket stays settled, a reopened one stays the owner's.
+    return (await q.reroute(d.id, c, await settleInstruction(key, d, c), rev))?.card;
+  });
+  return res ?? json({ error: "not found" }, 404);
 }
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
+    // The owner's page is the same app in live mode (docs/STAGE-7.md); it doesn't exist without LIVE_TOKEN.
+    if (url.pathname === "/me") {
+      if (!usableToken(env.LIVE_TOKEN)) return new Response("Not found", { status: 404 });
+      const page = await env.ASSETS.fetch(new Request(new URL("/app", url), req));
+      const res = new Response(page.body, page);
+      res.headers.set("cache-control", "no-store");
+      res.headers.set("x-robots-tag", "noindex");
+      return res;
+    }
     if (url.pathname.startsWith("/api/")) {
       try {
         return await handleApi(req, env, url.pathname);
