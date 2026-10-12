@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 import recorded from "../../fixtures/captures/recorded.json";
 import { EFFORT, MAX_TOKENS, MODEL } from "../../src/shared/constants";
 import { modelCacheKey } from "../../src/shared/hash";
-import { PROMPT_VERSION, routeSchema, routePrompt } from "../../src/shared/prompts";
+import { ASK_SCHEMA, FACT_SCHEMA, PARSE_PROMPT_VERSION, PROMPT_VERSION, askPrompt, factPrompt, parsePrompt, parseSchema, routeSchema, routePrompt } from "../../src/shared/prompts";
+import { EXAMPLES } from "../../src/shared/examples";
+import { answerParts, guidanceText, parseParseOutput } from "../../src/shared/parse";
 import { parseRouteOutput } from "../../src/shared/route";
 import { decisions, facts, persona, rules } from "./helpers";
 
@@ -22,4 +24,24 @@ describe("the recorded run", () => {
     }
     expect(missing, "re-record with `npm run record`").toEqual([]);
   });
+});
+
+describe("Jordan's recorded narrations", () => {
+  const key = (promptVersion: string, schema: unknown, prompt: string) => modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion, schema, prompt });
+  for (const ex of EXAMPLES) {
+    it(`${ex.id}: the parse, its questions and the guidance call it leads to are all recorded`, async () => {
+      const d = decisions.find((x) => x.id === ex.id)!;
+      const text = ex.narration.trim();
+      const pk = await key(PARSE_PROMPT_VERSION, parseSchema(d.options.map((o) => o.key)), parsePrompt(persona, d, text));
+      expect(pk in entries, "re-record with `npm run record`").toBe(true);
+      const parsed = parseParseOutput((entries[pk] as { output: unknown }).output, d, text);
+      expect(parsed.choice, "the tour picks this option by voice").toBe(ex.choice);
+      for (const m of parsed.marks.filter((x) => x.kind === "ask")) {
+        expect((await key(PROMPT_VERSION, ASK_SCHEMA, askPrompt(persona, d, m.quote))) in entries, `ask: ${m.quote}`).toBe(true);
+      }
+      const evidence = guidanceText(answerParts(parsed.marks)) || ex.reason;
+      const others = decisions.filter((x) => x.id !== d.id);
+      expect((await key(PROMPT_VERSION, FACT_SCHEMA, factPrompt(persona, rules, facts, d, ex.choice, evidence, others))) in entries, "fact").toBe(true);
+    });
+  }
 });

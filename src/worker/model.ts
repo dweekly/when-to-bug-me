@@ -12,12 +12,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import recorded from "../../fixtures/captures/recorded.json";
 import { EFFORT, MAX_TOKENS, MODEL, PRICE_PER_MTOK, RESERVE_PER_CALL_USD } from "../shared/constants";
 import { fakeAsk, fakeFact, fakeRoute } from "../shared/fakeModel";
+import { fakeParse, parseParseOutput } from "../shared/parse";
 import { modelCacheKey } from "../shared/hash";
-import { ASK_SCHEMA, FACT_SCHEMA, PROMPT_VERSION, routeSchema, askPrompt, factPrompt, routePrompt } from "../shared/prompts";
+import { ASK_SCHEMA, FACT_SCHEMA, PARSE_PROMPT_VERSION, PROMPT_VERSION, routeSchema, askPrompt, factPrompt, parsePrompt, parseSchema, routePrompt } from "../shared/prompts";
 import { parseAskOutput } from "../shared/ask";
 import { parseRouteOutput } from "../shared/route";
 import { parseFactOutput } from "../shared/fact";
-import type { AskOutput, Decision, Fact, FactOutput, RouteOutput, Rule, Source } from "../shared/types";
+import type { AskOutput, Decision, Fact, FactOutput, ParseOutput, RouteOutput, Rule, Source } from "../shared/types";
 import { persona } from "./data";
 import type { SpendCounter } from "./spend";
 
@@ -73,8 +74,9 @@ async function ask<T>(
   prompt: string,
   schema: object,
   validate: (raw: unknown) => T,
+  promptVersion: string = PROMPT_VERSION,
 ): Promise<{ out: T; source: Source }> {
-  const key = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion: PROMPT_VERSION, schema, prompt });
+  const key = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion, schema, prompt });
   const rec = RECORDED[key];
   if (rec) return { out: validate(rec.output), source: "recorded" };
 
@@ -146,4 +148,10 @@ export async function factFor(
 export async function askFor(env: Env, canSpend: boolean, d: Decision, question: string): Promise<{ out: AskOutput; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeAsk(d, question), source: "code" };
   return ask(env, canSpend, askPrompt(persona, d, question), ASK_SCHEMA, parseAskOutput);
+}
+
+export async function parseFor(env: Env, canSpend: boolean, d: Decision, text: string): Promise<{ out: ParseOutput; source: Source }> {
+  if (env.FAKE_MODEL) return { out: fakeParse(d, text), source: "code" };
+  const keys = d.options.map((o) => o.key);
+  return ask(env, canSpend, parsePrompt(persona, d, text), parseSchema(keys), (raw) => parseParseOutput(raw, d, text), PARSE_PROMPT_VERSION);
 }

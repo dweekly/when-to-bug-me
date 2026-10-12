@@ -5,8 +5,9 @@
 //   npm run record -- --dry-run # prints what it would call and the cost ceiling, calls nothing
 //
 // It records: the route of every decision under the default rules and facts; then, for each
-// canonical example below, the fact call for its scripted reason and the re-route of every decision
-// that answer would re-check. Requests are built with the same functions the Worker uses, and keyed
+// canonical example, the parse of Jordan's narration, the question each "ask" mark sends, the fact call
+// for the reason and conditions the page derives from that parse (or the scripted "why?" reason when
+// the narration gives none), and the re-route of every decision that answer would re-check. Requests are built with the same functions the Worker uses, and keyed
 // with the same modelCacheKey, so the Worker replays an entry only for a byte-identical request.
 // It stops when its own spend passes LOCAL_BUDGET_USD.
 
@@ -17,7 +18,10 @@ import { EFFORT, MAX_REROUTES_PER_FACT, MAX_TOKENS, MODEL, PRICE_PER_MTOK } from
 import { parseFactOutput } from "../src/shared/fact";
 import { modelCacheKey } from "../src/shared/hash";
 import { keptFact, withFact } from "../src/shared/lifecycle";
-import { FACT_SCHEMA, PROMPT_VERSION, routeSchema, factPrompt, routePrompt } from "../src/shared/prompts";
+import { ASK_SCHEMA, FACT_SCHEMA, PARSE_PROMPT_VERSION, PROMPT_VERSION, askPrompt, routeSchema, factPrompt, parsePrompt, parseSchema, routePrompt } from "../src/shared/prompts";
+import { parseAskOutput } from "../src/shared/ask";
+import { answerParts, guidanceText, parseParseOutput } from "../src/shared/parse";
+import { MAX_REASON_CHARS } from "../src/shared/constants";
 import { parseRouteOutput } from "../src/shared/route";
 import type { Decision, Fact, Persona, Rule } from "../src/shared/types";
 import { EXAMPLES } from "../src/shared/examples";
@@ -49,8 +53,8 @@ function keychain(service: string): string {
 const client = dryRun ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || keychain("anthropic-api-key"), maxRetries: 2 });
 
 /** Ask, validating with `validate` before anything is recorded, so a bad answer is never saved. */
-async function ask(label: string, prompt: string, schema: object, validate: (raw: unknown) => unknown): Promise<unknown> {
-  const key = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion: PROMPT_VERSION, schema, prompt });
+async function ask(label: string, prompt: string, schema: object, validate: (raw: unknown) => unknown, promptVersion = PROMPT_VERSION): Promise<unknown> {
+  const key = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion, schema, prompt });
   const have = recorded.entries[key] as { output: unknown } | undefined;
   if (have) return have.output;
   if (dryRun || !client) {
@@ -109,7 +113,19 @@ async function main(): Promise<void> {
   for (const ex of EXAMPLES) {
     const d = byId.get(ex.id)!;
     const others = decisions.filter((x) => x.id !== d.id);
-    const raw = await ask(`fact ${ex.id}`, factPrompt(persona, rules, facts, d, ex.choice, ex.reason, others), FACT_SCHEMA, (x) => parseFactOutput(x, facts));
+    // The narration as the page sends it (the think box, trimmed), and what the page derives from its parse.
+    const text = ex.narration.trim();
+    const parsedRaw = await ask(`parse ${ex.id}`, parsePrompt(persona, d, text), parseSchema(d.options.map((o) => o.key)), (x) => parseParseOutput(x, d, text), PARSE_PROMPT_VERSION);
+    if (!parsedRaw) continue;
+    const parsed = parseParseOutput(parsedRaw, d, text);
+    console.log(`  parse ${ex.id}: ${parsed.choice} ${parsed.marks.map((m) => `${m.kind}:"${m.quote}"`).join(" ")}`);
+    if (parsed.choice !== ex.choice) console.warn(`  parse ${ex.id}: chose ${parsed.choice}, the tour expects ${ex.choice}`);
+    for (const m of parsed.marks.filter((x) => x.kind === "ask")) {
+      await ask(`ask ${ex.id}`, askPrompt(persona, d, m.quote.slice(0, MAX_REASON_CHARS)), ASK_SCHEMA, parseAskOutput);
+    }
+    // With no reason in the narration, Bug Me asks "why?" and Jordan answers with the scripted reason.
+    const evidence = guidanceText(answerParts(parsed.marks)) || ex.reason;
+    const raw = await ask(`fact ${ex.id}`, factPrompt(persona, rules, facts, d, ex.choice, evidence, others), FACT_SCHEMA, (x) => parseFactOutput(x, facts));
     if (!raw) continue;
     const fo = parseFactOutput(raw, facts);
     console.log(`  fact ${ex.id}: ${fo.kind} "${fo.text}" may_affect=${fo.may_affect.join(",")}`);
