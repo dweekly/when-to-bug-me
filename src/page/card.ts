@@ -44,7 +44,7 @@ function voiceTargetFor(): VoiceTarget | null {
   if (!box || !document.getElementById(box)) return null;
   return {
     // The turn number is part of the key, so late words can't land in the next turn.
-    key: `${flow.id}:${box}:${jordanTurns(flow.turns).length}`,
+    key: `${flow.id}:${box}:${flow.sent}`,
     el: () => document.getElementById(box) as HTMLTextAreaElement | null,
     write: (t) => {
       if (box === "punt-reason") flow.puntReason = t;
@@ -309,7 +309,7 @@ function bugTurn(t: ShownBugTurn): HTMLElement {
     { class: `turn bug${t.next === "confirm" ? " readback" : ""}` },
     face(),
     h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), t.text),
-    t.source && t.source !== "live" ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "recorded" ? "recorded" : "stand-in") : null,
+    t.source && t.source !== "live" ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "code" ? "stand-in" : t.source) : null,
   );
 }
 
@@ -377,7 +377,7 @@ export function paintThread(): void {
   }
   // A turn of Jordan's sent is a new voice target (its key carries Jordan's turn count), so a late
   // phrase from that turn can't land in the next; Bug Me's reply doesn't interrupt a correction being spoken.
-  if (voiceTargetKey() && !voiceTargetKey().endsWith(`:${jordanTurns(flow.turns).length}`)) setVoiceTarget(voiceTargetFor());
+  if (voiceTargetKey() && !voiceTargetKey().endsWith(`:${flow.sent}`)) setVoiceTarget(voiceTargetFor());
 }
 
 /** A read-only card for a decision that is answered, or set aside and waiting for Resume. */
@@ -548,16 +548,9 @@ export function followup(d: Decision, route: RouteKind): Child {
     );
   }
   const outside = F.choice === "other" || F.choice === "rejected";
-  if (F.phase === "done" && outside) {
-    // A course of the person's own, or a rejected question: no guess was made among those, so none is revealed.
-    return h(
-      "div",
-      { class: "followup reveal", "aria-live": "polite" },
-      h("p", { class: "senddown" }, `Sent down to ${d.agent[d.agent.length - 1]} (simulated): ${F.send_down}`),
-      h("div", { class: "after-marks" }, h("button", { type: "button", class: "primary", onclick: () => next() }, "Next decision")),
-    );
-  }
-  if (!F.guess && !(outside && F.phase === "proposal")) return F.message ? h("div", { class: "followup" }, h("p", {}, F.message)) : null;
+  // A course of the person's own, or a rejected question, has no guess to reveal; the rest (guidance,
+  // re-routes, what was sent down) shows as for any answer.
+  if (!F.guess && !(outside && (F.phase === "proposal" || F.phase === "done"))) return F.message ? h("div", { class: "followup" }, h("p", {}, F.message)) : null;
 
   const top = F.guess ? topGuess(F.guess) : null;
   const guessed = top ? d.options.find((o) => o.key === top.option)! : null;

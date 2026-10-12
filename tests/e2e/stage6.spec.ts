@@ -321,3 +321,35 @@ test("a reason given after the conversation shows on the closed card", async ({ 
   await openDecision(page, "onsite-flight");
   await expect(page.locator("#now .closed")).toContainText("I do school drop-off before 8:30.");
 });
+
+// Regressions from the third review of #31.
+
+test("at the thread's limit, an option click can't strand the read-back", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await say(page, "Keep user_id, because integrators parse v1 responses.");
+  for (const c of ["as long as the docs say why.", "as long as mobile agrees.", "as long as the SDKs keep it.", "as long as v3 revisits it.", "as long as the changelog says so."]) await say(page, `Yes, ${c}`);
+  await expect(turns(page)).toHaveCount(12);
+  await expect(sendBtn(page)).toHaveText("Keep user_id");
+  await option(page, "Rename to account_id").click();
+  await expect(sendBtn(page)).toHaveText("Keep user_id");
+  await sendBtn(page).click();
+  await expect.poll(async () => (await answered(page, "api-rename"))?.final).toBe("B");
+});
+
+test("a guidance failure after a rejected question says so", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await say(page, "Wrong question, because renames break integrators.");
+  await page.route("**/api/fact", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "down for a moment" }) }));
+  await sendBtn(page).click();
+  await expect(page.locator("#now .followup")).toContainText("Couldn't turn that into guidance");
+  await expect(page.locator("#now .senddown")).toContainText("rejected the question");
+});
+
+test("a cached Claude reply is labeled cached, not stand-in", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await page.route("**/api/converse", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify({ reply: "Why that one?", next: "ask", ledger: { choice: "B", choice_quote: null, course: null, action: "", why: [], conditions: [], questions: [], feedback: [], no_more_questions: false }, source: "cached" }) }),
+  );
+  await say(page, "Keep user_id.");
+  await expect(turns(page).last().locator(".turn-src")).toHaveText("cached");
+});

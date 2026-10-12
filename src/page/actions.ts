@@ -83,6 +83,8 @@ export function thinkEdited(flow: Flow, text: string): void {
 /** Click an option: it lights, and travels with the next turn. */
 export function pick(flow: Flow, key: string): void {
   if (flow.phase !== "choose" || sending.has(flow)) return;
+  // At the thread's limit only the read-back can be confirmed; a new pick would strand it.
+  if (jordanTurns(flow.turns).length >= MAX_CONVERSE_TURNS && flow.turns.at(-1)?.who === "bugme") return;
   flow.pick = key;
   flow.choice = key;
   flow.message = "";
@@ -161,6 +163,7 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind): Promi
       }
       turn = flow.pick ? { who: "jordan", text, pick: flow.pick } : { who: "jordan", text };
       flow.turns.push(turn);
+      flow.sent++;
       flow.think = "";
       flow.rev++;
       flow.pick = null;

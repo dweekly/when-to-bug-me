@@ -310,3 +310,20 @@ test("a correction spoken while Bug Me replies is kept, and a failed turn's spok
   await expect(page.locator("#now .turns > li")).toHaveCount(4, { timeout: 8000 });
   await expect(page.locator("#think")).toHaveValue("but only if the docs say why.");
 });
+
+test("replacing a failed turn starts a fresh voice session, so its late words can't land in the next turn", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await page.locator("#voice-btn").click();
+  await page.route("**/api/converse", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "down for a moment" }) }));
+  await say(page, "Rename it.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .think-msg")).toContainText("Bug Me couldn't reply just now");
+  await page.unroute("**/api/converse");
+  await page.locator("#think").fill("Keep user_id, because integrators parse v1.");
+  const before = await recCount(page);
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .turns > li")).toHaveCount(2, { timeout: 8000 });
+  await expect.poll(() => recCount(page)).toBeGreaterThan(before);
+  await say(page, "late words from the replaced turn", before - 1);
+  await expect(page.locator("#think")).toHaveValue("");
+});
