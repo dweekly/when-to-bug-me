@@ -174,7 +174,7 @@ Where the build differs from the plan above, and why:
 
 - **The ledger isn't sent back.** Each turn sends the transcript only; Claude re-reads it and returns the whole current ledger. That makes the request smaller, and nothing from an earlier answer can leak into a recording key.
 - **The card the conversation sees is its route and `why_here`.** That is enough for Bug Me to talk about why it came to Jordan. It is the whole projection: `sealed` and `source` are dropped (`parseConverseRequest`, tested).
-- **Confirming with the button makes no call.** Only a typed "yes" goes to the model, and its "close" stands only straight after a read-back.
+- **Confirming with the button makes no call.** Only a typed "yes" goes to the model. Its "close" stands only when the turn just agrees with the read-back before it: same choice (each read-back carries `heard`, the choice it read back, which the page stores and sends back), no click, and nothing new quoted from it. "Yes, but only if…" or a yes with a different click gets a fresh read-back (Codex review of #26).
 - **`whyAsked` means "Bug Me asked anything".** Any elicitation question in the thread silences the "I'm curious: why?" backstop, not only a question about why.
 - **The scripts are `CONVERSATIONS` in `src/shared/examples.ts`,** separate from `EXAMPLES`, which the stage 4 page still uses until 6c.
 - **Titles: 39 of 40 recorded.** However often it is asked, Haiku titles `dockerfile-format` in seven words ("Trim whitespace and sort Dockerfile package lists"). The limit stays at six, and that card shows its headline instead; the test names the exception.

@@ -11,7 +11,8 @@ type RawQuote = { turn: number; quote: string };
 const NONE: RawQuote = { turn: 0, quote: "" };
 
 const NO_MORE = /\b(just do it|no more questions|stop asking|skip it|don't ask)\b/i;
-const AFFIRM = /^\s*(yes|yep|yeah|right|correct|send it|sounds good|do it)\b/i;
+/** A turn that only agrees: nothing else in it. */
+const AFFIRM = /^\s*(yes|yep|yeah|right|correct|send it|sounds good|do it)[.!]*\s*$/i;
 const REJECT = /\b(wrong question|why are we\b[^.?!]*\bat all|shouldn't even be (?:asking|deciding))/i;
 const NEITHER = /^\s*neither\b[,.;:—-]?\s*/i;
 const FEEDBACK: [RegExp, "priority" | "routing"][] = [
@@ -83,7 +84,7 @@ export function fakeConverse(d: Decision, turns: ConvTurn[]): { reply: string; n
   const asked = bugTurns(turns).filter((t) => t.next === "ask").length;
   const decided = d.options.some((o) => o.key === choice) || ((choice === "other" || choice === "reject") && course.quote);
   // The reply is left empty for a read-back: advance writes it from the checked ledger.
-  if (latest && AFFIRM.test(latest.text) && lastBug?.next === "confirm") return { reply: "Sending that now.", next: "close", ledger };
+  if (latest && !latest.pick && AFFIRM.test(latest.text) && lastBug?.next === "confirm") return { reply: "Sending that now.", next: "close", ledger };
   if (latest && questions.some((q) => q.turn === js.length - 1) && !decided) return { reply: "I don't know; I'll ask the agent. Which way are you leaning?", next: "ask", ledger };
   if (decided && d.options.some((o) => o.key === choice) && !why.length && !noMore && asked === 0) return { reply: "Why that one?", next: "ask", ledger };
   if (decided || noMore) return { reply: "", next: "confirm", ledger };

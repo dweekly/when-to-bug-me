@@ -24,7 +24,7 @@ import { decision, decisions, facts, persona, rules } from "./helpers";
 const api = decision("api-rename"); // A: Rename to account_id, B: Keep user_id
 const flight = decision("onsite-flight"); // A: 6:05am flight, B: 9:40am flight
 const j = (text: string, pick?: string): ConvTurn => (pick ? { who: "jordan", text, pick } : { who: "jordan", text });
-const bug = (text: string, next: "ask" | "confirm" | "close"): ConvTurn => ({ who: "bugme", text, next });
+const bug = (text: string, next: "ask" | "confirm" | "close", heard?: string): ConvTurn => (heard ? { who: "bugme", text, next, heard } : { who: "bugme", text, next });
 const L = (o: Partial<Ledger>): Ledger => ({ ...EMPTY_LEDGER, ...o });
 const q = (turn: number, quote: string) => ({ turn, quote });
 
@@ -70,9 +70,22 @@ describe("advance: the model proposes, code disposes", () => {
     expect(r.forced).toBeTruthy();
   });
 
-  it("a close straight after a read-back stands", () => {
-    const r = advance(api, [j("Keep user_id"), bug("So: keep user_id. Right?", "confirm"), j("Yes")], "Sending that now.", "close", picked);
+  it("a close straight after a read-back of the same choice stands, and every read-back says what it read back", () => {
+    expect(advance(api, [j("Keep user_id, because integrators parse v1")], "", "confirm", picked).heard).toBe("B");
+    const r = advance(api, [j("Keep user_id, because integrators parse v1"), bug("So: keep user_id. Right?", "confirm", "B"), j("Yes")], "Sending that now.", "close", picked);
     expect(r).toMatchObject({ next: "close", reply: "Sending that now." });
+  });
+
+  it("a yes that changes the decision is read back again, not closed", () => {
+    const seen = [j("Keep user_id, because integrators parse v1"), bug("So: keep user_id. Right?", "confirm", "B")];
+    // A different click with the yes.
+    const clicked = advance(api, [...seen, j("Yes.", "A")], "Sending that now.", "close", L({ choice: "A" }));
+    expect(clicked).toMatchObject({ next: "confirm", reply: "So: rename to account_id. Right?", heard: "A", forced: "the decision changed since the read-back" });
+    // "Yes, but…": a condition from the newest turn.
+    const but = advance(api, [...seen, j("Yes, but only if the docs say why.")], "Sending that now.", "close", L({ choice: "B", why: [q(0, "because integrators parse v1")], conditions: [q(1, "but only if the docs say why.")] }));
+    expect(but).toMatchObject({ next: "confirm", reply: "So: keep user_id, but only if the docs say why. Right?" });
+    // A read-back from an older page, with no record of what it read back, can't be closed on.
+    expect(advance(api, [j("Keep user_id"), bug("So: keep user_id. Right?", "confirm"), j("Yes")], "Ok.", "close", picked).next).toBe("confirm");
   });
 
   it("a close after a read-back with nothing to send stays a read-back", () => {
@@ -165,6 +178,11 @@ describe("parseConverseRequest: the projection the model sees", () => {
     expect(prompt).not.toContain("SECRET-SEAL");
     expect(conversePrompt(persona, rules, facts, api, parseConverseRequest(body({ card: { route: "decide", why_here: "Your rule says API changes are yours.", sealed: "other", source: "recorded" } }), api).card, r.turns)).toBe(prompt);
   });
+  it("carries what a read-back read back, and refuses one that names no choice of this decision", () => {
+    const r = parseConverseRequest(body({ turns: [j("Keep user_id"), bug("So: keep user_id. Right?", "confirm", "B"), j("Yes")] }), api);
+    expect(r.turns[1]).toEqual({ who: "bugme", text: "So: keep user_id. Right?", next: "confirm", heard: "B" });
+    expect(() => parseConverseRequest(body({ turns: [j("Keep user_id"), bug("So?", "confirm", "Z"), j("Yes")] }), api)).toThrow(/heard/);
+  });
   it("keeps Jordan's words exactly, and a click as a pick, never as a quote", () => {
     const r = parseConverseRequest(body({ turns: [j("  Keep it  ", "B")] }), api);
     expect(r.turns[0]).toEqual({ who: "jordan", text: "  Keep it  ", pick: "B" });
@@ -208,11 +226,15 @@ describe("fakeConverse, the labeled stand-in", () => {
   it("a question with no choice is passed to the agent", () => {
     expect(fake(api, [j("How many integrations read it?")])).toMatchObject({ next: "ask", reply: "I don't know; I'll ask the agent. Which way are you leaning?" });
   });
-  it('"yes" closes only straight after a read-back', () => {
+  it('"yes" closes only straight after a read-back, and only a plain yes', () => {
     const t = [j("Keep user_id, because integrators parse v1.")];
     const r = fake(api, t);
-    expect(fake(api, [...t, bug(r.reply, r.next), j("Yes.")]).next).toBe("close");
+    const seen = [...t, bug(r.reply, r.next, r.heard)];
+    expect(fake(api, [...seen, j("Yes.")]).next).toBe("close");
     expect(fake(api, [j("Yes.")]).next).not.toBe("close");
+    // The reviewer's cases: a yes with a different click, and a yes with a new condition.
+    expect(fake(api, [...seen, j("Yes.", "A")])).toMatchObject({ next: "confirm", ledger: { choice: "A" } });
+    expect(fake(api, [...seen, j("Yes, but only if the docs say why.")]).next).toBe("confirm");
   });
   it('"neither, …" is another course; "why are we … at all" rejects the question', () => {
     expect(fake(api, [j("Neither, test both with five customers first.")]).ledger).toMatchObject({ choice: "other", course: { quote: "test both with five customers first." } });

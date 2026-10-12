@@ -26,6 +26,9 @@ export interface BugTurn {
   who: "bugme";
   text: string;
   next: Next;
+  /** On a read-back: the choice it read back (`ConverseResult.heard`), so a later "yes" can be checked
+   *  against what Jordan actually saw. Not shown to the model. */
+  heard?: string;
 }
 
 export type ConvTurn = JordanTurn | BugTurn;
@@ -64,6 +67,8 @@ export interface ConverseResult {
   ledger: Ledger;
   /** Set when code changed the model's `next` (and so wrote the reply). */
   forced?: string;
+  /** On a read-back: the choice read back. The page stores it on the Bug Me turn and sends it back. */
+  heard?: string;
 }
 
 export class ConverseError extends Error {}
@@ -209,10 +214,26 @@ export function readBack(d: Decision, l: Ledger): string {
 }
 
 /**
+ * Whether Jordan's newest turn only agrees with the last read-back: it was a read-back of this same
+ * choice, the turn clicks nothing, and none of the ledger's reasons, conditions, course or feedback
+ * come from it. "Yes, but only if…" or "yes" with a different click changes the decision, so it is
+ * read back again rather than closed.
+ */
+function agreesOnly(turns: ConvTurn[], ledger: Ledger): boolean {
+  const last = bugTurns(turns).at(-1);
+  const js = jordanTurns(turns);
+  const newest = js.length - 1;
+  if (last?.next !== "confirm" || last.heard !== ledger.choice || js[newest]?.pick) return false;
+  const quotes = [...ledger.why, ...ledger.conditions, ...(ledger.course ? [ledger.course] : []), ...ledger.feedback.map((f) => f.quote), ...ledger.questions.map((q) => q.quote)];
+  return !quotes.some((q) => q.turn === newest);
+}
+
+/**
  * Decide what Bug Me does next, given the thread so far (ending with Jordan's newest turn), the
  * model's reply, its `next`, and the verified ledger. Rules, in order:
- * - a "close" counts only straight after a read-back (the last Bug Me turn was "confirm"), and only
- *   when the outcome is something that can be sent; otherwise it becomes a read-back;
+ * - a "close" counts only when Jordan's newest turn just agrees with the read-back before it (same
+ *   choice, no click, nothing new said), and only when the outcome is something that can be sent;
+ *   otherwise it becomes a fresh read-back;
  * - an "ask" is allowed while fewer than MAX_CONVERSE_QUESTIONS have been asked and Jordan hasn't
  *   said to stop; otherwise it becomes a read-back;
  * - a model read-back is kept as written.
@@ -222,16 +243,17 @@ export function advance(d: Decision, turns: ConvTurn[], reply: string, next: Nex
   const last = bugTurns(turns).at(-1);
   const sendable = outcomeOf(d, ledger).kind !== "set-aside";
   const clip = (s: string) => (s.length > MAX_REPLY_CHARS ? `${s.slice(0, MAX_REPLY_CHARS - 1).trimEnd()}…` : s);
+  const confirm = (text: string, forced?: string): ConverseResult => ({ reply: text, next: "confirm", ledger, heard: ledger.choice, ...(forced ? { forced } : {}) });
   if (next === "close") {
-    if (last?.next === "confirm" && sendable) return { reply: clip(reply.trim()), next: "close", ledger };
-    return { reply: readBack(d, ledger), next: "confirm", ledger, forced: last?.next === "confirm" ? "nothing to send yet" : "close before a read-back" };
+    if (agreesOnly(turns, ledger) && sendable) return { reply: clip(reply.trim()), next: "close", ledger };
+    return confirm(readBack(d, ledger), last?.next !== "confirm" ? "close before a read-back" : !sendable ? "nothing to send yet" : "the decision changed since the read-back");
   }
   if (next === "ask") {
-    if (ledger.no_more_questions) return { reply: readBack(d, ledger), next: "confirm", ledger, forced: "asked to stop asking" };
-    if (questionsAsked(turns) >= MAX_CONVERSE_QUESTIONS) return { reply: readBack(d, ledger), next: "confirm", ledger, forced: "question cap" };
+    if (ledger.no_more_questions) return confirm(readBack(d, ledger), "asked to stop asking");
+    if (questionsAsked(turns) >= MAX_CONVERSE_QUESTIONS) return confirm(readBack(d, ledger), "question cap");
     return { reply: clip(reply.trim()), next: "ask", ledger };
   }
-  return { reply: clip(reply.trim()) || readBack(d, ledger), next: "confirm", ledger };
+  return confirm(clip(reply.trim()) || readBack(d, ledger));
 }
 
 /** Everything the close path is given from a confirmed thread, all in Jordan's words. */
@@ -314,7 +336,8 @@ export function parseConverseRequest(b: Record<string, unknown>, d: Decision): {
     if (o.who === "bugme") {
       if (o.next !== "ask" && o.next !== "confirm" && o.next !== "close") throw new ConverseError(`turns[${i}].next must be ask, confirm or close`);
       if (o.text.length > MAX_BUG_TURN_CHARS) throw new ConverseError(`turns[${i}] is too long`);
-      return { who: "bugme", text: o.text, next: o.next };
+      if (o.heard !== undefined && (typeof o.heard !== "string" || ![...keys, "other", "reject", "none"].includes(o.heard))) throw new ConverseError(`turns[${i}].heard is not a choice of this decision`);
+      return o.heard !== undefined ? { who: "bugme", text: o.text, next: o.next, heard: o.heard as string } : { who: "bugme", text: o.text, next: o.next };
     }
     if (o.who !== "jordan") throw new ConverseError(`turns[${i}].who must be jordan or bugme`);
     if (o.text.length > MAX_REASON_CHARS) throw new ConverseError(`turns[${i}] is longer than ${MAX_REASON_CHARS} characters`);

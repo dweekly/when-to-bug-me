@@ -163,7 +163,7 @@ async function trial(c: Case, d: Decision, n: number): Promise<{ pass: boolean; 
     const problems = [...c.checks[i](r, d), ...has((r.reply.match(/\?/g) ?? []).length <= 1, "more than one question in the reply"), ...has(unverified === 0, `${unverified} quote(s) not in Jordan's words`)];
     if (problems.length) pass = false;
     detail.push(`turn ${i}: ${problems.length ? `BAD ${problems.join("; ")}` : "ok"} · ${r.next}${r.forced ? ` (forced: ${r.forced})` : ""} · "${r.reply}"`);
-    turns.push({ who: "bugme", text: r.reply, next: r.next });
+    turns.push({ who: "bugme", text: r.reply, next: r.next, ...(r.heard ? { heard: r.heard } : {}) });
   }
   return { pass, detail, ms };
 }

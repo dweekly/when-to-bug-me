@@ -183,7 +183,7 @@ async function playConversation(s: (typeof CONVERSATIONS)[number]): Promise<void
     last = finish(raw);
     console.log(`  converse ${s.id} [turn ${i}]: ${last.next}${last.forced ? ` (forced: ${last.forced})` : ""} "${last.reply}"`);
     if (last.next !== s.expect[i]) mismatched.push(`converse ${s.id} turn ${i}: ${last.next}, the script expects ${s.expect[i]}`);
-    turns.push({ who: "bugme", text: last.reply, next: last.next });
+    turns.push({ who: "bugme", text: last.reply, next: last.next, ...(last.heard ? { heard: last.heard } : {}) });
   }
   if (!last) return;
   const c = closeInputs(d, turns, last.ledger);

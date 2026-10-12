@@ -143,7 +143,7 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
         expect(unverifiedQuotes(raw, turns), `turn ${i}: quotes not in Jordan's words`).toBe(0);
         last = advance(d, turns, raw!.reply, raw!.next, sanitizeLedger(raw!.ledger, d, turns));
         expect(last.next, `turn ${i}`).toBe(s.expect[i]);
-        turns.push({ who: "bugme", text: last.reply, next: last.next });
+        turns.push({ who: "bugme", text: last.reply, next: last.next, ...(last.heard ? { heard: last.heard } : {}) });
       }
       expect(outcomeOf(d, last!.ledger)).toEqual({ kind: "option", key: s.choice });
       const c = closeInputs(d, turns, last!.ledger);
