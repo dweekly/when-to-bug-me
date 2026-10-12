@@ -245,3 +245,30 @@ test("there is one firefly: off, the corner firefly shows the morning's glow, no
   await page.locator("#now .think-field #voice-btn").click();
   await expect(page.locator("#voice")).toHaveAttribute("data-state", "listening");
 });
+
+// Regressions from the code review of #31.
+
+test("speech still finishing when the decision button is pressed becomes a new turn, not part of the read-back", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await page.locator("#voice-btn").click();
+  await say(page, "File all five as drafted because the volunteers already agreed.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .send.decide")).toHaveText("File all five as drafted");
+  await holdPhrase(page, "but only if", "But only if every ticket links the incident doc.", 200);
+  await page.locator("#now .send.decide").click();
+  await expect(page.locator("#now .think-msg")).toContainText("You added something");
+  await expect(page.locator("#think")).toHaveValue("But only if every ticket links the incident doc.");
+  expect((await stored(page))?.answered?.["incident-action-items"]).toBeUndefined();
+});
+
+test("a late phrase from the last turn's session never lands in the next turn", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await page.locator("#voice-btn").click();
+  await say(page, "File all five as drafted because the volunteers already agreed.");
+  const before = await recCount(page);
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .send.decide")).toBeVisible();
+  await expect.poll(() => recCount(page)).toBeGreaterThan(before);
+  await say(page, "words from the turn already sent", before - 1);
+  await expect(page.locator("#think")).toHaveValue("");
+});

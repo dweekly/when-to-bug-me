@@ -102,6 +102,12 @@ export function unanswered(flow: Flow): boolean {
   return flow.turns.at(-1)?.who === "jordan" && !sending.has(flow);
 }
 
+/** Which of Jordan's scripted turns comes next: an unanswered turn is still the current one. */
+export function scriptIndex(flow: Flow): number {
+  const n = jordanTurns(flow.turns).length;
+  return flow.turns.at(-1)?.who === "jordan" ? n - 1 : n;
+}
+
 function repaint(flow: Flow): void {
   if (showing(flow)) paintThread();
 }
@@ -118,6 +124,12 @@ function threadCard(flow: Flow, d: Decision): Card | null {
  */
 export async function sendTurn(flow: Flow, d: Decision, route: RouteKind): Promise<void> {
   if (flow.phase !== "choose" || sending.has(flow)) return;
+  // A turn that never got a reply is asked again as it was, unless the person has since changed the
+  // words or the pick: then the new input replaces it.
+  if (unanswered(flow) && (flow.think.trim() || flow.pick)) {
+    const old = flow.turns.pop() as JordanTurn;
+    if (!flow.pick && old.pick) flow.pick = old.pick;
+  }
   const retry = unanswered(flow);
   sending.add(flow);
   const s0 = S;
@@ -180,6 +192,11 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind): Promi
     save();
     if (showing(flow)) announce(`Bug Me: ${r.reply}`);
     if (r.next === "close" && still()) {
+      // Words typed or spoken while that "yes" was out are a correction: nothing closes until they are sent.
+      if (flow.think.trim() || flow.pick) {
+        flow.message = "You added something after that yes. Send it, and Bug Me will read the decision back again.";
+        return;
+      }
       sending.delete(flow);
       await confirmThread(flow, d, route);
     }
@@ -198,6 +215,21 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind): Promi
  */
 export async function confirmThread(flow: Flow, d: Decision, route: RouteKind): Promise<void> {
   if (flow.phase !== "choose" || sending.has(flow) || !flow.ledger) return;
+  // Claimed at once; the microphone finishes its phrase first. Anything said or typed by then is a new
+  // turn for Bug Me to read back, not part of the decision already read back.
+  sending.add(flow);
+  const s0 = S;
+  try {
+    await drainVoice();
+  } finally {
+    sending.delete(flow);
+  }
+  if (!alive(s0, flow) || flow.phase !== "choose" || !flow.ledger) return;
+  if (flow.think.trim() || flow.pick) {
+    flow.message = "You added something. Send it, and Bug Me will read the decision back again.";
+    repaint(flow);
+    return;
+  }
   const ci = closeInputs(d, flow.turns, flow.ledger);
   flow.basis = ci.reason;
   flow.conditions = ci.conditions;
@@ -764,9 +796,24 @@ export async function reroute(ids: string[], cause: string): Promise<string[]> {
       if (S !== s0 || S.version !== version) return; // superseded: a newer pass (or a reset) owns what is left
       const id = queue.shift()!;
       const why = S.pendingCause[id] ?? cause;
+      // A conversation started on it since the pass began: leave its card alone.
+      const leave = () => {
+        S.pending = S.pending.filter((x) => x !== id);
+        delete S.pendingCause[id];
+      };
+      if (talking(id)) {
+        leave();
+        continue;
+      }
       try {
         const card = await api<Card>("/api/route", { id, rules: S.rules, facts: S.facts });
         if (S !== s0 || S.version !== version) return; // answered under older guidance; the newer pass re-checks it
+        if (talking(id)) {
+          leave();
+          save();
+          render();
+          continue;
+        }
         if (S.answered[id]) {
           // The person answered while this re-check was out; their answer stands.
           S.pending = S.pending.filter((x) => x !== id);

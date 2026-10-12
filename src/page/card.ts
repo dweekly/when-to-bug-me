@@ -7,14 +7,14 @@ import { type JordanTurn, type Quote, jordanTurns, primaryLabel } from "../share
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, Mark, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { confirmThread, done, finalize, glowEvent, isSending, keepFact, next, pick, propose, readyToConfirm, resume, sendTurn, setAside, thinkEdited, unanswered } from "./actions";
+import { confirmThread, done, finalize, glowEvent, isSending, keepFact, next, pick, propose, readyToConfirm, resume, scriptIndex, sendTurn, setAside, thinkEdited, unanswered } from "./actions";
 import { drawableMarks } from "../shared/parse";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import { payloadLine } from "./visuals-layout";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
 import { go } from "./router";
 import { tourAfterRender } from "./tour";
-import { type VoiceTarget, setVoiceTarget } from "./voice";
+import { type VoiceTarget, setVoiceTarget, voiceTargetKey } from "./voice";
 import { renderVisual } from "./visuals";
 import { type Child, $, announce, h } from "./dom";
 import { type Flow, type ShownBugTurn, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
@@ -237,7 +237,7 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
                 type: "button",
                 class: "linkish",
                 onclick: () => {
-                  const t = script.turns[jordanTurns(flow.turns).length];
+                  const t = script.turns[scriptIndex(flow)];
                   if (!t) return;
                   if (t.pick) pick(flow, t.pick);
                   ta.value = t.text;
@@ -361,7 +361,7 @@ export function paintThread(): void {
   const msg = area.querySelector(".think-msg")!;
   msg.textContent = flow.error || (choosing ? flow.message : "");
   const ex = area.querySelector<HTMLElement>(".example");
-  if (ex) ex.hidden = !choosing || !CONVERSATIONS.find((c) => c.id === d.id)?.turns[jordanTurns(flow.turns).length];
+  if (ex) ex.hidden = !choosing || !CONVERSATIONS.find((c) => c.id === d.id)?.turns[scriptIndex(flow)];
   const skip = area.querySelector<HTMLButtonElement>(".skip-q");
   if (skip) {
     skip.hidden = !choosing;
@@ -376,6 +376,9 @@ export function paintThread(): void {
     next.classList.add("drawn");
     fig.replaceWith(next);
   }
+  // A new turn is a new voice target (its key carries the turn number), so a late phrase from the
+  // last turn can't land in this one.
+  if (voiceTargetKey() && !voiceTargetKey().endsWith(`:${flow.turns.length}`)) setVoiceTarget(voiceTargetFor());
 }
 
 /** A read-only card for a decision that is answered, or set aside and waiting for Resume. */
