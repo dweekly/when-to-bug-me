@@ -122,6 +122,10 @@ export interface Flow {
   asks: Record<string, Asked>;
   /** The person's "but…" phrases as sent with the answer. */
   conditions: string;
+  /** The words as submitted with the answer (kept across a reload, so an unparsed draft still goes down whole). */
+  narration: { narration: string; narrationMarks: Mark[]; unparsed: boolean } | null;
+  /** The last parse of these words failed: which revision, and why. Send then offers to read them again. */
+  parseError: { rev: number; message: string } | null;
   /** While setting the decision aside: the kind chosen and the sentence so far. */
   puntKind: PuntKind | null;
   puntReason: string;
@@ -144,7 +148,7 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, choiceBy: null, basis: "", phase: "choose", think: "", rev: 0, parsed: null, asks: {}, conditions: "", pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+  return { id, choice: null, choiceBy: null, basis: "", phase: "choose", think: "", rev: 0, parsed: null, asks: {}, conditions: "", narration: null, parseError: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
 }
 
 /** A follow-up still waiting on the person after they answered (or while a request is out). */
@@ -208,7 +212,9 @@ export function load(q: Queue): State {
         for (const [id, saved] of Object.entries(s.flows ?? {})) {
           const f = { ...newFlow(id), ...saved }; // fields added since this morning was saved get defaults
           // A question that was out when the page reloaded is asked again when the words are next read.
+          // (card.ts asks them again when the card is next shown.)
           for (const [q, a] of Object.entries(f.asks)) if (a.status === "pending") delete f.asks[q];
+          f.parseError = null;
           if (f.phase === "punting") flows[id] = { ...f, phase: f.puntFrom ?? "choose" };
           // Saved by an earlier version mid-Undo: the choice comes back unsent.
           else if ((f.phase as string) === "pending") flows[id] = { ...f, phase: "choose" };

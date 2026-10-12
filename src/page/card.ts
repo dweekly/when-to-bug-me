@@ -6,7 +6,7 @@ import { EXAMPLES } from "../shared/examples";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { currentMarks, done, finalize, glowEvent, isSending, keepFact, next, pick, planFor, propose, resume, send, setAside, thinkEdited } from "./actions";
+import { currentMarks, done, finalize, glowEvent, isSending, keepFact, needsReread, next, pick, planFor, propose, resume, resumeAsks, send, setAside, thinkEdited } from "./actions";
 import { drawableMarks } from "../shared/parse";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import { payloadLine } from "./visuals-layout";
@@ -181,17 +181,19 @@ function drawNow(): void {
     focused.focus();
     focused.setSelectionRange(sel[0], sel[1]);
   }
+  resumeAsks(flow, d);
   paintThink();
   tourAfterRender();
 }
 
 /** The think-out-loud area, kept per decision so a re-render moves it rather than rebuilding it. */
-const thinkNodes = new Map<string, { el: HTMLElement; route: RouteKind }>();
+const thinkNodes = new Map<string, { el: HTMLElement; route: RouteKind; flow: Flow }>();
 
 function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | null {
   if (flow.phase !== "choose" && !flow.think.trim()) return null;
   const kept = thinkNodes.get(flow.id);
-  if (kept && kept.route === route && (kept.el.querySelector("textarea") as HTMLTextAreaElement).value === flow.think) return kept.el;
+  // Only this very flow's element: its handlers belong to it (a reset morning has a new flow).
+  if (kept && kept.flow === flow && kept.route === route && (kept.el.querySelector("textarea") as HTMLTextAreaElement).value === flow.think) return kept.el;
   const ta = h("textarea", {
     id: "think",
     rows: 2,
@@ -239,7 +241,7 @@ function thinkArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nul
       h("button", { type: "button", class: "linkish not-now", onclick: () => startPunt(flow) }, "Not now"),
     ),
   );
-  thinkNodes.set(flow.id, { el, route });
+  thinkNodes.set(flow.id, { el, route, flow });
   return el;
 }
 
@@ -289,14 +291,16 @@ export function paintThink(): void {
   );
 
   const plan = planFor(flow, d);
+  const reread = needsReread(flow);
   const btn = area.querySelector<HTMLButtonElement>(".send");
   if (btn) {
     btn.hidden = !choosing;
-    btn.textContent = plan.label;
-    btn.disabled = plan.kind === "nothing" || isSending(flow);
+    btn.textContent = reread ? "Read it again" : plan.label;
+    btn.disabled = (plan.kind === "nothing" && !reread) || isSending(flow);
   }
   const msg = area.querySelector(".think-msg")!;
-  msg.textContent = flow.error || (choosing ? flow.message : "");
+  const failed = flow.parseError && flow.parseError.rev === flow.rev ? `Couldn't read that just now (${flow.parseError.message}). Pick an option, or read it again.` : "";
+  msg.textContent = flow.error || (choosing ? flow.message || failed : "");
   for (const el of area.querySelectorAll<HTMLElement>(".example, .not-now")) el.hidden = !choosing;
 
   // A figure that colours the picked option follows the pick.

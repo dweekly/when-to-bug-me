@@ -3,7 +3,7 @@
 // server, whose stand-in parser reads full option labels, "because…" reasons, "but…/as long as…"
 // conditions, "?" questions, and "Instead, …" for something else.
 import { type Page, expect, test } from "@playwright/test";
-import { decide, freshPage, goHome, hold, openDecision, option, stored, think } from "./helpers";
+import { decide, freshPage, goHome, goRecord, hold, openDecision, option, stored, think } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -195,4 +195,96 @@ test("at 320px: narration, marks, a long Send label, payload lines and prototype
     await page.locator("#now .opt").first().click();
     expect(await wide(), id).toBeLessThanOrEqual(0);
   }
+});
+
+// Regressions from the code review of #20: each reproduces one finding.
+
+async function resetMorning(page: Page): Promise<void> {
+  await goRecord(page);
+  await page.getByRole("button", { name: "Start the morning over" }).click();
+}
+
+test("after starting the morning over, the think box belongs to the new morning", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await resetMorning(page);
+  await openDecision(page, "incident-action-items");
+  await think(page, "Show me the list first.");
+  await expect(option(page, "Show me the list first")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#now .send").click();
+  await expect.poll(async () => (await answered(page, "incident-action-items"))?.final).toBe("B");
+});
+
+test("a parse still out when the morning is reset does not stand in for the new words", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  const release = await hold(page, "/api/parse", (b) => b.text === "Show me the list first.");
+  await page.locator("#think").fill("Show me the list first.");
+  await page.waitForTimeout(1500);
+  await resetMorning(page);
+  await openDecision(page, "incident-action-items");
+  await think(page, "File all five as drafted.");
+  release();
+  await expect(option(page, "File all five as drafted")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a parse that lands after Send gave up on it changes nothing", async ({ page }) => {
+  test.setTimeout(30_000);
+  await openDecision(page, "incident-action-items");
+  await option(page, "File all five as drafted").click();
+  const release = await hold(page, "/api/parse");
+  await page.locator("#think").fill("Show me the list first.");
+  await page.locator("#now .send").click();
+  await expect.poll(async () => (await answered(page, "incident-action-items"))?.final, { timeout: 12_000 }).toBe("A"); // after the 5 s wait
+  release();
+  await page.waitForTimeout(1000);
+  expect((await answered(page, "incident-action-items"))?.final).toBe("A");
+  await expect(option(page, "File all five as drafted")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("words that couldn't be read say so, and Send reads them again instead of sending", async ({ page }) => {
+  let fail = true;
+  await page.route("**/api/parse", (route) => (fail ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "no API key configured", unavailable: true }) }) : route.continue()));
+  await openDecision(page, "incident-action-items");
+  await page.locator("#think").fill("Show me the list first.");
+  await expect(page.locator("#now .think-msg")).toContainText("Couldn't read that just now");
+  await expect(page.locator("#now .send")).toHaveText("Read it again");
+  fail = false;
+  await page.locator("#now .send").click();
+  await expect(option(page, "Show me the list first")).toHaveAttribute("aria-pressed", "true");
+  expect(await answered(page, "incident-action-items")).toBeUndefined();
+});
+
+test("unread words sent with a clicked option still go down whole after a reload at pushback", async ({ page }) => {
+  await page.route("**/api/parse", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "no API key configured", unavailable: true }) }));
+  await openDecision(page, "sdk-dependency");
+  await option(page, "Add the library").click();
+  await page.locator("#think").fill("But pin the version and isolate it from the public SDK.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .followup.push")).toBeVisible({ timeout: 12_000 });
+  await page.reload();
+  await page.locator("#now .followup.push .primary").click();
+  await expect.poll(async () => (await answered(page, "sdk-dependency"))?.send_down as string | undefined).toContain("But pin the version and isolate it from the public SDK.");
+});
+
+test("a question still out at a reload is asked again", async ({ page }) => {
+  await openDecision(page, "onsite-flight");
+  const release = await hold(page, "/api/ask");
+  await page.locator("#think").fill("Are these fares refundable?");
+  await expect(page.locator("#now .answers li.pending")).toBeVisible({ timeout: 5000 });
+  await page.reload();
+  release();
+  await expect(page.locator("#now .answers li.answered")).toContainText("refundable");
+});
+
+test("an answer to a question from a reset morning is not recorded in the new one", async ({ page }) => {
+  await openDecision(page, "onsite-flight");
+  const release = await hold(page, "/api/ask");
+  await page.locator("#think").fill("Are these fares refundable?");
+  await expect(page.locator("#now .answers li.pending")).toBeVisible({ timeout: 5000 });
+  await resetMorning(page);
+  release();
+  await page.waitForTimeout(800);
+  // Anything that saves the new morning would carry a stray entry with it.
+  await openDecision(page, "incident-action-items");
+  await option(page, "File all five as drafted").click();
+  expect(((await stored(page))?.record ?? []).filter((r) => r.kind === "question")).toHaveLength(0);
 });
