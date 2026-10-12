@@ -95,7 +95,27 @@ npm run e2e                     # Playwright: desktop, phone and 320px on the st
 python3 scripts/scan.py         # secrets, private-data denylist, data-file rule, gitleaks (fails closed)
 npm run record -- --dry-run     # what re-recording would call; drop --dry-run to record (costs money)
 sh scripts/install-hooks.sh     # pre-push hook: scan + tests
+npm run smoke:live              # the live loop end to end on a local stand-in Worker (no key, no spend)
 ```
+
+## Live fire: your own sessions ask Bug Me
+
+The public site is a simulation. The same Worker can also run a real queue for one owner ([`docs/STAGE-7.md`](docs/STAGE-7.md)): Claude Code sessions ask Bug Me through an MCP tool instead of stopping to ask you; Bug Me settles only what one of your permission-granting rules covers within $1, and queues the rest on a private page, `/me`, where you answer with the same card and conversation. The answer, your reason and any guidance go back to the session that asked.
+
+Setting it up (once):
+
+```bash
+# 1. Make the owner key (base64url, so it survives a URL fragment) and keep it in this shell
+OWNER_KEY=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')
+# 2. Give it to the Worker as a secret, and to your keychain for the MCP server
+printf '%s' "$OWNER_KEY" | npx wrangler secret put LIVE_TOKEN --env=""
+security add-generic-password -s bugme-live -a "$USER" -w "$OWNER_KEY"
+echo "Sign-in link: https://bugme.weekly.org/me#k=$OWNER_KEY"
+# 3. Register the MCP server for every Claude Code session
+claude mcp add bugme --scope user -e BUGME_URL=https://bugme.weekly.org -- node ~/dev/when-to-bug-me/mcp/bugme.mjs
+```
+
+Then open the sign-in link once on each device; the page trades the key for a cookie and drops it from the address bar. Without `LIVE_TOKEN`, `/me` and `/api/me/*` don't exist.
 
 ## Limitations
 

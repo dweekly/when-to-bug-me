@@ -1,6 +1,6 @@
 // Cloudflare Worker config. One Worker serves the static page (public/) and /api/*.
-// Secrets (never in this file): SEAL_KEY (base64, 32 bytes) for sealing hidden guesses, and
-// ANTHROPIC_API_KEY for live calls. Local values go in .dev.vars, which is gitignored.
+// Secrets (never in this file): SEAL_KEY (base64, 32 bytes) for sealing hidden guesses,
+// ANTHROPIC_API_KEY for live calls, and LIVE_TOKEN for the owner's live queue (docs/STAGE-7.md). Local values go in .dev.vars, which is gitignored.
 // Durable Object bindings are not inherited by environments, so staging repeats them.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -10,12 +10,18 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/me"]
   },
   "durable_objects": {
-    "bindings": [{ "name": "SPEND", "class_name": "SpendCounter" }]
+    "bindings": [
+      { "name": "SPEND", "class_name": "SpendCounter" },
+      { "name": "OWNER", "class_name": "OwnerQueue" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SpendCounter"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["SpendCounter"] },
+    { "tag": "v2", "new_sqlite_classes": ["OwnerQueue"] }
+  ],
   "observability": { "enabled": true },
   // Production serves bugme.weekly.org (weekly.org's DNS is on Cloudflare); staging keeps workers.dev only.
   "routes": [{ "pattern": "bugme.weekly.org", "custom_domain": true }],
@@ -25,7 +31,10 @@
       "workers_dev": true,
       "routes": [],
       "durable_objects": {
-        "bindings": [{ "name": "SPEND", "class_name": "SpendCounter" }]
+        "bindings": [
+          { "name": "SPEND", "class_name": "SpendCounter" },
+          { "name": "OWNER", "class_name": "OwnerQueue" }
+        ]
       }
       // With no ANTHROPIC_API_KEY secret set, staging serves the recorded Claude run and says so.
     }

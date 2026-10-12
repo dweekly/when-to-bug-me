@@ -208,6 +208,17 @@ export function wholeSource(quote: string, sources: string[]): string {
   return sources.find((s) => normalizeQuote(s) === q) ?? "";
 }
 
+/**
+ * Stricter limits for a world whose bounds aren't hand-authored (docs/STAGE-7.md: the live queue, where
+ * the asking agent declares them): a lower cost ceiling, and only rules that grant permission may clear.
+ */
+export interface SettleLimits {
+  maxCostUsd: number;
+  clears: (ruleText: string) => boolean;
+  /** A rule that keeps a kind of decision for the person; when the decision turns on one, nothing settles. */
+  reserves: (ruleText: string) => boolean;
+}
+
 export interface InvariantResult {
   route: RouteKind;
   settle_option: string;
@@ -227,6 +238,7 @@ export function enforceSettleInvariant(
   decision: Decision,
   rules: Rule[],
   facts: Fact[] = [],
+  limits?: SettleLimits,
 ): InvariantResult {
   if (out.route !== "settle") return { route: out.route, settle_option: "" };
   const missing: string[] = [];
@@ -235,19 +247,24 @@ export function enforceSettleInvariant(
   else {
     if (bound.reversible !== "yes")
       missing.push("the action can't be fully undone");
-    if (bound.cost_usd > SETTLE_MAX_COST_USD)
+    if (bound.cost_usd > (limits?.maxCostUsd ?? SETTLE_MAX_COST_USD))
       missing.push(`it costs $${bound.cost_usd}`);
   }
   // Settling needs a whole current rule, not a fragment of one: "formatting, lint fixes" is not the
   // authorization "...: just do it."
-  if (
-    !wholeSource(
-      out.clearing_rule,
-      rules.map((r) => r.text),
-    )
-  ) {
+  const clearing = wholeSource(
+    out.clearing_rule,
+    rules.map((r) => r.text),
+  );
+  if (!clearing) {
     missing.push("no written rule clears it");
+  } else if (limits && !limits.clears(clearing)) {
+    missing.push("that rule doesn't let Bug Me act alone");
   }
+  // A rule that keeps this kind of decision for the person outranks a general permission.
+  // Checked against the same quote verification the card displays, so a partial quote of a reserving rule counts.
+  const governing = limits ? verifyQuote(out.rule_quoted, rules.map((r) => r.text)) : "";
+  if (limits && governing && limits.reserves(governing)) missing.push("one of your rules keeps this for you");
   // Precedence: a standing preference that bears on the choice outranks a rule that would let Bug Me
   // settle it, so a verified quoted fact always brings it to the person (at least as a check-in).
   if (
