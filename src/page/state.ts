@@ -130,6 +130,8 @@ export interface Flow {
   /** The words in the composer, not yet sent, and their revision (bumped on every edit). */
   think: string;
   rev: number;
+  /** Turns of Jordan's submitted so far, replacements included: the voice target follows it. */
+  sent: number;
   /** From the confirmed thread, for the close path: the guidance evidence (why, conditions and
    *  feedback quotes), and what the "why?" backstop and the guidance offer need to know. */
   evidence: string;
@@ -162,7 +164,7 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, evidence: "", whyAsked: false, noMoreQuestions: false, hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, sent: 0, evidence: "", whyAsked: false, noMoreQuestions: false, hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
 }
 
 /** A conversation has started on this decision and isn't finished: it stays with the person. */
