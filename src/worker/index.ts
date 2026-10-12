@@ -160,8 +160,10 @@ export async function contextVersion(rules: Rule[], facts: Fact[]): Promise<stri
 
 /** Route one decision and turn the result into a public card with its hidden part sealed. */
 async function card(env: Env, canSpend: boolean, key: CryptoKey, d: Decision, rules: Rule[], facts: Fact[], ctx: ModelCtx = PUBLIC_CTX): Promise<Card> {
-  // The emoji and title are display only: a card without them still works, so their failure is not the card's.
-  const [{ out, source }, titles] = await Promise.all([routeFor(env, canSpend, d, rules, facts, ctx), titlesFor(env, canSpend, d, ctx).catch(() => null)]);
+  // The emoji and title are display only: a card without them still works, so their failure is not the
+  // card's. Routing goes first, so the title's spend reservation can never crowd out the route itself.
+  const { out, source } = await routeFor(env, canSpend, d, rules, facts, ctx);
+  const titles = await titlesFor(env, canSpend, d, ctx).catch(() => null);
   return cardFromRoute(key, d, out, source, rules, facts, titles, ctx);
 }
 

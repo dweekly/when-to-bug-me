@@ -97,6 +97,26 @@ describe("advance: the model proposes, code disposes", () => {
     expect(advance(api, [j("Keep user_id"), bug("So: keep user_id. Right?", "confirm"), j("Yes")], "Ok.", "close", picked).next).toBe("confirm");
   });
 
+  it("a yes that changes which questions go to the agent is read back again (third review)", () => {
+    const two = L({ questions: [{ quote: q(0, "How many integrations read it?"), answer: null }, { quote: q(0, "Does mobile parse it?"), answer: null }] });
+    const seen = [j("How many integrations read it? Does mobile parse it?"), bug("I'll ask the agent: How many integrations read it; Does mobile parse it, and set this aside.", "confirm", decisionFingerprint(two))];
+    const one = L({ questions: [{ quote: q(0, "How many integrations read it?"), answer: null }] });
+    expect(advance(api, [...seen, j("Yes, just ask the first one.")], "Ok.", "close", one)).toMatchObject({ next: "confirm", reply: "I'll ask the agent: How many integrations read it, and set this aside." });
+    expect(advance(api, [...seen, j("Yes.")], "Ok.", "close", two).next).toBe("close");
+  });
+
+  it("a read-back too long to show is replaced by code's, never clipped (fourth review)", () => {
+    const l = L({ choice: "B", conditions: [q(0, "do not deploy before Friday.")] });
+    const r = advance(api, [j("Keep user_id, do not deploy before Friday.")], `So: ${"keep user_id and ".repeat(30)}do not deploy before Friday. Right?`, "confirm", l);
+    expect(r).toMatchObject({ next: "confirm", reply: "So: keep user_id, do not deploy before Friday. Right?", forced: "read-back too long" });
+  });
+
+  it("never asks a question the thread has no room to answer (fourth review)", () => {
+    const five = Array.from({ length: 5 }, (_, i) => [j(`Reason ${i}.`), bug("Noted.", "confirm", "x")]).flat();
+    const r = advance(api, [...five, j("Actually, keep user_id.")], "Why that one?", "ask", L({ choice: "B" }));
+    expect(r).toMatchObject({ next: "confirm", forced: "thread limit" });
+  });
+
   it("a close after a read-back with nothing to send stays a read-back", () => {
     const r = advance(api, [j("Hmm"), bug("Want to set this aside for now?", "confirm"), j("Yes")], "Ok.", "close", L({}));
     expect(r.next).toBe("confirm");
@@ -133,6 +153,9 @@ describe("read-backs and the primary button, one per outcome", () => {
   it("other, reject, ask the agent, set aside", () => {
     const other = L({ choice: "other", course: q(0, "Test both with five customers first."), action: "Test both with customers" });
     expect(readBack(api, other)).toBe("So: not either option. Test both with five customers first. Right?");
+    // Conditions show on every outcome's read-back, so a condition added with a "yes" is seen before it closes (third review).
+    expect(readBack(api, L({ ...other, conditions: [q(1, "only if the tests finish today.")] }))).toBe("So: not either option. Test both with five customers first, only if the tests finish today. Right?");
+    expect(readBack(api, L({ choice: "reject", course: q(0, "why rename in v2 at all?"), conditions: [q(1, "unless mobile needs it.")] }))).toBe("So you're rejecting the question: why rename in v2 at all; unless mobile needs it. I'll tell the agent. Right?");
     expect(primaryLabel(api, other)).toBe("Test both with customers");
     const rej = L({ choice: "reject", course: q(0, "why rename in v2 at all?") });
     expect(readBack(api, rej)).toBe("So you're rejecting the question: why rename in v2 at all. I'll tell the agent. Right?");
@@ -247,6 +270,8 @@ describe("fakeConverse, the labeled stand-in", () => {
   });
   it('"neither, …" is another course; "why are we … at all" rejects the question', () => {
     expect(fake(api, [j("Neither, test both with five customers first.")]).ledger).toMatchObject({ choice: "other", course: { quote: "test both with five customers first." } });
+    // A "neither" that rejects the premise is a rejection, not another course (fourth review).
+    expect(fake(api, [j("Neither; why are we renaming in v2 at all?")]).ledger).toMatchObject({ choice: "reject" });
     expect(fake(api, [j("Why are we renaming anything in v2 at all?")]).ledger.choice).toBe("reject");
   });
   it("feedback about the question is captured", () => {

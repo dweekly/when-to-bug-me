@@ -203,21 +203,24 @@ export function primaryLabel(d: Decision, l: Ledger): string {
 /** The read-back code writes when it overrides the model: one fixed template per outcome. */
 export function readBack(d: Decision, l: Ledger): string {
   const o = outcomeOf(d, l);
+  const conds = l.conditions.map((c) => sentence(c.quote)).join("; ");
   if (o.kind === "option") {
     const label = lowerFirst(d.options.find((x) => x.key === o.key)!.label);
-    const conds = l.conditions.map((c) => sentence(c.quote)).join("; ");
     return `So: ${label}${conds ? `, ${conds}` : ""}. Right?`;
   }
-  if (o.kind === "other") return `So: not either option. ${sentence(l.course!.quote)}. Right?`;
-  if (o.kind === "rejected") return `So you're rejecting the question: ${sentence(l.course!.quote)}. I'll tell the agent. Right?`;
+  if (o.kind === "other") return `So: not either option. ${sentence(l.course!.quote)}${conds ? `, ${conds}` : ""}. Right?`;
+  if (o.kind === "rejected") return `So you're rejecting the question: ${sentence(l.course!.quote)}${conds ? `; ${conds}` : ""}. I'll tell the agent. Right?`;
   if (o.kind === "ask-agent") return `I'll ask the agent: ${o.questions.map(sentence).join("; ")}, and set this aside.`;
   return "Want to set this aside for now?";
 }
 
-/** What a read-back commits to: the choice, the course in Jordan's words, and the conditions. Any
- *  change to these (a new click, a condition added or removed) is a different decision. */
+/** What a read-back commits to: everything that changes what is sent (the choice, the course in
+ *  Jordan's words, the conditions, and the questions that would be forwarded to the agent). Any change
+ *  to these is a different decision. Reasons are left out: a reason added with a "yes" changes nothing
+ *  the agent will do, and is kept with the answer. */
 export function decisionFingerprint(l: Ledger): string {
-  return JSON.stringify([l.choice, l.course?.quote.trim() ?? "", l.conditions.map((c) => c.quote.trim()).sort()]);
+  const open = l.questions.filter((q) => q.answer === null).map((q) => q.quote.quote.trim()).sort();
+  return JSON.stringify([l.choice, l.course?.quote.trim() ?? "", l.conditions.map((c) => c.quote.trim()).sort(), open]);
 }
 
 /**
@@ -257,9 +260,14 @@ export function advance(d: Decision, turns: ConvTurn[], reply: string, next: Nex
   if (next === "ask") {
     if (ledger.no_more_questions) return confirm(readBack(d, ledger), "asked to stop asking");
     if (questionsAsked(turns) >= MAX_CONVERSE_QUESTIONS) return confirm(readBack(d, ledger), "question cap");
+    // A question Jordan couldn't answer within the thread's limits is never asked.
+    const js = jordanTurns(turns);
+    if (js.length >= MAX_CONVERSE_TURNS || js.reduce((n, t) => n + t.text.length, 0) >= MAX_TRANSCRIPT_CHARS - 40) return confirm(readBack(d, ledger), "thread limit");
     return { reply: clip(reply.trim()), next: "ask", ledger };
   }
-  return confirm(clip(reply.trim()) || readBack(d, ledger));
+  // A read-back too long to show whole is replaced by code's, never clipped: Jordan confirms only what was shown.
+  const said = reply.trim();
+  return confirm(said && said.length <= MAX_REPLY_CHARS ? said : readBack(d, ledger), said.length > MAX_REPLY_CHARS ? "read-back too long" : undefined);
 }
 
 /** Everything the close path is given from a confirmed thread, all in Jordan's words. */
