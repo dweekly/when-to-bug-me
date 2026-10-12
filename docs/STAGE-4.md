@@ -20,23 +20,28 @@ The mockup David reviewed is `docs/stage-4/narrate-mockup.html` (screenshot besi
 
 **Marks.** After each finished phrase (or 1.2 s after typing stops), the page sends the decision and the full text to a new endpoint, `/api/parse`. Claude returns:
 - `choice`: one of the decision's option keys, `"other"` when the person describes a different course, or `"none"`;
-- `other`: the different course in the person's words, when `choice` is `"other"`;
 - `marks`: up to 8 `{ kind: "choice" | "why" | "but" | "ask", quote }`, each `quote` copied exactly from the text.
 
-Code keeps a mark only if its quote occurs in the text as it is now (the same verification the route uses for quoted rules), and drops the rest. Marks are drawn on a layer behind a transparent-text textarea with identical metrics, so editing, selection, voice and screen readers all work on a plain textarea. The choice mark is lit (firefly yellow, the one accent); why gets a faint solid underline, but a dashed one, a question a dotted one. A response is applied only if it is for the latest request (sequence guard, as `askQuestion` does today). Marks never decide anything by themselves.
+Code keeps a mark only if its quote is a literal substring of the text (no whitespace or case folding; the Worker parses the raw text, not a whitespace-collapsed copy), and drops the rest. One limit, `MAX_REASON_CHARS` (600), applies to the text everywhere: typing, voice, parse, and the downstream calls. The textarea is mounted once per card; marks, the lit option, the Send label and question answers update in place, so typing never loses focus, selection or undo history (full renders stay for lifecycle transitions). Marks are drawn on a layer behind the textarea with identical metrics, hidden from assistive technology; the textarea's own text stays visible, so it reads fine without the layer. The choice mark is lit (firefly yellow, the one accent); why gets a faint solid underline, but a dashed one, a question a dotted one. Overlaps are resolved only for drawing; Send uses every verified mark. Marks never decide anything by themselves.
 
-**Choosing.** Clicking an option card picks it: the card lights, nothing is sent. A spoken or typed choice picks too. The most recent signal wins: a click overrides an earlier spoken choice, and a new spoken choice (one that differs from the previous parse's) overrides an earlier click.
+A parse applies only to the exact text revision it was asked about: every edit bumps the flow's revision, and a response for an older revision is dropped. Finished voice phrases parse at once (a small callback on the voice target); typing parses after 1.2 s idle.
 
-**Questions.** When a parse returns an `ask` mark whose quote is new, the page asks it through the existing `/api/ask` and shows the answer indented under the text ("Agent: …"). If the agent's material doesn't answer it, the line says so.
+**Choosing.** Clicking an option card picks it: the card lights, nothing is sent. A spoken or typed choice picks too. The most recent signal wins: a click overrides what was already said; a later parse whose choice differs from the previous parse's overrides the click. If the spoken choice is deleted (the parse says `"none"`), a choice that came from speech clears; a clicked one stays.
+
+**Questions.** Each `ask` mark is asked once through the existing `/api/ask` (a per-flow map keyed by the exact quote: pending, answered, missing, failed); the answer shows indented under the text. Only questions still in the text are shown or forwarded. "Unanswered" means the agent's material came back without an answer, not a request in flight or a failure.
 
 **Send.** The button names what it will send and is disabled until there is something to send:
 - a chosen option: "Send: keep user_id", or "Send: keep user_id, with one condition" when there are `but` marks;
-- `choice: "other"`: "Send: <their course>", recorded as "something else" (existing `chooseOther`);
-- no choice and an unanswered question: "Ask the agent, and set this aside" (existing `sendQuestionToAgent`).
+- `choice: "other"`: "Send: something else", recorded as "something else" (existing `chooseOther`), with the person's `choice` quotes as the course;
+- no choice and unanswered questions: "Ask the agent, and set this aside" (existing `sendQuestionToAgent`, all unanswered questions together).
 
-On Send the page finishes any phrase being spoken (`drainVoice`), waits for the parse of the final text (at most 5 s; if it fails, an option click still decides, with the whole text as the reason and no conditions), then answers through the existing path: pushback, sealed guess, "I'm curious: why?", proposed guidance, send-down. The reason given to that path is the `why` quotes joined, verbatim (the whole text if there are none); the conditions are the `but` quotes, verbatim, sent down with the answer and offered as guidance as today. Bug Me never paraphrases the person into their own record. Send is the confirmation, so the Undo window and `pending` phase go.
+Send claims the submission synchronously (a flag, so a second click does nothing), keeps the voice target while it finishes any phrase being spoken (`drainVoice`), snapshots the text, and waits for the parse of exactly that revision (at most 5 s; a late response is then ignored). After every wait it re-checks that the flow, the card on screen and the routed card are unchanged. If the parse failed: a clicked option still decides, with the whole text as the reason and quoted verbatim in the send-down; with no click, nothing is sent and the card says so, ready to retry. Then the existing path: pushback, sealed guess, "I'm curious: why?", proposed guidance, send-down, with the captured flow passed through rather than the global one.
 
-**Without a key.** The fake model gets a deterministic parser (option labels and their key words pick; "because/since" marks why; "but/as long as/unless" marks but; a sentence ending "?" marks ask). Recorded mode replays recorded parses on exact match. Tours offer "Use Jordan's words": a recorded narration per tour decision that fills the text, and its parse, ask and fact calls are all in the recording. The parse call has its own prompt version, so the existing recordings stay valid; the recorder adds the new calls.
+What goes into that path, all verbatim (Bug Me never paraphrases the person into their own record): the reason is the `why` quotes joined (empty when the parse found none, so "I'm curious: why?" still asks); the conditions are the `but` quotes, sent down with the answer and given to `/api/fact` together with the reason; the whole text is kept in the record as `narration`. Parsed marks are stored as `narrationMarks`, apart from the existing feedback `marks`. Send is the confirmation, so the answer's Undo window and `pending` phase go (the settled-decisions Undo stays).
+
+**Prototypes and payloads.** Each option's column holds its own prototype (settings redesign) above its card, so a phone reads prototype A, option A, prototype B, option B. Payload visuals show each option's changed line in its card (`payloadLine`), with the reach caption once below.
+
+**Without a key.** The fake model gets a deterministic parser: sentences and inline clauses split without changing their text; a "?" sentence asks; "but/as long as/unless" marks a condition; "because/since" a reason; an option's full label (word boundaries) picks, ignoring questions, reasons and negated mentions; ambiguous means `"none"`. Recorded mode replays recorded parses on exact match. Tours offer "Use Jordan's words": a recorded narration per tour decision that fills the text. The recorder runs each narration through its parse, derives the ask, fact and re-route calls with the same helper the page uses, and records them all. The parse call has its own prompt version, so existing recordings stay valid. Editing Jordan's words beyond the recording shows the existing "couldn't evaluate" state and keeps the draft.
 
 **Tours** are re-scripted: say it (or use Jordan's words), see the marks, Send. Undo steps go.
 
@@ -44,14 +49,18 @@ On Send the page finishes any phrase being spoken (`drainVoice`), waits for the 
 
 ```bash
 npm run typecheck && npm test            # parse: schema per decision, quote verification, choice precedence, Send label states, fake parser
-npm run e2e                              # all projects (desktop, phone, 320px, recorded-desktop/phone): every tour start to finish on a keyless server; no horizontal scroll at 320px
-npm run eval:parse                       # NEW: 6 narrations x 3 live trials, expected choice and mark kinds written first; passes only if every trial gets the choice right and every kept mark verifies
+npm run e2e                              # all projects (desktop, phone, 320px, recorded-desktop/phone): tours in every project; answering helpers use Send; the old lifecycle regressions kept; 320px covers narration, a long Send label, payload and prototypes
+npm run eval:parse                       # 6 narrations x 3 live trials, expectations written first; passes only if every trial gets the choice and every expected mark kind, with no mark dropped as inexact
 python3 scripts/scan.py
 ```
 
-Plus Lighthouse accessibility at 100 on a decision card at phone width, and screenshots of a card mid-narration at 1280 and 390 wide, checked by eye against the mockup.
+Plus Lighthouse accessibility at 100 on a decision card at phone width; screenshots of a card mid-narration at 1280 and 390 wide, checked by eye against the mockup; and a by-hand check of caret, selection, scrolling and keyboard editing in the marked textarea.
+
+First eval run (2026-10-12, before the UI): 6/6 narrations, 18/18 trials, 1.4–4.8 s per parse, $0.12 in all.
 
 ## Out of scope
+
+Codex reviewed this plan once (2026-10-12); its points are folded in above. Its roadmap items (the full lifecycle for "something else", real question delivery, voice privacy, parser quality at scale) are in `ROADMAP.md`.
 
 - The fixture rework so most of the night is settled (next PR, Tuesday).
 - Parsing words still being spoken (interim results); only finished phrases are parsed.
