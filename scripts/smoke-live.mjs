@@ -7,6 +7,7 @@
 //   4. The owner answers it through the page's own API path (a conversation turn, the answer, the resolution).
 //   5. check_bug_me returns the answer with the owner's reason.
 //   6. Sign-in: no credentials is refused; the one-time link sets the cookie; /me serves the app.
+//   7. The Worker goes away while a session waits: the session still gets its ticket, to check later.
 //
 // Run with `npm run smoke:live`. No API key is used and nothing is spent.
 
@@ -23,6 +24,7 @@ const LIVE_VAR = "LIVE_TOKEN";
 const NO_KEY_VAR = "ANTHROPIC_API_KEY";
 const STATE = `.wrangler/smoke-live-${process.pid}`;
 const procs = [];
+let worker;
 
 function fail(msg) {
   console.error(`FAIL: ${msg}`);
@@ -46,6 +48,7 @@ async function startWorker() {
     { stdio: ["ignore", "pipe", "pipe"] },
   );
   procs.push(w);
+  worker = w;
   for (let i = 0; i < 60; i++) {
     try {
       if ((await fetch(`${BASE}/api/queue`)).ok) return;
@@ -162,6 +165,21 @@ const viaCookie = await fetch(`${BASE}/api/me/queue`, { headers: { cookie: cooki
 const page = await fetch(`${BASE}/me`);
 if (!viaCookie.ok || !page.ok || !/<html/i.test(await page.text())) fail("the cookie or the /me page didn't work");
 ok("sign-in: refused without credentials; the link sets an HttpOnly cookie; /me serves the app");
+
+const waiting = toolResult(rpc, "ask_bug_me", {
+  question: "Rotate the production database password tonight?",
+  options: [
+    { label: "Rotate tonight", reversible: "no", cost_usd: 0 },
+    { label: "Wait for the weekend", reversible: "yes", cost_usd: 0 },
+  ],
+  context: "A routine rotation.",
+  wait_minutes: 1,
+});
+await new Promise((r) => setTimeout(r, 4000)); // asked, and polling
+worker.kill();
+const lost = await waiting;
+if (lost.status !== "pending" || !lost.ticket || !/check_bug_me/.test(lost.note ?? "")) fail(`a lost poll lost the ticket: ${JSON.stringify(lost)}`);
+ok(`the Worker went away mid-wait: the session still has ${lost.ticket}, with a note to check later`);
 
 cleanup();
 console.log("smoke:live passed");

@@ -101,15 +101,17 @@ The public site is a simulation. The same Worker can also run a real queue for o
 Setting it up (once):
 
 ```bash
-# 1. A token for the owner, as a Worker secret (base64url, so it survives a URL fragment)
-openssl rand -base64 32 | tr '+/' '-_' | tr -d '=' | npx wrangler secret put LIVE_TOKEN --env=""
-# 2. The same token in your keychain, for the MCP server (it prompts for it)
-security add-generic-password -s bugme-live -a "$USER" -w
+# 1. Make the owner key (base64url, so it survives a URL fragment) and keep it in this shell
+OWNER_KEY=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')
+# 2. Give it to the Worker as a secret, and to your keychain for the MCP server
+printf '%s' "$OWNER_KEY" | npx wrangler secret put LIVE_TOKEN --env=""
+security add-generic-password -s bugme-live -a "$USER" -w "$OWNER_KEY"
+echo "Sign-in link: https://bugme.weekly.org/me#k=$OWNER_KEY"
 # 3. Register the MCP server for every Claude Code session
 claude mcp add bugme --scope user -e BUGME_URL=https://bugme.weekly.org -- node ~/dev/when-to-bug-me/mcp/bugme.mjs
 ```
 
-Then open `https://bugme.weekly.org/me#k=<your token>` once on each device; the page trades it for a cookie and drops it from the address bar. Without `LIVE_TOKEN`, `/me` and `/api/me/*` don't exist.
+Then open the sign-in link once on each device; the page trades the key for a cookie and drops it from the address bar. Without `LIVE_TOKEN`, `/me` and `/api/me/*` don't exist.
 
 ## Limitations
 

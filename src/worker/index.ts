@@ -28,7 +28,7 @@ import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from ".
 import type { Titles } from "../shared/titles";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
 import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, factFor, parseFor, routeFor, titlesFor } from "./model";
-import { AskError, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
+import { AskError, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askProjectName, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
 import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
@@ -48,9 +48,11 @@ interface World {
   /** Every other decision the fact prompt lists, and the ones still waiting. */
   others(d: Decision): Promise<Decision[]>;
   defaults(): Promise<{ rules: Rule[]; facts: Fact[] }>;
-  save?(rules: Rule[], facts: Fact[]): Promise<void>;
-  /** The revision of the world's rules and facts, read just before a routing call. */
-  rev?(): Promise<number>;
+  /**
+   * The owner's world saves a request's rules and facts and reads back the current ones with their
+   * revision in one step, so routing never pairs old rules with a newer revision.
+   */
+  snapshot?(rules?: Rule[], facts?: Fact[]): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }>;
   canSpend: boolean;
 }
 
@@ -98,8 +100,9 @@ function ownerQueue(env: Env) {
 }
 
 /** The owner's persona, with the projects their tickets name. */
-function ownerPersonaOf(tickets: Ticket[]): Persona {
-  return ownerPersona([...new Set(tickets.map((t) => t.decision.project))]);
+function ownerPersonaOf(tickets: Pick<Ticket, "decision" | "project_name">[]): Persona {
+  const byId = new Map(tickets.map((t) => [t.decision.project, t.project_name ?? t.decision.project]));
+  return ownerPersona([...byId].map(([id, name]) => ({ id, name })));
 }
 
 async function ownerWorld(env: Env): Promise<World> {
@@ -116,8 +119,7 @@ async function ownerWorld(env: Env): Promise<World> {
     },
     others: async (d) => open.filter((x) => x.id !== d.id).slice(-MAX_OTHERS_IN_PROMPT),
     defaults: () => q.context(),
-    save: (rules, facts) => q.setContext(rules, facts),
-    rev: async () => (await q.context()).rev,
+    snapshot: (rules, facts) => q.snapshot(rules, facts),
     // The signed-in owner may make live calls without a human check; the daily cap still applies.
     canSpend: true,
   };
@@ -131,11 +133,10 @@ function cleanText(v: unknown, max: number, field: string): string {
 }
 
 /** The rules and facts a request carries, bounded; absent means the world's own. The owner's are saved. */
-async function contextIn(b: Record<string, unknown>, w: World): Promise<{ rules: Rule[]; facts: Fact[] }> {
-  const defaults = await w.defaults();
-  const c = context(b, defaults);
-  if (w.save && (b.rules !== undefined || b.facts !== undefined)) await w.save(c.rules, c.facts);
-  return c;
+async function contextIn(b: Record<string, unknown>, w: World): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }> {
+  const c = context(b, await w.defaults());
+  if (!w.snapshot) return { ...c, rev: 0 };
+  return b.rules !== undefined || b.facts !== undefined ? w.snapshot(c.rules, c.facts) : w.snapshot();
 }
 
 function context(b: Record<string, unknown>, defaults: { rules: Rule[]; facts: Fact[] }): { rules: Rule[]; facts: Fact[] } {
@@ -292,18 +293,17 @@ async function modelCall(
   path: string,
   b: Record<string, unknown>,
   w: World,
-  onCard?: (c: Card, d: Decision, rev: number) => Promise<void>,
+  /** The owner's world stores a re-routed card and answers with the card the ticket now has. */
+  onCard?: (c: Card, d: Decision, rev: number) => Promise<Card | undefined>,
 ): Promise<Response | null> {
   const { canSpend, ctx } = w;
 
   if (path === "/route") {
     const d = await w.decisionOf(b.id);
-    const { rules, facts } = await contextIn(b, w);
-    // The rules this card is routed under: if they change before it is stored, it can't settle anything.
-    const rev = (await w.rev?.()) ?? 0;
+    // The rules this card is routed under, with their revision: if they change before it is stored, it can't settle anything.
+    const { rules, facts, rev } = await contextIn(b, w);
     const c = await card(env, canSpend, key, d, rules, facts, ctx);
-    await onCard?.(c, d, rev);
-    return json(c);
+    return json((await onCard?.(c, d, rev)) ?? c);
   }
 
   if (path === "/answer") {
@@ -413,16 +413,19 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
 
   if (path === "/api/me/queue" && req.method === "GET") {
     const shown = await q.shown();
+    const answered = await q.recentlyAnswered();
     const { rules, facts } = await q.context();
     const now = new Date();
     return json({
-      persona: ownerPersonaOf(shown),
+      persona: ownerPersonaOf([...shown, ...answered]),
       rules,
       facts,
       decisions: shown.map((t) => publicDecision({ ...t.decision, waiting_minutes: waitingMinutes(t, now) })),
       cards: shown.map((t) => t.card),
       // Set aside on any device: the page lists them, and Resume brings them back.
       aside: shown.filter((t) => t.status === "set-aside" && t.aside).map((t) => ({ id: t.decision.id, ...t.aside })),
+      // Answered in the last day: not waiting, but the page keeps their follow-ups (a late reason, guidance) working.
+      answered: answered.map((t) => ({ decision: publicDecision(t.decision), card: t.card })),
       live_available: Boolean(env.ANTHROPIC_API_KEY) && !env.FAKE_MODEL,
       mode: env.FAKE_MODEL ? "fake" : env.ANTHROPIC_API_KEY ? "live" : "recorded",
       owner: true,
@@ -441,8 +444,9 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       if (e instanceof AskError) throw new BadRequest(e.message);
       throw e;
     }
-    const { rules, facts, rev } = await q.context();
-    const ctx: ModelCtx = { persona: ownerPersonaOf([...(await q.shown()), { decision: d } as Ticket]), store: false, settle: OWNER_SETTLE_LIMITS };
+    const projectName = askProjectName(b);
+    const { rules, facts, rev } = await q.snapshot();
+    const ctx: ModelCtx = { persona: ownerPersonaOf([...(await q.shown()), { decision: d, project_name: projectName }]), store: false, settle: OWNER_SETTLE_LIMITS };
     // Routing can fail (no key, today's budget spent, a bad answer): the ask is kept, as the owner's to decide.
     let c: Card;
     let unrouted: string | undefined;
@@ -453,7 +457,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       unrouted = e.message;
       c = await cardFromRoute(key, d, unroutedRoute(d, e.message), "code", rules, facts, null, ctx);
     }
-    const t = await q.add(d, c, await settleInstruction(key, d, c), rev, unrouted);
+    const t = await q.add(d, c, await settleInstruction(key, d, c), rev, unrouted, projectName);
     return json(reply(t));
   }
 
@@ -476,7 +480,8 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
 
   const w = await ownerWorld(env);
   const res = await modelCall(env, key, path.slice("/api/me".length), b, w, async (c, d, rev) => {
-    await q.reroute(d.id, c, await settleInstruction(key, d, c), rev);
+    // The page gets the card the ticket now has: a settled ticket stays settled, a reopened one stays the owner's.
+    return (await q.reroute(d.id, c, await settleInstruction(key, d, c), rev))?.card;
   });
   return res ?? json({ error: "not found" }, 404);
 }

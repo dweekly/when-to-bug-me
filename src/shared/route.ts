@@ -262,7 +262,8 @@ export function enforceSettleInvariant(
     missing.push("that rule doesn't let Bug Me act alone");
   }
   // A rule that keeps this kind of decision for the person outranks a general permission.
-  const governing = limits ? wholeSource(out.rule_quoted, rules.map((r) => r.text)) : "";
+  // Checked against the same quote verification the card displays, so a partial quote of a reserving rule counts.
+  const governing = limits ? verifyQuote(out.rule_quoted, rules.map((r) => r.text)) : "";
   if (limits && governing && limits.reserves(governing)) missing.push("one of your rules keeps this for you");
   // Precedence: a standing preference that bears on the choice outranks a rule that would let Bug Me
   // settle it, so a verified quoted fact always brings it to the person (at least as a check-in).

@@ -60,6 +60,9 @@ describe("an ask becomes a decision", () => {
     const d = decisionFromAsk(ASK, "t-abc");
     expect(d.id).toBe("t-abc");
     expect(d.project).toBe("nwx");
+    // The decision carries the project's id, so the page's agenda finds it under the persona's projects.
+    expect(decisionFromAsk({ ...ASK, project: "My App" }, "t-p").project).toBe("my-app");
+    expect(decisionFromAsk({ ...ASK, project: undefined }, "t-p").project).toBe("other");
     expect(d.agent).toEqual(["onboarding work"]);
     expect(d.options.map((o) => o.key)).toEqual(["A", "B"]);
     expect(d.options[0].description).toBe("For: users get it today; The agent says: reversible: partly; costs $0");
@@ -81,7 +84,7 @@ describe("an ask becomes a decision", () => {
   });
 
   it("names the owner's projects from the tickets, and is not marked synthetic", () => {
-    const p = ownerPersona(["nwx", "medcorder"]);
+    const p = ownerPersona([{ id: "nwx", name: "nwx" }, { id: "medcorder", name: "Medcorder" }]);
     expect(p.synthetic).toBe(false);
     expect(p.projects.map((x) => x.id)).toEqual(["nwx", "medcorder"]);
   });
@@ -173,6 +176,29 @@ describe("the ticket lifecycle", () => {
     expect((await q.context()).rules).toEqual(OWNER_RULES);
     await q.setContext([{ id: "L1", text: "Ask me everything." }], []);
     expect((await q.context()).rules).toEqual([{ id: "L1", text: "Ask me everything." }]);
+  });
+
+  it("clips an over-long reason rather than refusing it, so a delivery can never jam", () => {
+    const d = decisionFromAsk(ASK, "t-long");
+    const r = parseResolution({ outcome: "set-aside", reason: "x".repeat(2000), instruction: "y".repeat(2000) }, d);
+    expect(r.reason!.length).toBe(1200);
+    expect(r.instruction!.endsWith("…")).toBe(true);
+  });
+
+  it("keeps answered tickets for a day, so a late reason or guidance still has its decision", async () => {
+    const q = new LiveQueue(mapKV());
+    const d = decisionFromAsk(ASK, "t-recent");
+    await q.add(d, cardFor(d.id, "decide"), "", 0);
+    await q.resolve(d.id, parseResolution({ outcome: "option", choice: "A" }, d), new Date("2026-10-12T10:00:00Z"));
+    expect((await q.recentlyAnswered(new Date("2026-10-12T20:00:00Z"))).map((t) => t.decision.id)).toEqual(["t-recent"]);
+    expect(await q.recentlyAnswered(new Date("2026-10-14T10:00:00Z"))).toEqual([]);
+  });
+
+  it("saves and reads the rules and their revision in one step", async () => {
+    const q = new LiveQueue(mapKV());
+    const s = await q.snapshot([{ id: "L1", text: "Ask me everything." }], []);
+    expect(s).toMatchObject({ rev: 1, rules: [{ id: "L1", text: "Ask me everything." }] });
+    expect((await q.snapshot()).rev).toBe(1);
   });
 
   it("refuses a resolution that names no option, or an other without a course", () => {
@@ -294,6 +320,11 @@ describe("what Bug Me may settle on the owner's behalf", () => {
     expect(r.adjusted).toMatch(/keeps this for you/);
   });
 
+  it("a partial quote of a reserving rule still keeps the decision for David", () => {
+    const r = enforceSettleInvariant(route(rule("L10"), "deploys need my explicit go."), ask(0), OWNER_RULES, [], OWNER_SETTLE_LIMITS);
+    expect(r.route).toBe("check_in");
+  });
+
   it("the simulation's limits are unchanged", () => {
     expect(enforceSettleInvariant(route(rule("L4")), ask(20), OWNER_RULES).route).toBe("settle");
   });
@@ -306,7 +337,10 @@ describe("races and returns", () => {
     const { rev } = await q.context();
     expect(rev).toBe(1);
     const d = decisionFromAsk(ASK, "t-stale");
-    expect(reply(await q.add(d, cardFor(d.id, "settle", "A"), "Go.", 0))).toMatchObject({ status: "pending" });
+    const held = await q.add(d, cardFor(d.id, "settle", "A"), "Go.", 0);
+    expect(reply(held)).toMatchObject({ status: "pending" });
+    // Its card says so too: a quick check, not "Decided for you".
+    expect(held.card).toMatchObject({ route: "check_in", settle_option: "", model_route: "settle" });
     expect(reply((await q.reroute(d.id, cardFor(d.id, "settle", "A"), "Go.", 0))!)).toMatchObject({ status: "pending" });
     expect(reply((await q.reroute(d.id, cardFor(d.id, "settle", "A"), "Go.", 1))!)).toMatchObject({ status: "settled" });
   });
@@ -322,8 +356,11 @@ describe("races and returns", () => {
     const q = new LiveQueue(mapKV());
     const d = decisionFromAsk(ASK, "t-sticky");
     await q.add(d, cardFor(d.id, "settle", "B"), "Wait.", 0);
-    await q.resolve(d.id, parseResolution({ outcome: "reopened" }, d));
-    expect(reply((await q.reroute(d.id, cardFor(d.id, "settle", "B"), "Wait.", 0))!)).toMatchObject({ status: "reopened" });
+    const back = await q.resolve(d.id, parseResolution({ outcome: "reopened" }, d));
+    expect(back.card.route).toBe("check_in"); // every device now lists it as waiting
+    const again = (await q.reroute(d.id, cardFor(d.id, "settle", "B"), "Wait.", 0))!;
+    expect(reply(again)).toMatchObject({ status: "reopened" });
+    expect(again.card.route).toBe("check_in");
   });
 
   it("set aside keeps why for every device; Resume brings it back to pending", async () => {

@@ -37,6 +37,8 @@ export const OWNER_SETTLE_LIMITS = { maxCostUsd: OWNER_SETTLE_MAX_USD, clears: g
 
 /** How many settled tickets the queue keeps showing (for Decided for you). */
 export const SETTLED_SHOWN = 50;
+/** How long an answered ticket stays available to the page for its follow-ups. */
+const ANSWERED_KEPT_MS = 24 * 60 * 60 * 1000;
 
 export class AskError extends Error {}
 
@@ -87,6 +89,8 @@ export interface TicketAnswer {
 
 export interface Ticket {
   decision: Decision;
+  /** The project as the agent named it; `decision.project` holds its id. */
+  project_name?: string;
   card: Card;
   status: TicketStatus;
   created_at: string;
@@ -120,7 +124,8 @@ export function decisionFromAsk(raw: unknown, id: string): Decision {
   const b = raw as Record<string, unknown>;
   const question = text(b.question, MAX_QUESTION_CHARS, "question");
   const context = text(b.context ?? "", MAX_CONTEXT_CHARS, "context", false);
-  const project = text(b.project ?? "", MAX_NAME_CHARS, "project", false) || "Other";
+  // The decision carries the project's id, as the simulation's do; the name the agent gave is kept for display.
+  const project = projectId(text(b.project ?? "", MAX_NAME_CHARS, "project", false) || "Other");
   const session = text(b.session ?? "", MAX_NAME_CHARS, "session", false) || "a Claude Code session";
   if (!Array.isArray(b.options) || b.options.length < MIN_ASK_OPTIONS || b.options.length > MAX_ASK_OPTIONS) {
     throw new AskError(`options must be a list of ${MIN_ASK_OPTIONS} to ${MAX_ASK_OPTIONS}`);
@@ -162,8 +167,14 @@ export function decisionFromAsk(raw: unknown, id: string): Decision {
   };
 }
 
+/** The project name an ask gave, for display (decisionFromAsk stores only its id). */
+export function askProjectName(raw: unknown): string {
+  const b = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  return str(b.project).slice(0, MAX_NAME_CHARS) || "Other";
+}
+
 /** The owner's persona: David, from the "How we work" section of his CLAUDE.md. Projects are the ones his tickets name. */
-export function ownerPersona(projects: string[]): Persona {
+export function ownerPersona(projects: { id: string; name: string }[]): Persona {
   return {
     synthetic: false,
     name: "David",
@@ -173,7 +184,7 @@ export function ownerPersona(projects: string[]): Persona {
     company: "a small independent studio",
     company_blurb: "where Claude Code sessions do most of the engineering across several software projects",
     fleet_size: Math.max(1, projects.length),
-    projects: projects.map((p) => ({ id: projectId(p), name: p, blurb: `the ${p} project` })),
+    projects: projects.map((p) => ({ id: p.id, name: p.name, blurb: `the ${p.name} project` })),
     how_to_work_with_me: [
       "Ask every question whose answer changes the design all at once, each with a recommended default.",
       "Plain English first, rigor underneath.",
@@ -244,9 +255,10 @@ export function parseResolution(raw: unknown, d: Decision): Resolution {
     if (!d.options.some((o) => o.key === b.choice)) throw new AskError("choice is not an option of this decision");
     r.choice = b.choice as string;
   }
+  // Long texts are clipped, never refused: a refused delivery would sit at the head of the page's outbox.
   const opt = (k: keyof Resolution, max: number) => {
-    const t = text(b[k] ?? "", max, k, false);
-    if (t) (r as unknown as Record<string, unknown>)[k] = t;
+    const t = str(b[k]);
+    if (t) (r as unknown as Record<string, unknown>)[k] = t.length > max ? `${t.slice(0, max - 1)}…` : t;
   };
   opt("course", MAX_REASON_CHARS);
   opt("reason", 1200);
@@ -255,7 +267,7 @@ export function parseResolution(raw: unknown, d: Decision): Resolution {
   opt("guidance", 600);
   opt("kind", 20);
   if ((outcome === "other" || outcome === "rejected") && !r.course) throw new AskError("course is required for other and rejected");
-  if (Array.isArray(b.questions)) r.questions = b.questions.map((q, i) => text(q, MAX_REASON_CHARS, `questions[${i}]`)).slice(0, 8);
+  if (Array.isArray(b.questions)) r.questions = b.questions.map((q) => str(q).slice(0, MAX_REASON_CHARS)).filter(Boolean).slice(0, 8);
   return r;
 }
 
@@ -278,6 +290,12 @@ export class LiveQueue {
     return { rules: (await this.kv.get<Rule[]>("rules")) ?? OWNER_RULES, facts: (await this.kv.get<Fact[]>("facts")) ?? [], rev: (await this.kv.get<number>("rev")) ?? 0 };
   }
 
+  /** Save (when given) and read the rules, facts and revision in one step, so routing uses a consistent snapshot. */
+  async snapshot(rules?: Rule[], facts?: Fact[]): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }> {
+    if (rules && facts) await this.setContext(rules, facts);
+    return this.context();
+  }
+
   async setContext(rules: Rule[], facts: Fact[]): Promise<void> {
     const c = await this.context();
     if (JSON.stringify([c.rules, c.facts]) === JSON.stringify([rules, facts])) return;
@@ -298,9 +316,12 @@ export class LiveQueue {
    * Store a newly routed ask. A settle route is answered by its rule at once, but only if the rules it
    * was routed under (`rev`) are still current; otherwise it waits for the owner.
    */
-  async add(decision: Decision, card: Card, instruction: string, rev: number, now = new Date(), unrouted?: string): Promise<Ticket> {
-    const t: Ticket = { decision, card, status: "open", created_at: now.toISOString(), ...(unrouted ? { unrouted } : {}) };
-    if (card.route === "settle" && rev === (await this.context()).rev) settle(t, instruction, now);
+  async add(decision: Decision, card: Card, instruction: string, rev: number, now = new Date(), unrouted?: string, projectName?: string): Promise<Ticket> {
+    const t: Ticket = { decision, card, status: "open", created_at: now.toISOString(), ...(unrouted ? { unrouted } : {}), ...(projectName ? { project_name: projectName } : {}) };
+    if (card.route === "settle") {
+      if (rev === (await this.context()).rev) settle(t, instruction, now);
+      else t.card = withheld(card, "your rules changed while Bug Me was routing it");
+    }
     await this.kv.put(`t:${decision.id}`, t);
     return t;
   }
@@ -314,8 +335,13 @@ export class LiveQueue {
     const t = await this.get(id);
     if (!t || (t.status !== "open" && t.status !== "reopened")) return t;
     if (rev !== (await this.context()).rev) return t;
-    t.card = card;
-    if (card.route === "settle" && t.status === "open" && !t.answer) settle(t, instruction, now);
+    if (card.route === "settle" && t.status === "open" && !t.answer) {
+      t.card = card;
+      settle(t, instruction, now);
+    } else {
+      // A reopened or resumed ticket stays the owner's, whatever the router now says.
+      t.card = card.route === "settle" ? withheld(card, "you took this one back") : card;
+    }
     await this.kv.put(`t:${id}`, t);
     return t;
   }
@@ -335,8 +361,16 @@ export class LiveQueue {
     t.status = STATUS_OF[r.outcome];
     if (r.outcome === "set-aside") t.aside = { kind: r.kind ?? "info", reason: r.reason ?? "", instruction: r.instruction ?? "", at: now.toISOString() };
     if (r.outcome === "resumed") delete t.aside;
+    // Undoing an automatic answer brings the ticket back to the owner: its card says so on every device.
+    if (r.outcome === "reopened" && t.card.route === "settle") t.card = withheld(t.card, "you took this one back");
     await this.kv.put(`t:${id}`, t);
     return t;
+  }
+
+  /** Tickets the owner answered in the last day: the page keeps their follow-ups (a late reason, guidance) working. */
+  async recentlyAnswered(now = new Date()): Promise<Ticket[]> {
+    const since = now.getTime() - ANSWERED_KEPT_MS;
+    return (await this.all()).filter((t) => t.status === "answered" && t.answer && Date.parse(t.answer.at) >= since);
   }
 
   /** What the page lists: open, reopened and set-aside tickets, and the most recent settled ones. */
@@ -346,6 +380,11 @@ export class LiveQueue {
     // Set-aside tickets stay, so the page can list them and Resume them.
     return all.filter((t) => t.status === "open" || t.status === "reopened" || t.status === "set-aside" || settled.includes(t));
   }
+}
+
+/** A settle card the owner keeps: brought as a quick check instead, with the reason, the model's own route kept. */
+function withheld(card: Card, why: string): Card {
+  return { ...card, route: "check_in", settle_option: "", adjusted: `Bug Me would have settled this, but ${why}.` };
 }
 
 function settle(t: Ticket, instruction: string, now: Date): void {
