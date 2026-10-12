@@ -39,3 +39,54 @@ test("'You should have asked me' and 'Right to decide, wrong call' are stored as
   // Marks on one settled decision do not touch another.
   expect(s.settledMarks["branch-cleanup"]).toBeUndefined();
 });
+
+// Stage 6 (docs/STAGE-6.md, section 3): grouped by kind of work, plain words, the same three icon
+// actions on every row, and no rule codes or route glyphs.
+test.describe("the grouped list", () => {
+  test.beforeEach(async ({ page }) => {
+    await freshPage(page);
+    await page.goto("/app#/settled");
+    await expect(page.locator("#settled")).toBeVisible();
+  });
+
+  test("groups start closed, say what they hold once, and give every job the same three actions", async ({ page }) => {
+    await expect(page.locator("#settled .dgroup")).toHaveCount(4);
+    await expect(page.locator("#settled .dgroup[open]")).toHaveCount(0);
+    await expect(page.locator("#settled .dgroup > summary .dtitle")).toHaveText(["Merged branches", "Patch updates", "Formatting and lint", "Flaky tests"]);
+    await expect(page.locator(".page > .quiet").first()).toHaveText("31 small jobs, each one undoable and covered by one of your rules.");
+    const rows = page.locator("#settled li.drow");
+    await expect(rows).toHaveCount(31);
+    for (const name of ["Undo", "Ask!", "Disagree"]) await expect(page.locator("#settled .dacts").getByRole("button", { name, includeHidden: true })).toHaveCount(31);
+    // No rule codes, no route glyphs, no per-row Why.
+    const text = await page.locator("#settled").textContent();
+    expect(text).not.toMatch(/\bR\d+\b/);
+    expect(text).not.toMatch(/[○◐●]/);
+    await expect(page.locator("#settled .why-s")).toHaveCount(0);
+  });
+
+  test("a group's rule shows only when asked, in plain words", async ({ page }) => {
+    const branches = page.locator('#settled .dgroup[data-work="branches"]');
+    await branches.locator("> summary").click();
+    const rule = branches.locator(".drule");
+    await expect(rule.locator("p")).toBeHidden();
+    await rule.locator("summary").click();
+    await expect(rule.locator("p")).toContainText("Your rule: “Housekeeping in our own repos");
+  });
+
+  test("an opened group stays open when a job in it is marked", async ({ page }) => {
+    const updates = page.locator('#settled .dgroup[data-work="updates"]');
+    await updates.locator("> summary").click();
+    await updates.locator("li.drow").first().getByRole("button", { name: "Disagree" }).click();
+    await expect(updates.locator("li.drow").first().getByRole("button", { name: "Disagree" })).toHaveAttribute("aria-pressed", "true");
+    await expect(updates).toHaveAttribute("open", "");
+  });
+
+  test("labels show on every job's actions at phone width @narrow", async ({ page }, info) => {
+    test.skip(!info.project.use.isMobile, "phone and narrow widths only");
+    const flaky = page.locator('#settled .dgroup[data-work="flaky-tests"]');
+    await flaky.locator("> summary").click();
+    for (const label of await flaky.locator(".dlabel").all()) await expect(label).toBeVisible();
+    const box = await flaky.locator(".dacts button").first().boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  });
+});

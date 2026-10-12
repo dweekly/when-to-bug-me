@@ -261,17 +261,9 @@ textarea:disabled { opacity: 0.5; }
 .between .start-row { justify-content: center; margin: 24px 0; }
 .glyph-big { font-size: 40px; color: var(--glow); margin: 0; }
 .page h1 { font-size: clamp(28px, 4.4vw, 38px); margin: 8px 0 6px; }
-.settled, .rules { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 0; }
-.settled li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px 10px; padding: 16px 4px; border-bottom: 1px solid var(--line); }
-.settled li > :not(.glyph) { grid-column: 2; }
-.settled .glyph { color: var(--glow); }
-.settled-body .q { display: block; }
-.settled .picked { display: block; color: var(--ink-2); font-size: 14.5px; }
-.settled .picked::before { content: "→ "; color: var(--ink-3); }
-.why-s summary { cursor: pointer; color: var(--ink-3); font-size: 13px; }
-.why-s p { color: var(--ink-2); font-size: 14px; margin: 6px 0 0; }
+.rules { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 0; }
 .marks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.settled li.changed { background: var(--glow-soft); border-radius: 10px; }
+.drow.changed { background: var(--glow-soft); }
 .rules li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .rid { font-family: var(--mono); font-size: 12px; color: var(--ink-3); padding-top: 4px; }
 .rtext { background: none; border: 0; padding: 0; text-align: left; cursor: text; color: var(--ink); font-size: 15.5px; }
@@ -331,3 +323,51 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .voice-clip.still { display: block; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Decided for you (docs/STAGE-6.md, section 3): kinds of work as closed groups, one short line per job,
+   the same three icon actions on every row. Icons stay quiet and gain their labels on hover or keyboard
+   focus; without hover (touch) or at phone width the labels always show. */
+.decided { margin-top: 22px; }
+.dgroup { border-top: 1px solid var(--line); }
+.dgroup:last-of-type { border-bottom: 1px solid var(--line); }
+.dgroup > summary { list-style: none; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 16px 4px; cursor: pointer; }
+.dgroup > summary::-webkit-details-marker { display: none; }
+.dgroup > summary .dicon { color: var(--ink-2); }
+.dgroup[open] > summary .dicon { color: var(--glow); }
+.dhead { display: flex; flex-direction: column; min-width: 0; }
+.dtitle { font-weight: 700; }
+.dsum { color: var(--ink-3); font-size: 14px; }
+.dchev { width: 8px; height: 8px; border-right: 1.8px solid var(--ink-3); border-bottom: 1.8px solid var(--ink-3); transform: rotate(-45deg); transition: transform 0.15s; margin-right: 6px; }
+.dgroup[open] .dchev { transform: rotate(45deg); }
+.dicon { display: inline-grid; place-items: center; }
+.dicon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.dgroup > summary .dicon svg { width: 22px; height: 22px; }
+.drule { margin: -6px 0 6px 46px; font-size: 14px; color: var(--ink-3); }
+.drule summary { cursor: pointer; list-style: none; text-decoration: underline dotted; text-underline-offset: 3px; display: inline; }
+.drule summary::-webkit-details-marker { display: none; }
+.drule p { margin: 4px 0 0; color: var(--ink-2); }
+.drows { list-style: none; margin: 0 0 12px; padding: 0 0 0 46px; }
+.drow { display: flex; align-items: center; gap: 12px; padding: 0 8px; margin: 0 -8px; border-radius: 10px; }
+.drow:hover, .drow:focus-within { background: var(--night-2); }
+.dwhat { flex: 1; min-width: 0; padding: 8px 0; }
+.demoji { margin-right: 8px; }
+.dproj { color: var(--ink-3); }
+.dwhat .change-note { display: block; }
+.dacts { display: flex; gap: 2px; color: var(--ink-3); flex: none; }
+.dacts button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; justify-content: center; padding: 0 10px; background: none; border: 1px solid transparent; border-radius: 8px; color: inherit; font: 13px var(--body); cursor: pointer; }
+.dacts button:hover { border-color: var(--line); color: var(--ink); background: var(--night-3); }
+.dacts button[aria-pressed="true"] { color: var(--glow); }
+.dlabel { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width 0.15s; }
+.drow:hover .dacts, .drow:focus-within .dacts { color: var(--ink-2); }
+.drow:hover .dlabel, .drow:focus-within .dlabel, .dacts button[aria-pressed="true"] .dlabel { max-width: 80px; }
+.dsource { margin-top: 18px; font-size: 13px; color: var(--ink-3); }
+@media (hover: none), (max-width: 560px) {
+  .drow { flex-wrap: wrap; }
+  .dacts { width: 100%; justify-content: flex-end; color: var(--ink-2); }
+  .dlabel { max-width: none; }
+}
+@media (max-width: 560px) {
+  .drows { padding-left: 0; }
+  .drule { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .dlabel, .dchev { transition: none; } }

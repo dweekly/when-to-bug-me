@@ -288,37 +288,122 @@ function renderBetween(view: HTMLElement, projectId: string): void {
 }
 
 // ---------- Decided for you ----------
+// docs/STAGE-6.md, section 3: one sentence says what these are, once; the jobs are grouped by kind of
+// work, each group closed until opened; one short line per job (what was done, and which project);
+// the same three icon actions on every row. A group's rule shows only on request, and only when every
+// job in it was allowed by that one rule. No route glyphs, no rule codes, no per-row Why.
+
+type WorkKind = "branches" | "updates" | "formatting" | "flaky-tests" | "other";
+
+const WORK: Record<WorkKind, { title: string; icon: string }> = {
+  branches: { title: "Merged branches", icon: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 4-6 3-12 7"/>' },
+  updates: { title: "Patch updates", icon: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/>' },
+  formatting: { title: "Formatting and lint", icon: '<path d="M4 6h16M4 10h10M4 14h16M4 18h8"/>' },
+  "flaky-tests": { title: "Flaky tests", icon: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 001.8 3h10.4a2 2 0 001.8-3l-5-9V3"/><path d="M7.5 15h9"/>' },
+  other: { title: "Other small jobs", icon: '<circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/>' },
+};
+const WORK_ORDER: WorkKind[] = ["branches", "updates", "formatting", "flaky-tests", "other"];
+
+const ACT_ICON = {
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
+  ask: '<path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/>',
+  disagree: '<path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/>',
+};
+
+/** A line icon from static markup in this file (never from data). */
+function icon(paths: string): HTMLElement {
+  const span = h("span", { class: "dicon", "aria-hidden": "true" });
+  span.innerHTML = `<svg viewBox="0 0 24 24">${paths}</svg>`;
+  return span;
+}
+
+/** Turn a text button into the icon-and-label form: the visible label stays inside the accessible name. */
+function iconAction(btn: HTMLElement, paths: string, label: string, name: string): HTMLElement {
+  btn.replaceChildren(icon(paths), h("span", { class: "dlabel" }, label));
+  btn.setAttribute("aria-label", name);
+  btn.setAttribute("title", name);
+  return btn;
+}
+
+/** Groups the person has opened, so a re-render (an Undo, a mark) doesn't close them. */
+const openGroups = new Set<WorkKind>();
 
 function renderSettledView(view: HTMLElement): void {
   const a = agenda();
   const ids = a.settled.filter((id) => !S.reopened.includes(id));
-  const list = h("ol", { id: "settled", class: "settled" });
-  if (!ids.length) list.append(h("li", {}, "Nothing decided without you yet."));
+  const root = h("div", { id: "settled", class: "decided" });
+  if (!ids.length) root.append(h("p", { class: "quiet" }, "Nothing decided without you yet."));
+  const groups = new Map<WorkKind, string[]>();
   for (const id of ids) {
-    const d = byId.get(id)!;
-    const c = S.cards[id] as Card;
-    const opt = d.options.find((o) => o.key === c.settle_option);
-    list.append(
-      h(
-        "li",
-        { class: S.changes[id] ? "changed" : "" },
-        h("span", { class: "glyph", "aria-hidden": "true" }, GLYPH.settle),
-        h("div", { class: "settled-body" }, h("span", { class: "q" }, (c.headline || d.question).replace(/\?$/, "")), h("span", { class: "picked" }, opt?.label ?? c.settle_option)),
-        h("details", { class: "why-s" }, h("summary", {}, "Why"), h("p", {}, `${c.why_here} · ${SOURCE_LABEL[c.source]}`)),
-        S.changes[id] ? h("span", { class: "change-note" }, S.changes[id]) : null,
-        S.pending.includes(id) ? h("span", { class: "change-note" }, "re-checking…") : null,
-        h(
-          "div",
-          { class: "marks" },
-          h("button", { type: "button", onclick: () => undo(id) }, "Undo"),
-          markButton(id, "should_have_asked", "You should have asked me"),
-          markButton(id, "wrong_call", "Right to decide, wrong call"),
-        ),
-      ),
-    );
+    const w = byId.get(id)!.work;
+    const kind: WorkKind = w && w in WORK ? w : "other";
+    groups.set(kind, [...(groups.get(kind) ?? []), id]);
   }
+  for (const kind of WORK_ORDER) {
+    const gids = groups.get(kind);
+    if (!gids?.length) continue;
+    const cards = gids.map((id) => S.cards[id] as Card);
+    const projects = [...new Set(gids.map((id) => byId.get(id)!.project))].map((p) => Q.persona.projects.find((x) => x.id === p)?.name ?? p);
+    const rules = new Set(cards.map((c) => c.clearing_rule).filter(Boolean));
+    const rule = rules.size === 1 && cards.every((c) => c.clearing_rule) ? [...rules][0] : "";
+    const rows = h("ul", { class: "drows" });
+    for (const id of gids) rows.append(settledRow(id));
+    const g = h(
+      "details",
+      { class: "dgroup", "data-work": kind, open: openGroups.has(kind) },
+      h(
+        "summary",
+        {},
+        icon(WORK[kind].icon),
+        h("span", { class: "dhead" }, h("span", { class: "dtitle" }, WORK[kind].title), h("span", { class: "dsum" }, `${gids.length} job${gids.length === 1 ? "" : "s"} · ${projects.join(", ")}`)),
+        h("span", { class: "dchev", "aria-hidden": "true" }),
+      ),
+      rule ? h("details", { class: "drule" }, h("summary", {}, "Why Bug Me could do these"), h("p", {}, `Your rule: “${rule}”`)) : null,
+      rows,
+    );
+    g.addEventListener("toggle", () => ((g as HTMLDetailsElement).open ? openGroups.add(kind) : openGroups.delete(kind)));
+    root.append(g);
+  }
+  const sources = [...new Set(ids.map((id) => SOURCE_LABEL[(S.cards[id] as Card).source]))];
   view.replaceChildren(
-    h("section", { class: "page" }, h("h1", {}, "Decided for you"), h("p", { class: "quiet" }, "Only what is reversible, cheap, and cleared by one of your rules."), list),
+    h(
+      "section",
+      { class: "page" },
+      h("h1", {}, "Decided for you"),
+      h("p", { class: "quiet" }, ids.length ? `${ids.length} small job${ids.length === 1 ? "" : "s"}, each one undoable and covered by one of your rules.` : "Only what is reversible, cheap, and covered by one of your rules."),
+      root,
+      sources.length ? h("p", { class: "dsource" }, `Decided by: ${sources.join(", ")}.`) : null,
+    ),
+  );
+}
+
+/** One job: what was done (the fast model's past-tense line, or the question when there is none), its project, and the actions. */
+function settledRow(id: string): HTMLElement {
+  const d = byId.get(id)!;
+  const c = S.cards[id] as Card;
+  const asked = (c.headline || d.question).replace(/\?$/, "");
+  const done = c.done?.[c.settle_option] || asked;
+  const project = Q.persona.projects.find((x) => x.id === d.project)?.name ?? d.project;
+  return h(
+    "li",
+    { class: S.changes[id] ? "drow changed" : "drow", "data-id": id },
+    h(
+      "span",
+      { class: "dwhat" },
+      c.emoji ? h("span", { class: "demoji", "aria-hidden": "true" }, c.emoji) : null,
+      h("span", { class: "ddone" }, done),
+      h("span", { class: "dproj" }, ` · ${project}`),
+      done !== asked ? h("span", { class: "sr-only" }, `. Asked: ${asked}`) : null,
+      S.changes[id] ? h("span", { class: "change-note" }, S.changes[id]) : null,
+      S.pending.includes(id) ? h("span", { class: "change-note" }, "re-checking…") : null,
+    ),
+    h(
+      "span",
+      { class: "dacts" },
+      iconAction(h("button", { type: "button", class: "dundo", onclick: () => undo(id) }), ACT_ICON.undo, "Undo", "Undo: put it back and ask me"),
+      iconAction(markButton(id, "should_have_asked", "You should have asked me"), ACT_ICON.ask, "Ask!", "Ask! You should have asked me"),
+      iconAction(markButton(id, "wrong_call", "Right to decide, wrong call"), ACT_ICON.disagree, "Disagree", "Disagree: right to decide, wrong call"),
+    ),
   );
 }
 
