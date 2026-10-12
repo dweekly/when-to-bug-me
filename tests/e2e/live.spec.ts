@@ -4,7 +4,7 @@
 // the card says so and stays open for another press.
 import { type APIRequestContext, expect, test } from "@playwright/test";
 import { OWNER_RULES } from "../../src/worker/live";
-import { decide, toDecision } from "./helpers";
+import { decide, decideQuietly, hold, toDecision } from "./helpers";
 
 const LIVE_KEY = process.env.BUGME_E2E_LIVE_TOKEN!;
 const bearer = { authorization: `Bearer ${LIVE_KEY}` };
@@ -67,7 +67,9 @@ test("if the session can't be reached, nothing is recorded and the card stays op
   await expect.poll(async () => (await told(request, id)).status, { timeout: 15_000 }).toBe("answered");
 });
 
-test("a page opened before a rule edit elsewhere can't overwrite it by talking", async ({ page, request }) => {
+test("a page opened before a rule edit elsewhere can't overwrite it by talking", async ({ page, request }, testInfo) => {
+  // It edits the one owner queue's rules: run in one project, so another project's cleanup can't race it.
+  test.skip(testInfo.project.name !== "desktop", "edits the shared owner queue's rules");
   const id = await ask(request, `Rename the staging bucket ${Date.now()}?`);
   await page.goto(`/me#k=${encodeURIComponent(LIVE_KEY)}`);
   await page.goto(`/me#/d/${id}`);
@@ -81,10 +83,142 @@ test("a page opened before a rule edit elsewhere can't overwrite it by talking",
   await page.locator("#now .send").click();
   await expect(page.locator("#now .turns li.typing")).toHaveCount(0, { timeout: 15_000 });
   const after = (await (await request.get("/api/me/queue", { headers: bearer })).json()) as { rules: { id: string; text: string }[] };
-  // Not reverted to the page's old copy (desktop and phone run this at once against one queue, so either edit may be the latest).
-  expect(after.rules.find((r) => r.id === "L10")!.text).toMatch(/^Small changes: ask me first \(t-/);
+  expect(after.rules.find((r) => r.id === "L10")!.text).toBe(`Small changes: ask me first (${id}).`);
   // Leave the queue's rules as they were, for the next run.
   await request.post("/api/me/context", { headers: bearer, data: { rules: OWNER_RULES, facts: q.facts } });
+});
+
+async function open(page: import("@playwright/test").Page, id: string): Promise<void> {
+  await page.goto(`/me#k=${encodeURIComponent(LIVE_KEY)}`);
+  await page.goto(`/me#/d/${id}`);
+  await expect(page.locator("#now #now-q")).toBeVisible();
+}
+
+/** Answer against the agent's pick with a reason, so Bug Me offers to remember it. */
+async function toProposal(page: import("@playwright/test").Page): Promise<void> {
+  await decide(page, "Hold for review", "Hold for review, because the team still needs a look at it.");
+  await expect(page.getByRole("button", { name: "Keep it" })).toBeVisible({ timeout: 15_000 });
+}
+
+/** Fail the guidance update (only) until told otherwise. */
+async function failGuidance(page: import("@playwright/test").Page): Promise<{ stop: () => void }> {
+  let failing = true;
+  await page.route("**/api/me/resolve", (route) =>
+    failing && (route.request().postDataJSON() ?? {}).guidance
+      ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "offline" }) })
+      : route.continue(),
+  );
+  return { stop: () => (failing = false) };
+}
+
+async function resetOwner(request: APIRequestContext): Promise<void> {
+  await request.post("/api/me/context", { headers: bearer, data: { rules: OWNER_RULES, facts: [] } });
+}
+
+// Guidance tests change the one owner queue's facts: desktop only, run in order, cleaned up after.
+test.describe("kept guidance on /me", () => {
+  test.beforeEach(async ({ request }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "changes the shared owner queue's facts");
+    await resetOwner(request);
+  });
+  test.afterEach(async ({ request }) => resetOwner(request));
+
+  test("a retry after a failed answer update also re-checks the decisions the guidance affects", async ({ page, request }) => {
+    const id = await ask(request, `Rename the billing exports ${Date.now()}?`);
+    const other = await ask(request, `Rename the invoice files ${Date.now()}?`);
+    // The stand-in suggests nothing to re-check for a live ask (no tags), so the proposal names the other ticket.
+    await page.route("**/api/me/fact", async (route) => {
+      const res = await route.fetch();
+      const body = (await res.json()) as Record<string, unknown>;
+      await route.fulfill({ response: res, json: { ...body, reroute: [other] } });
+    });
+    const routed: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().endsWith("/api/me/route")) routed.push(String((r.postDataJSON() ?? {}).id));
+    });
+    await open(page, id);
+    await toProposal(page);
+    const g = await failGuidance(page);
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await expect(page.locator("#now")).toContainText("The guidance is saved, but couldn't be added");
+    g.stop();
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await expect(page.locator("#now")).toContainText("Kept for future asks");
+    await expect.poll(() => routed, { timeout: 15_000 }).toContain(other);
+    expect((await told(request, id)).guidance).toBeTruthy();
+  });
+
+  test("with 30 facts, retrying the 30th's answer update updates rather than hitting the cap", async ({ page, request }) => {
+    const seed = Array.from({ length: 29 }, (_, i) => ({ id: `S${i + 1}`, text: `Seed fact ${i + 1}.`, source: "e2e", scope: "all" }));
+    expect((await request.post("/api/me/context", { headers: bearer, data: { rules: OWNER_RULES, facts: seed } })).ok()).toBe(true);
+    const id = await ask(request, `Move the nightly job to 2am ${Date.now()}?`);
+    await open(page, id);
+    await toProposal(page);
+    const g = await failGuidance(page);
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await expect(page.locator("#now")).toContainText("The guidance is saved, but couldn't be added");
+    g.stop();
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await expect(page.locator("#now")).toContainText("Kept for future asks");
+    expect((await told(request, id)).guidance).toBeTruthy();
+  });
+});
+
+test("setting aside on /me doesn't pull you back if you've moved on while the session was told", async ({ page, request }) => {
+  const id = await ask(request, `Turn off the legacy endpoint ${Date.now()}?`);
+  await open(page, id);
+  const release = await hold(page, "/api/me/resolve");
+  await page.locator("#now .skip-q").click();
+  await page.getByRole("button", { name: "I need more information" }).click();
+  await page.locator("#punt-reason").fill("How many customers still call it?");
+  await page.getByRole("button", { name: "Set aside" }).click();
+  await page.evaluate("location.hash = '#/rules'");
+  await expect(page).toHaveURL(/#\/rules$/);
+  release();
+  await expect.poll(async () => (await told(request, id)).status, { timeout: 15_000 }).toBe("set-aside");
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/#\/rules$/);
+});
+
+test("asking the agent on /me doesn't pull you back if you've moved on", async ({ page, request }) => {
+  const id = await ask(request, `Drop the beta flag ${Date.now()}?`);
+  await open(page, id);
+  const question = "Who still has it on?";
+  const ledger = { choice: "none", choice_quote: null, course: null, action: "", why: [], conditions: [], questions: [{ quote: { turn: 0, quote: question }, answer: null }], feedback: [], no_more_questions: false };
+  await page.route("**/api/me/converse", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify({ reply: `I'll ask the agent: ${question}`, next: "confirm", ledger, heard: "x", source: "code" }) }),
+  );
+  await page.locator("#think").fill(question);
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .send.decide")).toBeVisible({ timeout: 15_000 });
+  const release = await hold(page, "/api/me/resolve");
+  await page.locator("#now .send.decide").click();
+  await page.evaluate("location.hash = '#/rules'");
+  await expect(page).toHaveURL(/#\/rules$/);
+  release();
+  await expect.poll(async () => (await told(request, id)).status, { timeout: 15_000 }).toBe("set-aside");
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/#\/rules$/);
+});
+
+test("Skip during a late reason's delivery wins: the reason is sent, but no guidance is proposed", async ({ page, request }) => {
+  const id = await ask(request, `Archive the 2024 reports ${Date.now()}?`);
+  await open(page, id);
+  await decideQuietly(page, "Hold for review"); // no reason, against the guess: Bug Me asks why
+  await expect(page.locator("#why")).toBeVisible({ timeout: 15_000 });
+  const facts: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/me/fact")) facts.push(r.url());
+  });
+  const release = await hold(page, "/api/me/resolve", (b) => typeof b.reason === "string" && !b.instruction);
+  await page.locator("#why").fill("Finance still reads them every quarter.");
+  await page.getByRole("button", { name: "Tell Bug Me" }).click();
+  await page.locator("#now .followup").getByRole("button", { name: "Skip", exact: true }).click();
+  release();
+  await expect.poll(async () => (await told(request, id)).reason, { timeout: 15_000 }).toBe("Finance still reads them every quarter.");
+  await page.waitForTimeout(1000);
+  expect(facts).toEqual([]);
+  await expect(page.locator("#now")).not.toContainText("Remember this");
 });
 
 test("the simulation is untouched: no live label, tours still there", async ({ page }) => {

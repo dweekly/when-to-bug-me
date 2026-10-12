@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { MAX_PUSHBACKS_PER_SESSION, MIN_BASIS_CHARS, WHY_THRESHOLD } from "../../src/shared/constants";
 import {
+  alreadyKept,
   GLOW_START,
   GLOW_STEP,
   type Guess,
@@ -175,5 +176,23 @@ describe("moodAfter", () => {
     expect(moodAfter({ kind: "guidance_kept" }, 0.6, 1)).toBe("glowing");
     expect(moodAfter({ kind: "guidance_kept" }, 0.59, 1)).toBe("neutral");
     expect(moodAfter(null, 0.35, 1)).toBe("neutral");
+  });
+});
+
+describe("alreadyKept (a retry of guidance an earlier press already saved, on the live queue)", () => {
+  const facts = [
+    { id: "F1", text: "Keep existing names.", source: "", scope: "alpha" },
+    { id: "F2", text: "Ask before deleting.", source: "", scope: "all" },
+  ];
+  it("finds the same text in the same scope", () => {
+    expect(alreadyKept([...facts, { id: "F3", text: "Ship on Fridays.", source: "", scope: "all" }], { kind: "add", replaces: "", scope: "all" }, "Ship on Fridays.", "x")?.id).toBe("F3");
+  });
+  it("is not fooled by the same text in a different scope", () => {
+    expect(alreadyKept(facts, { kind: "add", replaces: "", scope: "all" }, "Keep existing names.", "x")).toBeUndefined();
+  });
+  it("for a replacement, needs the text under the id it replaces", () => {
+    expect(alreadyKept(facts, { kind: "replace", replaces: "F1", scope: "all" }, "Ask before deleting.", "x")).toBeUndefined();
+    const replaced = [{ ...facts[0], text: "Keep names in v2.", scope: "all" }, facts[1]];
+    expect(alreadyKept(replaced, { kind: "replace", replaces: "F1", scope: "all" }, "Keep names in v2.", "x")?.id).toBe("F1");
   });
 });

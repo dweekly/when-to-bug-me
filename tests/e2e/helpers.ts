@@ -157,12 +157,13 @@ export async function decideQuietly(page: Page, label: string): Promise<void> {
   await option(page, label).click();
   const key = await option(page, label).getAttribute("data-key");
   const ledger = { choice: key, choice_quote: null, course: null, action: "", why: [], conditions: [], questions: [], feedback: [], no_more_questions: false };
-  await page.route("**/api/converse", (route) =>
+  // On the simulation the call is /api/converse; on the owner's page, /api/me/converse.
+  await page.route("**/converse", (route) =>
     route.fulfill({ contentType: "application/json", body: JSON.stringify({ reply: `So: ${label}. Right?`, next: "confirm", ledger, heard: JSON.stringify([key, "", [], []]), source: "code" }) }),
   );
   await page.locator("#now .send").click();
   await reply(page);
-  await page.unroute("**/api/converse");
+  await page.unroute("**/converse");
   await page.locator("#now .send.decide").click();
 }
 

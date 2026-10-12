@@ -120,6 +120,21 @@ export function keptFact(
   return { id, text: text.trim(), source: `your answer this morning on "${chosenLabel}"`, scope: proposal.scope || "all" };
 }
 
+/**
+ * The fact a kept proposal would produce, when an earlier press already saved it (on the live queue,
+ * a retry after the answer update failed): the same text and scope and, for a replacement, under the
+ * id it replaces. Anything else is new guidance, not a retry.
+ */
+export function alreadyKept<T extends { id: string; text: string; scope: string }>(
+  facts: T[],
+  proposal: { kind: "add" | "replace" | "none"; replaces: string; scope: string },
+  text: string,
+  chosenLabel: string,
+): T | undefined {
+  const f = keptFact(facts, proposal, text, chosenLabel);
+  return facts.find((x) => x.text === f.text && x.scope === f.scope && (proposal.kind !== "replace" || !proposal.replaces || x.id === f.id));
+}
+
 /** Replace or append a kept fact. */
 export function withFact<T extends { id: string }>(facts: T[], fact: T): T[] {
   return facts.some((f) => f.id === fact.id) ? facts.map((f) => (f.id === fact.id ? fact : f)) : [...facts, fact];

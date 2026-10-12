@@ -40,6 +40,7 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Execution acknowledgments and retraction.** A session receiving an answer isn't the same as acting on it, and reopening can't undo what already happened. Agents should acknowledge, and undo should compensate.
 - **Session continuity.** A session that stops checking never hears a late answer or a reopening. Durable session recovery, and adding to an existing ask instead of a new one.
 - **Scoped credentials.** One token serves the MCP server and the browser sign-in. Separate intake keys, device revocation, sign-out.
+- **Answering without the model when its budget is spent** (David, 2026-10-12: roadmap, not fixed in stage 7). An ask that couldn't be routed is kept as the owner's decision, but the page answers only through a conversation turn, which needs the model; a model-free "just pick an option" path would let the owner answer it anyway.
 - **Queue retention, backups and notifications.** Old tickets stay in the Durable Object; nothing pings David's phone when something new arrives.
 
 ## Tech debt to schedule

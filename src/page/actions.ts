@@ -12,6 +12,7 @@ import {
   type GlowEvent,
   type Guess,
   hasBasis,
+  alreadyKept,
   keptFact,
   withFact,
   moodAfter,
@@ -325,10 +326,12 @@ export async function sendQuestionToAgent(flow: Flow, d: Decision, questions: st
   S.punts[d.id] = punt;
   log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: "ask", thread: threadOf(flow) });
   glowEvent({ kind: "punted" });
+  const here = showing(flow); // on /me the person may have moved on while the session was being told
   delete S.flows[d.id];
   announce(`Set aside. The agent was asked: ${punt.instruction}`);
   window.dispatchEvent(new CustomEvent("bugme:set-aside", { detail: { id: d.id } }));
-  next();
+  if (here) next();
+  else save();
 }
 
 export async function answer(flow: Flow, d: Decision, route: RouteKind, n: Narration): Promise<void> {
@@ -501,6 +504,11 @@ async function proposeNow(flow: Flow, d: Decision): Promise<void> {
     if (phase0 === "why" && flow.choice && !(await delivered(flow, d.id, { outcome: "option", choice: flow.choice, reason: basis }, "error"))) return;
     if (!alive(s0, flow)) return;
     recordLateReason(d, basis);
+    // Skipped while the reason was on its way: the session has it (and so does the record), but no guidance is proposed.
+    if (flow.phase !== phase0) {
+      save();
+      return;
+    }
   }
   flow.phase = "busy";
   flow.message = "Turning that into guidance…";
@@ -555,17 +563,18 @@ export async function keepFact(flow: Flow, d: Decision, text: string, p: FactOut
 
 async function keepFactNow(flow: Flow, d: Decision, text: string, p: FactOutput & { reroute: string[] }): Promise<void> {
   const t = text.replace(/\s+/g, " ").trim();
-  const problem = guidanceProblem(t, p.kind === "add" ? "fact" : null);
+  const label = d.options.find((o) => o.key === flow.choice)?.label ?? "";
+  // Live queue only: the guidance is saved on the server first (if it isn't, it isn't kept), then added
+  // to the session's answer. A retry after a failed update finds it already saved and only updates;
+  // it adds nothing, so the cap on facts doesn't apply to it.
+  const already = OWNER_PAGE ? alreadyKept(S.facts, p, t, label) : undefined;
+  const problem = guidanceProblem(t, p.kind === "add" && !already ? "fact" : null);
   if (problem) {
     flow.error = problem;
     if (showing(flow)) renderNow();
     return;
   }
   flow.error = "";
-  const label = d.options.find((o) => o.key === flow.choice)?.label ?? "";
-  // Live queue only: the guidance is saved on the server first (if it isn't, it isn't kept), then added
-  // to the session's answer. A retry after a failed update finds it already saved and only updates.
-  const already = OWNER_PAGE ? S.facts.find((f) => f.text === t) : undefined;
   const fact = already ?? keptFact(S.facts, p, t, label);
   if (OWNER_PAGE && !already) {
     try {
@@ -592,11 +601,8 @@ async function keepFactNow(flow: Flow, d: Decision, text: string, p: FactOutput 
       if (showing(flow)) renderNow();
       return;
     }
-    if (already) {
-      done(flow, `Kept for future asks: “${t}”`);
-      return;
-    }
   }
+  // A retry that got through finishes like a first press: recorded, and the waiting decisions it affects re-checked.
   log("guidance_kept", { id: d.id, fact, edited: t !== p.text });
   glowEvent({ kind: "guidance_kept" });
   done(flow, OWNER_PAGE ? `Kept for future asks: “${t}”` : `Kept. Every agent now gets: “${t}”`);
@@ -678,10 +684,12 @@ async function setAsideNow(flow: Flow, d: Decision): Promise<void> {
   log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: flow.puntFrom });
   glowEvent({ kind: "punted" });
   // The answer in progress is dropped: nothing was final, and the guess was never revealed.
+  const here = showing(flow); // on /me the person may have moved on while the session was being told
   delete S.flows[d.id];
   announce(`Set aside. The agent was asked: ${punt.instruction}`);
   window.dispatchEvent(new CustomEvent("bugme:set-aside", { detail: { id: d.id } }));
-  next();
+  if (here) next();
+  else save();
 }
 
 /** Bring a set-aside decision back to active work; its history stays with it. */
