@@ -10,6 +10,13 @@ const PORT = 8799;
 const RECORDED_PORT = 8798;
 /** A throwaway sealing key per test run, so a fresh clone needs no .dev.vars to run the suite. */
 const SEAL_KEY = randomBytes(32).toString("base64");
+/**
+ * A throwaway owner token for the live queue (docs/STAGE-7.md). Set in the environment once, by the
+ * runner, so the workers (which load this file again) read the same value; live.spec.ts uses it.
+ */
+process.env.BUGME_E2E_LIVE_TOKEN ??= randomBytes(32).toString("base64url");
+const liveKey = process.env.BUGME_E2E_LIVE_TOKEN;
+const LIVE_VAR = "LIVE_TOKEN";
 /** Wrangler vars the recorded server overrides to empty, so a developer's .dev.vars (which may hold a
  *  real Anthropic key, or turn on the fake model) cannot leak into the keyless run. */
 const BLANKED = ["ANTHROPIC_API_KEY", "FAKE_MODEL"].map((name) => `--var ${name}:`).join(" ");
@@ -27,7 +34,7 @@ export default defineConfig({
   webServer: [
     {
       // Its own Durable Object state directory, so it never shares (and locks) a developer's wrangler dev state.
-      command: `npm run build && npx wrangler dev --var FAKE_MODEL:1 --var SEAL_KEY:${SEAL_KEY} --port ${PORT} --persist-to .wrangler/e2e-state`,
+      command: `npm run build && npx wrangler dev --var FAKE_MODEL:1 --var SEAL_KEY:${SEAL_KEY} --var ${LIVE_VAR}:${liveKey} --port ${PORT} --persist-to .wrangler/e2e-state`,
       url: `http://localhost:${PORT}/api/queue`,
       reuseExistingServer: false,
       timeout: 120_000,

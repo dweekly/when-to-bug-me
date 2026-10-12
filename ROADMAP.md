@@ -33,6 +33,14 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Streaming Bug Me's replies,** token by token, once a reply's latency is measured on real use.
 - **Retire `/api/parse` and `/api/ask`** once nothing records or evals through them.
 
+## From the stage 7 plan review (live fire)
+
+- **Verify what agents declare.** Live asks carry the agent's own claims of reversibility and cost; settling trusts them within a $1 ceiling and permission-granting rules. Independent checks (deploy target, money at stake, data touched) would let Bug Me settle more, safely.
+- **Execution acknowledgments and retraction.** A session receiving an answer isn't the same as acting on it, and reopening can't undo what already happened. Agents should acknowledge, and undo should compensate.
+- **Session continuity.** A session that stops checking never hears a late answer or a reopening. Durable session recovery, and adding to an existing ask instead of a new one.
+- **Scoped credentials.** One token serves the MCP server and the browser sign-in. Separate intake keys, device revocation, sign-out.
+- **Queue retention, backups and notifications.** Old tickets stay in the Durable Object; nothing pings David's phone when something new arrives.
+
 ## Tech debt to schedule
 
 - Seven formatting decisions have an option labeled "Skip" (leave the code as is), the same word as the card's set-aside link. Those cards reach Jordan only after a rule change. Relabel them ("Leave as is") at the next re-recording, since the label is part of the recorded routing prompt.

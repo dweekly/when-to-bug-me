@@ -27,8 +27,8 @@ const TAG_RULES: [tag: string, rule: RegExp][] = [
   ["ui", /\bUI\b|layout/i],
 ];
 
-const CLEARS = /just do it|go ahead|fine to do/i;
-const MINE = /mine|comes to me|stays with me|ask me|always/i;
+const CLEARS = /just do it|just do them|go ahead|fine to do|needs? no permission/i;
+const MINE = /mine|comes to me|stays with me|ask me|always|my explicit go/i;
 const EARLY = /early|before (?:[5-9]|8:30|nine)|morning|drop-?off|7:30|6am|6:05/i;
 const KEEP_NAMES = /renam|field name|backward|compat|break(?:s|ing)? (?:integrat|client|sdk|consumer)/i;
 
@@ -38,7 +38,21 @@ const TRANSLATIONS: Record<string, string> = {
     "Should billing recompute tax on every invoice since January and send corrected invoices to the 1.5% that change (mostly by a few cents), or keep today's tax mapping and leave past invoices alone?",
 };
 
+/** Word stems of five letters or more, for matching a live ask to the rules it touches. */
+function stems(text: string): Set<string> {
+  return new Set((text.toLowerCase().match(/[a-z]{5,}/g) ?? []).map((w) => w.slice(0, 5)));
+}
+
 function rulesFor(d: Decision, rules: Rule[]): Rule[] {
+  // A live ask (docs/STAGE-7.md) has no hand-written tags: the stand-in matches rules that share a word
+  // stem with the question or its options. Stand-in behavior only; the real router reads the rules.
+  if (!d.tags.length) {
+    const ask = stems(`${d.question} ${d.options.map((o) => o.label).join(" ")}`);
+    const overlap = (r: Rule) => [...stems(r.text)].filter((w) => ask.has(w)).length;
+    const best = Math.max(0, ...rules.map(overlap));
+    // Only the rules that match best: "staging deploy" is the staging rule's business, not production's.
+    return best ? rules.filter((r) => overlap(r) === best) : [];
+  }
   const out: Rule[] = [];
   for (const [tag, rx] of TAG_RULES) {
     if (!d.tags.includes(tag)) continue;

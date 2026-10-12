@@ -26,7 +26,7 @@ The intent: one real question from one of David's real sessions travels the whol
 **`ask_bug_me`**
 - Inputs:
   - `question`;
-  - `options`: 2–4 items, each `{key, label, pros?, cons?, reversible: yes|partly|no, cost_usd}`;
+  - `options`: 2–3 items (the card's columns hold three on a phone), each `{label, pros?, cons?, reversible: yes|partly|no, cost_usd}`; keys are assigned A–C;
   - `recommended?`, `context`;
   - `project` (defaults to the basename of the session's working directory), `session` (a short label for the asking session);
   - `wait_minutes` (default 5, at most 10).
@@ -147,11 +147,48 @@ Live data must stay in the owner's Durable Object:
 ```bash
 npm run typecheck && npm test   # auth (bearer, cookie, constant-time, 404 without LIVE_TOKEN), ask → Decision (bounds defaults), ticket lifecycle (open → settled | answered | set-aside | reopened, resolve merges), owner calls never touch the cache, record.ts imports no owner module
 npm run e2e                     # the existing suite stays green; plus live.spec: /me with the cookie shows "Live · your real queue" and an asked ticket; answering it reaches /api/me/ticket
-npm run smoke:live              # on a local stand-in Worker: the MCP server, driven over stdio, asks one question a rule covers (settled at once, rule quoted) and one it doesn't (pending); the second is answered through the page's API path; check_bug_me returns the answer with the reason
+npm run smoke:live              # on a local stand-in Worker: the MCP server, driven over stdio (handshake, discovery, calls), asks one question a rule covers (settled at once, rule quoted) and one it doesn't (pending); the second is answered through the page's API path; check_bug_me returns the answer with the reason; sign-in refuses no credentials and the link sets the cookie
 python3 scripts/scan.py
 ```
 
 Then by hand, once David has set `LIVE_TOKEN` and registered the MCP server: one real ask from a real session, answered on his phone.
+
+## Plan review
+
+Codex reviewed this plan once (2026-10-12). Folded in:
+- **What may settle.** In the owner's world, settling uses stricter limits (`SettleLimits` in `route.ts`):
+  - the cost ceiling is $1, from the owner's own rule, not the simulation's $50;
+  - only a rule that grants permission ("need no permission", "just do it/them") can clear;
+  - a rule that keeps a kind of decision for David (his go, "never", "comes to me") outranks any permission.
+  
+  The simulation is unchanged. Unit tests cover $0, $1 and $20, a rule that needs David's go quoted as permission, and a general permission against a reserving rule.
+- **The model sees the agent's declared cost and reversibility**, in each option's description, labeled as the agent's claim. Enforcement still uses the bounds.
+- **Context revisions.** The owner's rules and facts carry a revision. A card routed under rules that have since changed can't settle a ticket, at creation or on a re-route. A reopened or resumed ticket stays David's.
+- **Every reply names its ticket**, and both tools return the full status union.
+- **Set-aside tickets** stay in the queue with their reason, so every device lists and resumes them. Resume returns a ticket to pending.
+- **A routing failure keeps the ask.** It becomes David's decision, with no guess and each option sent down as itself.
+- **Deliveries go through an outbox** in the browser and are retried until the Worker accepts them; a notice shows while one is waiting. `resolve` is idempotent.
+- **A page left open** checks for new asks when it becomes visible, and every minute while it is (on Home or Decided for you only, never mid-card).
+- **Owner errors are sanitized**: validation and provider messages are withheld from logs in the owner's world.
+- **Requests and routes:**
+  - a missing token answers 404 before any other secret is needed;
+  - owner POSTs must be JSON;
+  - the sign-in link's token is base64url and is cleared from the address bar before the login request;
+  - the fact prompt lists at most 20 other tickets;
+  - every tour entry point (the menu and `?tour=`) is off on `/me`.
+- **The MCP server:**
+  - each request has a timeout of its own;
+  - a cancelled call stops waiting;
+  - the default project is `CLAUDE_PROJECT_DIR`;
+  - `wait_minutes: 0` returns at once.
+- **The stand-in router** matches an owner ask to the rules that share the most word stems, so the smoke can settle a staging deploy and refuse a production one.
+
+Declined, or left for later:
+- **Rule saves with revision checks across two open browsers.** There is one owner; the last save wins.
+- **Awaiting delivery before showing an answer as sent.** That would mean restructuring the page's answer flow, which stage 6c is rewriting. The outbox is the interim guarantee.
+- **Keeping live state out of localStorage.** These are drafts in the owner's own browser, and allowed: the owner's data never reaches the repo, the logs, the response cache or a recording.
+- **The card's "Sent down … (simulated)" and "Every agent now gets…" copy on `/me`.** It lives in `card.ts` and `actions.ts`, which 6c is rewriting; the wording ("Saved for the asking session", "Kept for future asks") goes to that PR.
+- **Roadmap** (`ROADMAP.md`): verifying agents' declarations, execution acknowledgments and retraction, session continuity, scoped credentials and device revocation, and queue retention.
 
 ## Out of scope
 

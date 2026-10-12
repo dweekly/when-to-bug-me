@@ -83,7 +83,8 @@ export interface Project {
 }
 
 export interface Persona {
-  synthetic: true;
+  /** True for the simulation's made-up persona; false for a real owner (docs/STAGE-7.md). */
+  synthetic: boolean;
   name: string;
   first_name: string;
   pronouns: string;

@@ -29,6 +29,7 @@ import { announce } from "./dom";
 import { go } from "./router";
 import { type Asked, type Flow, type Parsed, type State, F, Q, S, byId, log, newFlow, save, setF } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
+import { deliver } from "./live";
 
 export function glowEvent(e: GlowEvent): void {
   S.glow = nextGlow(S.glow, e);
@@ -305,6 +306,7 @@ export function chooseOther(flow: Flow, d: Decision, route: RouteKind, course: s
   glowEvent({ kind: "answered", route, basis: substantiveBasis(basis || course), againstRecommendation: true });
   flow.choice = "other";
   flow.send_down = send_down;
+  deliver(d.id, { outcome: "other", course, reason: basis, conditions, instruction: send_down }); // live queue only
   done(flow, "");
 }
 
@@ -316,6 +318,7 @@ export function sendQuestionToAgent(flow: Flow, d: Decision, questions: string[]
   const punt: Punt = { id: d.id, kind: "info", reason: question, at: new Date().toISOString(), instruction: puntInstruction("info", question, Q.persona.first_name) };
   S.punts[d.id] = punt;
   log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: "ask" });
+  deliver(d.id, { outcome: "ask-agent", questions, instruction: punt.instruction }); // live queue only
   glowEvent({ kind: "punted" });
   delete S.flows[d.id];
   announce(`Set aside. The agent was asked: ${punt.instruction}`);
@@ -396,6 +399,7 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     ...(conditions ? { conditions } : {}),
     ...(n?.narration ? { narration: n.narration, narrationMarks: n.narrationMarks } : {}),
   };
+  deliver(d.id, { outcome: "option", choice, reason: basis, conditions, instruction: send_down }); // live queue only
   log("answer", {
     id: d.id,
     route,
@@ -442,6 +446,7 @@ export function recordLateReason(d: Decision, basis: string): void {
     }
   }
   log("reason", { id: d.id, basis, after_answer: true });
+  deliver(d.id, a.final === "other" ? { outcome: "other", course: a.other, reason: basis } : { outcome: "option", choice: a.final, reason: basis }); // live queue only
   glowEvent({ kind: "answered", route: a.route, basis: substantiveBasis(basis), againstRecommendation: a.final !== d.recommended });
 }
 
@@ -519,6 +524,8 @@ export async function keepFact(flow: Flow, d: Decision, text: string, p: FactOut
   S.newFacts.push(fact.id);
   S.version++;
   log("guidance_kept", { id: d.id, fact, edited: t !== p.text });
+  const kept = S.answered[d.id]; // live queue only: the guidance travels with the answer
+  if (kept) deliver(d.id, kept.final === "other" ? { outcome: "other", course: kept.other, guidance: t } : { outcome: "option", choice: kept.final, guidance: t });
   glowEvent({ kind: "guidance_kept" });
   done(flow, `Kept. Every agent now gets: “${t}”`);
   const s0 = S;
@@ -583,6 +590,7 @@ export async function setAside(flow: Flow, d: Decision): Promise<void> {
   };
   S.punts[d.id] = punt;
   log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: flow.puntFrom });
+  deliver(d.id, { outcome: "set-aside", reason: punt.reason, instruction: punt.instruction }); // live queue only
   glowEvent({ kind: "punted" });
   // The answer in progress is dropped: nothing was final, and the guess was never revealed.
   delete S.flows[d.id];
@@ -602,12 +610,14 @@ export function resume(id: string): void {
   if (!S.reopened.includes(id)) S.reopened.push(id);
   S.flows[id] = newFlow(id);
   log("resume", { id, reason_kind: punt.kind, reason: punt.reason });
+  deliver(id, { outcome: "resumed" }); // live queue only: back to pending for the asking session
   startSession(id);
 }
 
 export function undo(id: string): void {
   S.reopened.push(id);
   log("undo", { id });
+  deliver(id, { outcome: "reopened" }); // live queue only: the session is told to hold off
   S.changes[id] = "You undid Bug Me's call, so it's back with you.";
   save();
   render();

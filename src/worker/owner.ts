@@ -1,0 +1,47 @@
+// The owner's live queue (docs/STAGE-7.md): one Durable Object holding the tickets real sessions have
+// asked, the owner's rules and facts. Calls on one object run one at a time, so a resolution and a
+// re-route can't interleave. The logic is in live.ts; this only adapts the object's storage to it.
+
+import { DurableObject } from "cloudflare:workers";
+import { type KV, LiveQueue, type Resolution, type Ticket } from "./live";
+import type { Card, Decision, Fact, Rule } from "../shared/types";
+
+export class OwnerQueue extends DurableObject {
+  private q(): LiveQueue {
+    const s = this.ctx.storage;
+    const kv: KV = {
+      get: (k) => s.get(k),
+      put: (k, v) => s.put(k, v),
+      list: (prefix) => s.list({ prefix }),
+    };
+    return new LiveQueue(kv);
+  }
+
+  async context(): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }> {
+    return this.q().context();
+  }
+
+  async setContext(rules: Rule[], facts: Fact[]): Promise<void> {
+    return this.q().setContext(rules, facts);
+  }
+
+  async ticket(id: string): Promise<Ticket | undefined> {
+    return this.q().get(id);
+  }
+
+  async shown(): Promise<Ticket[]> {
+    return this.q().shown();
+  }
+
+  async add(decision: Decision, card: Card, instruction: string, rev: number, unrouted?: string): Promise<Ticket> {
+    return this.q().add(decision, card, instruction, rev, new Date(), unrouted);
+  }
+
+  async reroute(id: string, card: Card, instruction: string, rev: number): Promise<Ticket | undefined> {
+    return this.q().reroute(id, card, instruction, rev);
+  }
+
+  async resolve(id: string, r: Resolution): Promise<Ticket> {
+    return this.q().resolve(id, r);
+  }
+}
