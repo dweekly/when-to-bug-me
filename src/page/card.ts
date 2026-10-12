@@ -45,7 +45,7 @@ function voiceTargetFor(): VoiceTarget | null {
   if (!box || !document.getElementById(box)) return null;
   return {
     // The turn number is part of the key, so late words can't land in the next turn.
-    key: `${flow.id}:${box}:${flow.turns.length}`,
+    key: `${flow.id}:${box}:${jordanTurns(flow.turns).length}`,
     el: () => document.getElementById(box) as HTMLTextAreaElement | null,
     write: (t) => {
       if (box === "punt-reason") flow.puntReason = t;
@@ -376,9 +376,9 @@ export function paintThread(): void {
     next.classList.add("drawn");
     fig.replaceWith(next);
   }
-  // A new turn is a new voice target (its key carries the turn number), so a late phrase from the
-  // last turn can't land in this one.
-  if (voiceTargetKey() && !voiceTargetKey().endsWith(`:${flow.turns.length}`)) setVoiceTarget(voiceTargetFor());
+  // A turn of Jordan's sent is a new voice target (its key carries Jordan's turn count), so a late
+  // phrase from that turn can't land in the next; Bug Me's reply doesn't interrupt a correction being spoken.
+  if (voiceTargetKey() && !voiceTargetKey().endsWith(`:${jordanTurns(flow.turns).length}`)) setVoiceTarget(voiceTargetFor());
 }
 
 /** A read-only card for a decision that is answered, or set aside and waiting for Resume. */
@@ -394,7 +394,16 @@ function renderClosed(root: HTMLElement, d: Decision, why: "answered" | "aside")
       // The conversation as it happened, read-only, then the outcome.
       a.thread ? threadList(d, a.thread) : null,
       h("p", {}, h("span", { class: "quiet" }, lead), a.other ?? chosen?.label ?? a.final),
-      a.thread ? null : a.conditions ? h("p", { class: "quiet" }, "With conditions: “", a.conditions, "”") : a.basis ? h("p", { class: "quiet" }, "“", a.basis, "”") : null,
+      a.thread
+        ? // A reason given after the conversation (at "I'm curious: why?") isn't in the thread: show it.
+          a.basis && !jordanTurns(a.thread.turns).some((t) => t.text.includes(a.basis))
+          ? h("p", { class: "quiet" }, "Your reason, given after: “", a.basis, "”")
+          : null
+        : a.conditions
+          ? h("p", { class: "quiet" }, "With conditions: “", a.conditions, "”")
+          : a.basis
+            ? h("p", { class: "quiet" }, "“", a.basis, "”")
+            : null,
     );
   } else {
     const p = S.punts[d.id];
