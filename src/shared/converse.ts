@@ -26,8 +26,8 @@ export interface BugTurn {
   who: "bugme";
   text: string;
   next: Next;
-  /** On a read-back: the choice it read back (`ConverseResult.heard`), so a later "yes" can be checked
-   *  against what Jordan actually saw. Not shown to the model. */
+  /** On a read-back: a fingerprint of the decision it read back (`ConverseResult.heard`), so a later
+   *  "yes" can be checked against what Jordan actually saw. Not shown to the model. */
   heard?: string;
 }
 
@@ -67,7 +67,8 @@ export interface ConverseResult {
   ledger: Ledger;
   /** Set when code changed the model's `next` (and so wrote the reply). */
   forced?: string;
-  /** On a read-back: the choice read back. The page stores it on the Bug Me turn and sends it back. */
+  /** On a read-back: the fingerprint of what was read back (`heard`). The page stores it on the Bug Me
+   *  turn and sends it back with the thread. */
   heard?: string;
 }
 
@@ -213,19 +214,24 @@ export function readBack(d: Decision, l: Ledger): string {
   return "Want to set this aside for now?";
 }
 
+/** What a read-back commits to: the choice, the course in Jordan's words, and the conditions. Any
+ *  change to these (a new click, a condition added or removed) is a different decision. */
+export function decisionFingerprint(l: Ledger): string {
+  return JSON.stringify([l.choice, l.course?.quote.trim() ?? "", l.conditions.map((c) => c.quote.trim()).sort()]);
+}
+
 /**
- * Whether Jordan's newest turn only agrees with the last read-back: it was a read-back of this same
- * choice, the turn clicks nothing, and none of the ledger's reasons, conditions, course or feedback
- * come from it. "Yes, but only if…" or "yes" with a different click changes the decision, so it is
- * read back again rather than closed.
+ * Whether Jordan's newest turn only agrees with the last read-back: that read-back committed to
+ * exactly this decision (same fingerprint), and the turn clicks nothing and asks nothing. "Yes, but
+ * only if…", "yes, without the docs note" or a yes with a different click changes the decision, so it
+ * is read back again rather than closed.
  */
 function agreesOnly(turns: ConvTurn[], ledger: Ledger): boolean {
   const last = bugTurns(turns).at(-1);
   const js = jordanTurns(turns);
   const newest = js.length - 1;
-  if (last?.next !== "confirm" || last.heard !== ledger.choice || js[newest]?.pick) return false;
-  const quotes = [...ledger.why, ...ledger.conditions, ...(ledger.course ? [ledger.course] : []), ...ledger.feedback.map((f) => f.quote), ...ledger.questions.map((q) => q.quote)];
-  return !quotes.some((q) => q.turn === newest);
+  if (last?.next !== "confirm" || last.heard !== decisionFingerprint(ledger) || js[newest]?.pick) return false;
+  return !ledger.questions.some((q) => q.quote.turn === newest);
 }
 
 /**
@@ -243,7 +249,7 @@ export function advance(d: Decision, turns: ConvTurn[], reply: string, next: Nex
   const last = bugTurns(turns).at(-1);
   const sendable = outcomeOf(d, ledger).kind !== "set-aside";
   const clip = (s: string) => (s.length > MAX_REPLY_CHARS ? `${s.slice(0, MAX_REPLY_CHARS - 1).trimEnd()}…` : s);
-  const confirm = (text: string, forced?: string): ConverseResult => ({ reply: text, next: "confirm", ledger, heard: ledger.choice, ...(forced ? { forced } : {}) });
+  const confirm = (text: string, forced?: string): ConverseResult => ({ reply: text, next: "confirm", ledger, heard: decisionFingerprint(ledger), ...(forced ? { forced } : {}) });
   if (next === "close") {
     if (agreesOnly(turns, ledger) && sendable) return { reply: clip(reply.trim()), next: "close", ledger };
     return confirm(readBack(d, ledger), last?.next !== "confirm" ? "close before a read-back" : !sendable ? "nothing to send yet" : "the decision changed since the read-back");
@@ -336,7 +342,7 @@ export function parseConverseRequest(b: Record<string, unknown>, d: Decision): {
     if (o.who === "bugme") {
       if (o.next !== "ask" && o.next !== "confirm" && o.next !== "close") throw new ConverseError(`turns[${i}].next must be ask, confirm or close`);
       if (o.text.length > MAX_BUG_TURN_CHARS) throw new ConverseError(`turns[${i}] is too long`);
-      if (o.heard !== undefined && (typeof o.heard !== "string" || ![...keys, "other", "reject", "none"].includes(o.heard))) throw new ConverseError(`turns[${i}].heard is not a choice of this decision`);
+      if (o.heard !== undefined && (typeof o.heard !== "string" || o.heard.length > MAX_BUG_TURN_CHARS)) throw new ConverseError(`turns[${i}].heard must be a short string`);
       return o.heard !== undefined ? { who: "bugme", text: o.text, next: o.next, heard: o.heard as string } : { who: "bugme", text: o.text, next: o.next };
     }
     if (o.who !== "jordan") throw new ConverseError(`turns[${i}].who must be jordan or bugme`);
