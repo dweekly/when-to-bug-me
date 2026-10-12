@@ -66,11 +66,16 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * changing their text. A "?" sentence asks; a clause opening with "but", "as long as", "unless" or
  * "only if" is a condition; one opening with "because" or "since" is a reason; a sentence naming
  * exactly one option's full label, not negated, is the choice ("something else" or "instead" opens a
- * different course). The last choice stated wins; anything ambiguous is "none".
+ * different course). The last choice stated wins and replaces the earlier one's marks; a clause
+ * naming both options undoes any earlier choice ("none").
  */
 export function fakeParse(d: Decision, text: string): ParseOutput {
   const marks: Mark[] = [];
   let choice = "none";
+  /** A newly stated choice replaces the earlier one, marks and all. */
+  const dropChoiceMarks = () => {
+    for (let i = marks.length - 1; i >= 0; i--) if (marks[i].kind === "choice") marks.splice(i, 1);
+  };
   for (const sentence of text.match(/[^.?!]+[.?!]*/g) ?? []) {
     const s = sentence.trim();
     if (!s) continue;
@@ -85,6 +90,7 @@ export function fakeParse(d: Decision, text: string): ParseOutput {
       else if (/^(because|since)\b/.test(low)) marks.push({ kind: "why", quote: part });
       else if (/^(something else|instead)\b/.test(low)) {
         choice = "other";
+        dropChoiceMarks();
         marks.push({ kind: "choice", quote: part });
       } else {
         const named = d.options.filter((o) => {
@@ -93,7 +99,12 @@ export function fakeParse(d: Decision, text: string): ParseOutput {
         });
         if (named.length === 1) {
           choice = named[0].key;
+          dropChoiceMarks();
           marks.push({ kind: "choice", quote: part });
+        } else if (named.length > 1) {
+          // Naming both is undecided, and it undoes an earlier choice.
+          choice = "none";
+          dropChoiceMarks();
         }
       }
     }

@@ -61,8 +61,16 @@ describe("the stand-in parser", () => {
     expect(fakeParse(rename, "Should we rename to account_id?").choice).toBe("none");
     expect(fakeParse(rename, "Rename to account_id or keep user_id, not sure.").choice).toBe("none");
   });
-  it("takes the last stated choice", () => {
-    expect(fakeParse(rename, "Rename to account_id. Actually, keep user_id.").choice).toBe("B");
+  it("takes the last stated choice, and only its words", () => {
+    const out = fakeParse(rename, "Rename to account_id. Actually, keep user_id.");
+    expect(out.choice).toBe("B");
+    expect(out.marks.filter((m) => m.kind === "choice").map((m) => m.quote)).toEqual(["Actually, keep user_id."]);
+    expect(answerParts(fakeParse(rename, "Rename to account_id. Instead, ship both fields for a release.").marks).course).toBe("Instead, ship both fields for a release.");
+  });
+  it("a later clause naming both options undoes an earlier choice", () => {
+    const out = fakeParse(rename, "Keep user_id. Actually, rename to account_id or keep user_id, not sure.");
+    expect(out.choice).toBe("none");
+    expect(out.marks.filter((m) => m.kind === "choice")).toEqual([]);
   });
   it("hears something else", () => {
     const out = fakeParse(rename, "Instead, ship both fields for a release.");
