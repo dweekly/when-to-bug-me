@@ -47,6 +47,6 @@ export default defineConfig({
     { name: "recorded-desktop", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 1440, height: 1000 } } },
     { name: "recorded-phone", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
     // The narrowest phone the layout promises (no horizontal scroll at 320px): the layout checks only.
-    { name: "narrow", testMatch: /stage[26]\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
+    { name: "narrow", testMatch: /(stage[26]|settled)\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
   ],
 });

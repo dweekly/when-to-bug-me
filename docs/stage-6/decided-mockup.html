@@ -29,22 +29,24 @@ h1 { font-family: var(--display); font-weight: 700; font-size: 40px; letter-spac
 .count { font-family: var(--display); font-size: 20px; color: var(--ink-2); }
 .chev { transition: transform .15s; color: var(--ink-3); }
 .group[open] .chev { transform: rotate(90deg); }
-.rule { margin: -6px 0 6px 46px; font-size: 14px; color: var(--ink-3); }
+.rule { margin: -6px 0 6px 46px; font-size: 14px; color: var(--ink-3); } .rule summary { cursor: pointer; list-style: none; text-decoration: underline dotted; text-underline-offset: 3px; } .rule summary::-webkit-details-marker { display: none; } .rule[open] summary { margin-bottom: 4px; }
 ul { list-style: none; margin: 0 0 12px; padding: 0 0 0 46px; }
 li { display: flex; align-items: center; gap: 12px; padding: 7px 8px; margin: 0 -8px; border-radius: 10px; }
 li .what { flex: 1; }
 li .what b { font-weight: 400; }
 li .what span { color: var(--ink-3); }
-.acts { display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
-li:hover, li.demo-hover { background: var(--night-2); }
-li:hover .acts, li:focus-within .acts, li.demo-hover .acts { opacity: 1; }
-.acts button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid transparent; color: var(--ink-2); font: 13px var(--body); padding: 5px 9px; border-radius: 8px; cursor: pointer; }
+.acts { display: flex; gap: 2px; color: var(--ink-3); }
+.acts button span { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width .15s; }
+li:hover, li:focus-within, li.demo-hover { background: var(--night-2); }
+li:hover .acts button, li:focus-within .acts button, li.demo-hover .acts button { color: var(--ink-2); }
+li:hover .acts button span, li:focus-within .acts button span, li.demo-hover .acts button span { max-width: 80px; }
+.acts button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; background: none; border: 1px solid transparent; color: inherit; font: 13px var(--body); padding: 5px 9px; border-radius: 8px; cursor: pointer; }
 .acts button:hover { border-color: var(--line); color: var(--ink); background: var(--night-3); }
 .acts button:focus-visible { outline: 2px solid var(--glow); outline-offset: 1px; }
 svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .ic svg { width: 22px; height: 22px; }
-@media (hover: none) { .acts { opacity: 1; } .acts button span { display: none; } }
-@media (max-width: 560px) { .acts button span { display: none; } h1 { font-size: 32px; } ul { padding-left: 0; } .rule { margin-left: 0; } }
+@media (hover: none), (max-width: 560px) { li { flex-wrap: wrap; } .acts { width: 100%; justify-content: flex-end; } .acts button span { max-width: none; } }
+@media (max-width: 560px) { h1 { font-size: 32px; } ul { padding-left: 0; } .rule { margin-left: 0; } }
 .note { margin-top: 40px; font-size: 13px; color: var(--ink-3); border-left: 2px solid var(--line); padding-left: 12px; }
 </style>
 </head>
@@ -59,20 +61,43 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
       <span><span class="gt">Deleted merged branches</span><br /><span class="gs">115 branches in 7 places</span></span>
       <span class="chev"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
     </summary>
-    <p class="rule">Your rule: housekeeping in your own repos, just do it.</p>
+    <details class="rule"><summary>Why Bug Me could do these</summary>Your rule: housekeeping in your own repos, just do it.</details>
     <ul>
-      <li class="demo-hover"><span class="what"><b>Main repo</b> <span>· 41, merged months ago</span></span>
-        <span class="acts">
-          <button title="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
-          <button title="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
-          <button title="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+      <li><span class="what"><b>Main repo</b> <span>· 41, merged months ago</span></span><span class="acts">
+          <button aria-label="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button aria-label="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button aria-label="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
         </span></li>
-      <li><span class="what"><b>Infrastructure</b> <span>· 23</span></span><span class="acts"><button><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button><button><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button><button><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button></span></li>
-      <li><span class="what"><b>Billing</b> <span>· 17</span></span></li>
-      <li><span class="what"><b>API gateway</b> <span>· 14</span></span></li>
-      <li><span class="what"><b>Webhooks service</b> <span>· 9</span></span></li>
-      <li><span class="what"><b>Billing cutover planning</b> <span>· 6 experiments</span></span></li>
-      <li><span class="what"><b>Releases</b> <span>· 5, merged and tagged</span></span></li>
+      <li class="demo-hover"><span class="what"><b>Infrastructure</b> <span>· 23</span></span><span class="acts">
+          <button aria-label="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button aria-label="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button aria-label="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+        </span></li>
+      <li><span class="what"><b>Billing</b> <span>· 17</span></span><span class="acts">
+          <button aria-label="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button aria-label="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button aria-label="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+        </span></li>
+      <li><span class="what"><b>API gateway</b> <span>· 14</span></span><span class="acts">
+          <button aria-label="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button aria-label="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button aria-label="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+        </span></li>
+      <li><span class="what"><b>Webhooks service</b> <span>· 9</span></span><span class="acts">
+          <button aria-label="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button aria-label="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button aria-label="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+        </span></li>
+      <li><span class="what"><b>Billing cutover planning</b> <span>· 6 experiments</span></span><span class="acts">
+          <button aria-label="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button aria-label="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button aria-label="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+        </span></li>
+      <li><span class="what"><b>Releases</b> <span>· 5, merged and tagged</span></span><span class="acts">
+          <button aria-label="Put it back and ask me"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Undo</span></button>
+          <button aria-label="This should have come to me"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L4 21l1.8-5.5A8 8 0 1121 12z"/><path d="M12 8v4M12 15.5v.01"/></svg><span>Ask!</span></button>
+          <button aria-label="Right to decide, wrong call"><svg viewBox="0 0 24 24"><path d="M17 14V3M10 15l-1 5a2 2 0 003.7 1L17 14h2a2 2 0 002-2V5a2 2 0 00-2-2H7.6a2 2 0 00-2 1.7l-1.4 8A2 2 0 006.2 15z"/></svg><span>Disagree</span></button>
+        </span></li>
     </ul>
   </details>
 
@@ -100,7 +125,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
     </summary>
   </details>
 
-  <p class="note">Mock. One sentence says what these are, once. Groups are closed until opened; a group's rule shows once, inside it. Actions appear on hover or focus (always on touch, icon only on phones). Undo puts the job back and asks Jordan; Ask! says it should have come to Jordan; Disagree means right to decide, wrong call.</p>
+  <p class="note">Mock. One sentence says what these are, once. Groups are closed until opened; a group's rule shows once, inside it. Every row has the same three actions: quiet icons that brighten and show their labels on hover or keyboard focus (the Infrastructure row is shown hovered). On phones the labels always show. The rule appears only when asked. Undo puts the job back and asks Jordan; Ask! says it should have come to Jordan; Disagree means right to decide, wrong call.</p>
 </main>
 </body>
 </html>

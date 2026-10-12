@@ -173,9 +173,10 @@ export const TOURS: Tour[] = [
     mood: "sheepish",
     path: [],
     steps: [
-      { go: "#/settled", target: "#settled", title: "Decided for you", text: "Housekeeping your rules cleared. Each can be undone.", until: "next" },
-      { target: "#settled li:first-child .marks button:first-child", title: "Undo", text: "Undo one: it comes back to you.", until: { click: "#settled li:first-child .marks button:first-child" } },
-      { target: "#settled li:first-child .marks", title: "Two kinds of wrong", text: "“You should have asked me” is about routing; “right to decide, wrong call” is about judgment. They're kept apart.", until: "next" },
+      { go: "#/settled", target: "#settled", title: "Decided for you", text: "Small jobs your rules already cover, grouped by kind. Each can be undone.", until: "next" },
+      { target: "#settled .dgroup:first-of-type > summary", title: "Open a group", text: "Open one to see each job.", until: { click: "#settled .dgroup:first-of-type > summary" } },
+      { target: "#settled .dgroup[open] .drow:first-child .dundo", title: "Undo", text: "Undo one: it comes back to you.", until: { click: "#settled .dgroup[open] .drow:first-child .dundo" } },
+      { target: "#settled .dgroup[open] .drow:first-child .dacts", title: "Two kinds of wrong", text: "Ask! says it should have come to you; Disagree says right to decide, wrong call. They're kept apart.", until: "next" },
     ],
   },
 ];
