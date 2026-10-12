@@ -43,8 +43,8 @@ const CASES: Case[] = [
   { name: "yes, with a condition", id: "incident-action-items", text: "File them all, as long as each ticket links the incident doc.", choice: "A", kinds: ["choice", "but"] },
 ];
 
-const key = process.env.ANTHROPIC_API_KEY || execFileSync("security", ["find-generic-password", "-a", process.env.USER ?? "", "-s", "anthropic-api-key", "-w"], { encoding: "utf8" }).trim();
-const client = new Anthropic({ apiKey: key, maxRetries: 2 });
+const keychainOrEnv = process.env.ANTHROPIC_API_KEY || execFileSync("security", ["find-generic-password", "-a", process.env.USER ?? "", "-s", "anthropic-api-key", "-w"], { encoding: "utf8" }).trim();
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || keychainOrEnv, maxRetries: 2 });
 let spent = 0;
 const raw: unknown[] = [];
 
