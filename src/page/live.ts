@@ -50,6 +50,13 @@ export function startOwner(q: Queue): void {
   if (!OWNER_PAGE) return;
   S.rules = q.rules;
   S.facts = q.facts;
+  // A ticket the server says is waiting is waiting, whatever this browser once answered (it was set
+  // aside and resumed elsewhere, say): its old answer and finished follow-up go.
+  for (const d of q.decisions) {
+    if (!S.answered[d.id]) continue;
+    delete S.answered[d.id];
+    if (S.flows[d.id] && S.flows[d.id].phase !== "choose") delete S.flows[d.id];
+  }
   const recent = (q.answered ?? []).filter((r) => S.answered[r.decision.id]);
   const known = new Set([...q.decisions.map((d) => d.id), ...recent.map((r) => r.decision.id)]);
   for (const c of [...q.cards, ...recent.map((r) => r.card)] as Card[]) S.cards[c.id] = c;

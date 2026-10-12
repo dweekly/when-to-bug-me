@@ -12,7 +12,7 @@ import { ownerDecisions, signIn, startOwner } from "./live";
 import { initVoice, voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
-import { type Queue, Q, S, fresh, load, save, setById, setF, setQ, setS } from "./state";
+import { type Queue, Q, S, STORE_KEY, fresh, load, save, setById, setF, setQ, setS } from "./state";
 import { startTour } from "./tour";
 import { render } from "./views";
 
@@ -34,6 +34,10 @@ async function boot(): Promise<void> {
         { type: "application/json" },
       );
       h("a", { href: URL.createObjectURL(blob), download: "bug-me-record.json" }).click();
+    } else if (t.id === "reset" && Q.owner) {
+      // The owner's morning is the server's: starting over drops this browser's drafts and reloads it.
+      localStorage.removeItem(STORE_KEY);
+      location.reload();
     } else if (t.id === "reset") {
       setS(fresh(Q));
       setF(null);

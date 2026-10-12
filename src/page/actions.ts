@@ -428,7 +428,22 @@ export function recordLateReason(d: Decision, basis: string): void {
   glowEvent({ kind: "answered", route: a.route, basis: substantiveBasis(basis), againstRecommendation: a.final !== d.recommended });
 }
 
+/** Flows with a late reason out (the why panel's button): a second press does nothing. */
+const whySending = new WeakSet<Flow>();
+
 export async function propose(flow: Flow, d: Decision): Promise<void> {
+  // Only the why panel's own press needs claiming; from finalize, the answer's claim already covers it.
+  if (flow.phase !== "why") return proposeNow(flow, d);
+  if (whySending.has(flow)) return;
+  whySending.add(flow);
+  try {
+    await proposeNow(flow, d);
+  } finally {
+    whySending.delete(flow);
+  }
+}
+
+async function proposeNow(flow: Flow, d: Decision): Promise<void> {
   const s0 = S;
   const phase0 = flow.phase;
   await drainVoice(); // the last words of a spoken reason belong to it
@@ -516,9 +531,11 @@ async function keepFactNow(flow: Flow, d: Decision, text: string, p: FactOutput 
   }
   flow.error = "";
   const label = d.options.find((o) => o.key === flow.choice)?.label ?? "";
-  const fact = keptFact(S.facts, p, t, label);
-  // Live queue only: the guidance is saved on the server and added to the session's answer first; if either fails, it isn't kept.
-  if (OWNER_PAGE) {
+  // Live queue only: the guidance is saved on the server first (if it isn't, it isn't kept), then added
+  // to the session's answer. A retry after a failed update finds it already saved and only updates.
+  const already = OWNER_PAGE ? S.facts.find((f) => f.text === t) : undefined;
+  const fact = already ?? keptFact(S.facts, p, t, label);
+  if (OWNER_PAGE && !already) {
     try {
       await saveContext(S.rules, withFact(S.facts, fact));
     } catch (e) {
@@ -526,13 +543,28 @@ async function keepFactNow(flow: Flow, d: Decision, text: string, p: FactOutput 
       if (showing(flow)) renderNow();
       return;
     }
-    const a = S.answered[d.id];
-    const ok = await delivered(flow, d.id, a?.outcome === "other" || a?.outcome === "rejected" ? { outcome: a.outcome, course: a.other, guidance: t } : { outcome: "option", choice: flow.choice!, guidance: t }, "error");
-    if (!ok) return;
   }
-  S.facts = withFact(S.facts, fact);
-  S.newFacts.push(fact.id);
-  S.version++;
+  if (!already) {
+    S.facts = withFact(S.facts, fact);
+    S.newFacts.push(fact.id);
+    S.version++;
+    save();
+  }
+  if (OWNER_PAGE) {
+    const a = S.answered[d.id];
+    const update: Delivery = a?.outcome === "other" || a?.outcome === "rejected" ? { outcome: a.outcome, course: a.other, guidance: t } : { outcome: "option", choice: flow.choice!, guidance: t };
+    try {
+      await deliver(d.id, update);
+    } catch (e) {
+      flow.error = `The guidance is saved, but couldn't be added to the asking session's answer (${(e as Error).message}). Press Keep it again to retry.`;
+      if (showing(flow)) renderNow();
+      return;
+    }
+    if (already) {
+      done(flow, `Kept for future asks: “${t}”`);
+      return;
+    }
+  }
   log("guidance_kept", { id: d.id, fact, edited: t !== p.text });
   glowEvent({ kind: "guidance_kept" });
   done(flow, OWNER_PAGE ? `Kept for future asks: “${t}”` : `Kept. Every agent now gets: “${t}”`);
@@ -621,7 +653,20 @@ async function setAsideNow(flow: Flow, d: Decision): Promise<void> {
 }
 
 /** Bring a set-aside decision back to active work; its history stays with it. */
+/** Tickets with a Resume out (live queue only): a second press does nothing. */
+const resuming = new Set<string>();
+
 export async function resume(id: string): Promise<void> {
+  if (resuming.has(id)) return;
+  resuming.add(id);
+  try {
+    await resumeNow(id);
+  } finally {
+    resuming.delete(id);
+  }
+}
+
+async function resumeNow(id: string): Promise<void> {
   const punt = S.punts[id];
   if (!punt) return;
   // Live queue only: the session is told the decision is back with the owner; if that fails, nothing changes.

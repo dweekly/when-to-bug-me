@@ -3,6 +3,7 @@
 // simulation, and the answer reaches the asking session at the moment of the press; if it can't,
 // the card says so and stays open for another press.
 import { type APIRequestContext, expect, test } from "@playwright/test";
+import { OWNER_RULES } from "../../src/worker/live";
 import { decide, toDecision } from "./helpers";
 
 const LIVE_KEY = process.env.BUGME_E2E_LIVE_TOKEN!;
@@ -64,6 +65,26 @@ test("if the session can't be reached, nothing is recorded and the card stays op
   fail = false;
   await toDecision(page); // press the decision again
   await expect.poll(async () => (await told(request, id)).status, { timeout: 15_000 }).toBe("answered");
+});
+
+test("a page opened before a rule edit elsewhere can't overwrite it by talking", async ({ page, request }) => {
+  const id = await ask(request, `Rename the staging bucket ${Date.now()}?`);
+  await page.goto(`/me#k=${encodeURIComponent(LIVE_KEY)}`);
+  await page.goto(`/me#/d/${id}`);
+  await expect(page.locator("#now")).toContainText("Rename the staging bucket");
+  // Another device edits the rules after this page loaded.
+  const q = (await (await request.get("/api/me/queue", { headers: bearer })).json()) as { rules: { id: string; text: string }[]; facts: unknown[] };
+  const edited = q.rules.map((r) => (r.id === "L10" ? { ...r, text: `Small changes: ask me first (${id}).` } : r));
+  expect((await request.post("/api/me/context", { headers: bearer, data: { rules: edited, facts: q.facts } })).ok()).toBe(true);
+  // This page, still holding the old rules, carries on the conversation.
+  await page.locator("#think").fill("Hold for review, because the team uses that name in scripts.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .turns li.typing")).toHaveCount(0, { timeout: 15_000 });
+  const after = (await (await request.get("/api/me/queue", { headers: bearer })).json()) as { rules: { id: string; text: string }[] };
+  // Not reverted to the page's old copy (desktop and phone run this at once against one queue, so either edit may be the latest).
+  expect(after.rules.find((r) => r.id === "L10")!.text).toMatch(/^Small changes: ask me first \(t-/);
+  // Leave the queue's rules as they were, for the next run.
+  await request.post("/api/me/context", { headers: bearer, data: { rules: OWNER_RULES, facts: q.facts } });
 });
 
 test("the simulation is untouched: no live label, tours still there", async ({ page }) => {

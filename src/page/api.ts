@@ -14,6 +14,12 @@ export async function api<T>(path: string, body?: unknown, retried = false): Pro
   if (session) headers["x-bugme-session"] = session;
   // On the owner's page every call is about the live queue (docs/STAGE-7.md): /api/X becomes /api/me/X.
   const url = OWNER_PAGE && !path.startsWith("/api/me/") ? path.replace(/^\/api\//, "/api/me/") : path;
+  // The owner's rules and facts live on the server and change only through /api/me/context: an older
+  // page's copy riding along with a conversation turn or a re-route must never overwrite them.
+  if (OWNER_PAGE && body && typeof body === "object" && url !== "/api/me/context") {
+    const { rules: _rules, facts: _facts, ...rest } = body as Record<string, unknown>;
+    body = rest;
+  }
   const res = await fetch(url, body === undefined ? {} : { method: "POST", headers, body: JSON.stringify(body) });
   const data = (await res.json()) as { error?: string; unavailable?: boolean; needs_session?: boolean };
   if (res.status === 401 && data.needs_session && !retried) {
