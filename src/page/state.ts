@@ -211,6 +211,16 @@ export function load(q: Queue): State {
         const flows: Record<string, Flow> = {};
         for (const [id, saved] of Object.entries(s.flows ?? {})) {
           const f = { ...newFlow(id), ...saved }; // fields added since this morning was saved get defaults
+          // Saved before thinking out loud (stage 3): its reason becomes the words to think with, its
+          // "Yes, but…" text the conditions, and its choice a click, so nothing said is lost.
+          if (!("think" in saved)) {
+            const old = saved as unknown as { mode?: string };
+            const drafting = ["choose", "pending"].includes(f.phase as string);
+            if (old.mode === "conditions" && f.basis) f.conditions = f.basis;
+            if (drafting && f.basis) f.think = f.basis;
+            if (old.mode === "conditions" || drafting) f.basis = "";
+            if (f.choice) f.choiceBy = "click";
+          }
           // A question that was out when the page reloaded is asked again when the words are next read.
           // (card.ts asks them again when the card is next shown.)
           for (const [q, a] of Object.entries(f.asks)) if (a.status === "pending") delete f.asks[q];

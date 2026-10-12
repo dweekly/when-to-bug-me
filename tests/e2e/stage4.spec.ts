@@ -288,3 +288,60 @@ test("an answer to a question from a reset morning is not recorded in the new on
   await option(page, "File all five as drafted").click();
   expect(((await stored(page))?.record ?? []).filter((r) => r.kind === "question")).toHaveLength(0);
 });
+
+// Regressions from the second code review of #20.
+
+test("leaving the card during Send cancels it for good, even after coming back", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await option(page, "File all five as drafted").click();
+  const release = await hold(page, "/api/parse");
+  await page.locator("#think").fill("File all five as drafted because they agreed.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .think-msg")).toHaveText("Reading what you said…");
+  await goHome(page);
+  await openDecision(page, "incident-action-items");
+  release();
+  await page.waitForTimeout(1500);
+  expect(await answered(page, "incident-action-items")).toBeUndefined();
+});
+
+test("words restored by a reload before they were read are read then", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await page.locator("#think").fill("Show me the list first.");
+  await page.reload(); // inside the typing pause: no parse was asked for yet
+  await expect(option(page, "Show me the list first")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#now .send")).toBeEnabled();
+});
+
+test("a pushback saved by the previous version keeps its Yes-but conditions", async ({ page }) => {
+  await openDecision(page, "sdk-dependency");
+  await decide(page, "Add the library");
+  await expect(page.locator("#now .followup.push")).toBeVisible();
+  // Rewrite the saved flow the way stage 3 stored it: conditions in basis, mode "conditions".
+  await page.evaluate(() => {
+    const k = "bugme.state.v1";
+    const st = JSON.parse(localStorage.getItem(k)!);
+    const f = st.flows["sdk-dependency"];
+    for (const field of ["think", "rev", "parsed", "asks", "conditions", "narration", "parseError", "choiceBy"]) delete f[field];
+    Object.assign(f, { mode: "conditions", basis: "only if the version is pinned", other: "", question: "", askAnswer: null });
+    localStorage.setItem(k, JSON.stringify(st));
+  });
+  await page.reload();
+  await page.locator("#now .followup.push .primary").click();
+  await expect.poll(async () => (await answered(page, "sdk-dependency"))?.send_down as string | undefined).toContain("only if the version is pinned");
+});
+
+test("a draft saved by the previous version comes back as words to think with, its pick still picked", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await option(page, "File all five as drafted").click(); // so there is a saved morning to rewrite
+  await page.evaluate(() => {
+    const k = "bugme.state.v1";
+    const st = JSON.parse(localStorage.getItem(k)!);
+    st.flows["incident-action-items"] = { id: "incident-action-items", choice: "B", basis: "I want to check owners", phase: "pending", mode: null, other: "", question: "", askAnswer: null, puntKind: null, puntReason: "", puntFrom: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null };
+    localStorage.setItem(k, JSON.stringify(st));
+  });
+  await page.reload();
+  await expect(page.locator("#think")).toHaveValue("I want to check owners");
+  await expect(option(page, "Show me the list first")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#now .send")).toBeEnabled();
+});

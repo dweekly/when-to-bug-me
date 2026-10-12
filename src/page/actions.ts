@@ -191,6 +191,8 @@ export function unansweredQuestions(flow: Flow): string[] {
 /** Ask again any question still in the words whose request was lost (a reload while it was out). */
 export function resumeAsks(flow: Flow, d: Decision): void {
   if (flow.phase !== "choose") return;
+  // Words restored without a reading of them (a reload in the typing pause, or a draft from an earlier version) are read now.
+  if (flow.think.trim() && flow.parsed?.rev !== flow.rev && !parsing.get(flow) && !flow.parseError) void readWords(flow, d);
   for (const m of currentMarks(flow)) if (m.kind === "ask" && !flow.asks[m.quote]) void askOne(flow, d, m.quote);
 }
 
@@ -230,7 +232,11 @@ export async function send(flow: Flow, d: Decision, route: RouteKind): Promise<v
   sending.add(flow);
   const s0 = S;
   const card = S.cards[d.id];
-  const still = () => alive(s0, flow) && showing(flow) && flow.phase === "choose" && S.cards[d.id] === card;
+  // Leaving the card cancels this Send for good, even if the person comes back before it would have gone out.
+  let left = false;
+  const leave = () => (left = true);
+  window.addEventListener("hashchange", leave);
+  const still = () => !left && alive(s0, flow) && showing(flow) && flow.phase === "choose" && S.cards[d.id] === card;
   flow.message = "";
   repaint(flow);
   try {
@@ -272,6 +278,7 @@ export async function send(flow: Flow, d: Decision, route: RouteKind): Promise<v
     flow.card = card as Card;
     await answer(flow, d, route, narration);
   } finally {
+    window.removeEventListener("hashchange", leave);
     sending.delete(flow);
     if (showing(flow) && flow.phase === "choose") paintThink();
   }
