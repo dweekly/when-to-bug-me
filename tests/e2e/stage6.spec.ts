@@ -5,7 +5,7 @@
 // question with "I don't know; I'll ask the agent", closes on a lone "yes" after a read-back, and reads
 // "Neither, …" as a course of the person's own and "wrong question" as a rejection.
 import { type Page, expect, test } from "@playwright/test";
-import { STORE_KEY, editRule, freshPage, goRecord, hold, openDecision, option, reply, say, stored } from "./helpers";
+import { STORE_KEY, decideQuietly, editRule, freshPage, goRecord, hold, openDecision, option, reply, say, stored } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -88,6 +88,11 @@ test("a typed yes after the read-back decides; a yes that adds a condition is re
   expect(await answered(page, "api-rename")).toBeUndefined();
   await page.locator("#think").fill("Yes");
   await page.locator("#think").press("Enter");
+  await reply(page);
+  // A typed yes lights the decision; it doesn't send it by itself.
+  expect(await answered(page, "api-rename")).toBeUndefined();
+  await expect(sendBtn(page)).toHaveText("Keep user_id");
+  await sendBtn(page).click();
   await expect.poll(async () => (await answered(page, "api-rename"))?.final).toBe("B");
 });
 
@@ -275,4 +280,44 @@ test("a re-route already in flight leaves a decision alone once a conversation s
   await expect.poll(async () => (await stored(page))?.pending?.length ?? 0).toBe(0);
   await expect(page).toHaveURL(/#\/d\/settings-redesign$/);
   await expect(turns(page)).toHaveCount(2);
+});
+
+// Regressions from the second review of #31.
+
+test("a failed answer after a typed yes leaves the decision one press away", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await say(page, "Keep user_id, because integrators parse v1 responses.");
+  await say(page, "Yes");
+  await page.route("**/api/answer", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "down for a moment" }) }));
+  await sendBtn(page).click();
+  await expect(page.locator("#now")).toContainText("down for a moment");
+  await page.unroute("**/api/answer");
+  await expect(sendBtn(page)).toHaveText("Keep user_id");
+  await expect(sendBtn(page)).toBeEnabled();
+  await sendBtn(page).click();
+  await expect.poll(async () => (await answered(page, "api-rename"))?.final).toBe("B");
+});
+
+test("a rejected question's conditions go down with it, and the thread is in the exported record", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await say(page, "Wrong question. As long as the team agrees.");
+  await sendBtn(page).click();
+  await expect.poll(async () => (await answered(page, "api-rename"))?.final).toBe("rejected");
+  expect((await answered(page, "api-rename"))!.send_down).toContain("Conditions: As long as the team agrees.");
+  const ev = (await stored(page))!.record.find((r) => r.kind === "answer" && r.id === "api-rename") as Record<string, unknown>;
+  expect((ev.thread as { turns: unknown[] }).turns.length).toBeGreaterThan(1);
+});
+
+test("a reason given after the conversation shows on the closed card", async ({ page }) => {
+  await openDecision(page, "onsite-flight");
+  await decideQuietly(page, "9:40am flight");
+  const push = page.locator("#now .followup.push .primary");
+  await expect(page.locator("#now .followup.push .primary, #why").first()).toBeVisible();
+  if (await push.count()) await push.click();
+  await page.locator("#why").fill("I do school drop-off before 8:30.");
+  await page.getByRole("button", { name: "Tell Bug Me" }).click();
+  await page.getByRole("button", { name: "Don't keep" }).click();
+  await page.getByRole("button", { name: "Next decision" }).click();
+  await openDecision(page, "onsite-flight");
+  await expect(page.locator("#now .closed")).toContainText("I do school drop-off before 8:30.");
 });

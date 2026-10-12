@@ -3,7 +3,7 @@
 // gets its own recognition session, and late results from an earlier one are dropped. Speech
 // recognition is replaced by a stand-in the test drives.
 import { type Page, expect, test } from "@playwright/test";
-import { freshPage, goHome, openDecision, option, stored, decide, decideQuietly } from "./helpers";
+import { freshPage, goHome, hold, openDecision, option, stored, decide, decideQuietly } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -271,4 +271,42 @@ test("a late phrase from the last turn's session never lands in the next turn", 
   await expect.poll(() => recCount(page)).toBeGreaterThan(before);
   await say(page, "words from the turn already sent", before - 1);
   await expect(page.locator("#think")).toHaveValue("");
+});
+
+// Regressions from the second review of #31.
+
+test("leaving the card while the decision button waits on the last words decides nothing", async ({ page }) => {
+  await openDecision(page, "incident-action-items");
+  await page.locator("#voice-btn").click();
+  await say(page, "File all five as drafted because the volunteers already agreed.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .send.decide")).toBeVisible();
+  await holdPhrase(page, "um", "um", 800);
+  await page.locator("#now .send.decide").click();
+  await goHome(page);
+  await page.waitForTimeout(1200);
+  await expect(page).toHaveURL(/#\/$/);
+  expect((await stored(page))?.answered?.["incident-action-items"]).toBeUndefined();
+});
+
+test("a correction spoken while Bug Me replies is kept, and a failed turn's spoken correction replaces it", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await page.locator("#voice-btn").click();
+  await page.route("**/api/converse", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "down for a moment" }) }));
+  await say(page, "Rename it.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .think-msg")).toContainText("Bug Me couldn't reply just now");
+  await page.unroute("**/api/converse");
+  await holdPhrase(page, "actually", "Actually keep user_id, because integrators parse v1.", 200);
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .turns > li").first()).toContainText("Actually keep user_id", { timeout: 8000 });
+  await expect(page.locator("#now .turns > li")).toHaveCount(2);
+  // Speaking while Bug Me is replying: the words land after its reply.
+  const release = await hold(page, "/api/converse");
+  await page.locator("#think").fill("Yes");
+  await page.locator("#now .send").click();
+  await say(page, "but only if the docs say why.");
+  release();
+  await expect(page.locator("#now .turns > li")).toHaveCount(4, { timeout: 8000 });
+  await expect(page.locator("#think")).toHaveValue("but only if the docs say why.");
 });
