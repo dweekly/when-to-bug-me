@@ -325,10 +325,16 @@ function iconAction(btn: HTMLElement, paths: string, label: string, name: string
   return btn;
 }
 
-/** Groups the person has opened, so a re-render (an Undo, a mark) doesn't close them. */
+/** Groups the person has opened, so a re-render (an Undo, a mark) doesn't close them. Kept per
+ *  morning: a fresh morning (a tour, starting over) replaces S and starts with every group closed. */
 const openGroups = new Set<WorkKind>();
+let openGroupsFor: unknown = null;
 
 function renderSettledView(view: HTMLElement): void {
+  if (openGroupsFor !== S) {
+    openGroups.clear();
+    openGroupsFor = S;
+  }
   const a = agenda();
   const ids = a.settled.filter((id) => !S.reopened.includes(id));
   const root = h("div", { id: "settled", class: "decided" });
@@ -377,12 +383,14 @@ function renderSettledView(view: HTMLElement): void {
   );
 }
 
-/** One job: what was done (the fast model's past-tense line, or the question when there is none), its project, and the actions. */
+/** One job: what was done (the fast model's past-tense line; without one, the question and the option
+ *  Bug Me took), its project, and the actions. */
 function settledRow(id: string): HTMLElement {
   const d = byId.get(id)!;
   const c = S.cards[id] as Card;
   const asked = (c.headline || d.question).replace(/\?$/, "");
-  const done = c.done?.[c.settle_option] || asked;
+  const done = c.done?.[c.settle_option] || "";
+  const picked = d.options.find((o) => o.key === c.settle_option)?.label ?? c.settle_option;
   const project = Q.persona.projects.find((x) => x.id === d.project)?.name ?? d.project;
   return h(
     "li",
@@ -391,9 +399,10 @@ function settledRow(id: string): HTMLElement {
       "span",
       { class: "dwhat" },
       c.emoji ? h("span", { class: "demoji", "aria-hidden": "true" }, c.emoji) : null,
-      h("span", { class: "ddone" }, done),
+      h("span", { class: "ddone" }, done || asked),
+      done ? null : h("span", { class: "dpick" }, ` → ${picked}`),
       h("span", { class: "dproj" }, ` · ${project}`),
-      done !== asked ? h("span", { class: "sr-only" }, `. Asked: ${asked}`) : null,
+      done ? h("span", { class: "sr-only" }, `. Asked: ${asked}`) : null,
       S.changes[id] ? h("span", { class: "change-note" }, S.changes[id]) : null,
       S.pending.includes(id) ? h("span", { class: "change-note" }, "re-checking…") : null,
     ),

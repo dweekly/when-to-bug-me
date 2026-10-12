@@ -352,6 +352,7 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .dwhat { flex: 1; min-width: 0; padding: 8px 0; }
 .demoji { margin-right: 8px; }
 .dproj { color: var(--ink-3); }
+.dpick { color: var(--ink-2); }
 .dwhat .change-note { display: block; }
 .dacts { display: flex; gap: 2px; color: var(--ink-3); flex: none; }
 .dacts button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; justify-content: center; padding: 0 10px; background: none; border: 1px solid transparent; border-radius: 8px; color: inherit; font: 13px var(--body); cursor: pointer; }

@@ -90,3 +90,35 @@ test.describe("the grouped list", () => {
     expect(box!.height).toBeGreaterThanOrEqual(44);
   });
 });
+
+test.describe("review fixes", () => {
+  test.beforeEach(async ({ page }) => {
+    await freshPage(page);
+  });
+
+  test("a job with no past-tense line still shows what Bug Me chose", async ({ page }) => {
+    // Serve the queue without one card's fast-model lines, as when that call couldn't be evaluated.
+    await page.route("**/api/queue", async (route) => {
+      const res = await route.fetch();
+      const q = await res.json();
+      for (const c of q.cards) if (c.id === "formatter-run") delete c.done;
+      await route.fulfill({ response: res, json: q });
+    });
+    await page.goto("/app#/settled");
+    await page.reload();
+    await expect(page.locator("#settled")).toBeVisible();
+    const row = page.locator('#settled li.drow[data-id="formatter-run"]');
+    await expect(row.locator(".ddone")).toContainText("Run the formatter across the SDK repo");
+    await expect(row.locator(".dpick")).toHaveText(/^ → \S/);
+  });
+
+  test("a tour started from the menu begins with every group closed", async ({ page }) => {
+    await page.goto("/app#/settled");
+    await page.locator('#settled .dgroup[data-work="branches"] > summary').click();
+    await expect(page.locator("#settled .dgroup[open]")).toHaveCount(1);
+    await page.locator("#bar").getByRole("button", { name: "Tours" }).click();
+    await page.locator(".tour-item").filter({ hasText: "What Bug Me decided for you" }).click();
+    await expect(page.locator(".driver-popover-title")).toHaveText("Decided for you");
+    await expect(page.locator("#settled .dgroup[open]")).toHaveCount(0);
+  });
+});
