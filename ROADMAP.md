@@ -41,6 +41,7 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Session continuity.** A session that stops checking never hears a late answer or a reopening. Durable session recovery, and adding to an existing ask instead of a new one.
 - **Scoped credentials.** One token serves the MCP server and the browser sign-in. Separate intake keys, device revocation, sign-out.
 - **Answering without the model when its budget is spent** (David, 2026-10-12: roadmap, not fixed in stage 7). An ask that couldn't be routed is kept as the owner's decision, but the page answers only through a conversation turn, which needs the model; a model-free "just pick an option" path would let the owner answer it anyway.
+- **Cross-device follow-ups on /me** (Codex, fourth pass on #32; David, 2026-10-12: edge cases after the third pass go here). (a) A follow-up to an "other" or rejected answer should also match its course, so one tab's old course can't replace another's newer one. (b) On reload, a saved local answer should be replaced by the server's current answer (the queue would carry the answer's identity), dropping its stale follow-ups. (c) When guidance is saved but can't attach to an answer changed elsewhere, the decisions it affects should still be re-checked.
 - **Queue retention, backups and notifications.** Old tickets stay in the Durable Object; nothing pings David's phone when something new arrives.
 
 ## Tech debt to schedule
