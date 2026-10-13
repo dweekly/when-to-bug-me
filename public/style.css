@@ -190,6 +190,13 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .turn-src { flex: none; align-self: center; font: 11px var(--mono); color: var(--ink-3); }
 .turn.typing .dots { display: inline-block; letter-spacing: 2px; animation: pulse 1.2s infinite; color: var(--ink-3); }
 .picked-chip { font: 12px var(--mono); color: var(--glow); }
+/* "Huh?" (docs/STAGE-6E.md): a quiet pill under the question, then on Bug Me's latest turn. */
+.huh { flex: none; align-self: center; border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 999px; padding: 4px 12px; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
+.huh:hover { border-color: var(--glow); color: var(--ink); }
+.huh-q { display: block; margin: -6px 0 14px; }
+.huh-q[hidden] { display: none; }
+.turn.mine.huh-turn { padding: 6px 12px; }
+.huh-chip { font-size: 14px; color: var(--ink-2); }
 .turns mark { color: inherit; background: none; border-radius: 4px; text-decoration-thickness: 1px; text-underline-offset: 5px; text-decoration-color: var(--ink-3); }
 .turns mark.m-choice { background: var(--glow-soft); box-shadow: 0 0 0 2px var(--glow-soft); }
 .turns mark.m-why { text-decoration-line: underline; text-decoration-style: solid; }

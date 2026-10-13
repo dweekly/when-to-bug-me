@@ -4,8 +4,8 @@
 // redraws through views.ts / card.ts.
 
 import { nextInSession } from "../shared/agenda";
-import { MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, MAX_TRANSCRIPT_CHARS, REROUTE_CONCURRENCY } from "../shared/constants";
-import { type ConverseResult, type JordanTurn, closeInputs, jordanTurns } from "../shared/converse";
+import { MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_HUH, MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, MAX_TRANSCRIPT_CHARS, REROUTE_CONCURRENCY } from "../shared/constants";
+import { type ConverseResult, EMPTY_LEDGER, type JordanTurn, closeInputs, huhs, jordanTurns, standingTurn, unclearCount, wordTurns } from "../shared/converse";
 import { guidanceText } from "../shared/parse";
 import { type Punt, puntInstruction, puntProblem } from "../shared/punt";
 import {
@@ -86,7 +86,7 @@ export function thinkEdited(flow: Flow, text: string): void {
 export function pick(flow: Flow, key: string): void {
   if (flow.phase !== "choose" || sending.has(flow)) return;
   // At the thread's limit only the read-back can be confirmed; a new pick would strand it.
-  if (jordanTurns(flow.turns).length >= MAX_CONVERSE_TURNS && flow.turns.at(-1)?.who === "bugme") return;
+  if (wordTurns(flow.turns) >= MAX_CONVERSE_TURNS && flow.turns.at(-1)?.who === "bugme") return;
   flow.pick = key;
   flow.choice = key;
   flow.message = "";
@@ -96,10 +96,11 @@ export function pick(flow: Flow, key: string): void {
 
 /** Bug Me's last turn, if it read the decision back and nothing has been said or clicked since. */
 export function readyToConfirm(flow: Flow): boolean {
-  const last = flow.turns.at(-1);
   // A typed "yes" (Bug Me's close) lights the same button as a read-back, so a failed answer always
-  // leaves the decision one press away.
-  return last?.who === "bugme" && (last.next === "confirm" || last.next === "close") && !flow.think.trim() && !flow.pick && Boolean(flow.ledger);
+  // leaves the decision one press away. A "Huh?" and its explanation don't put it out: the read-back
+  // still stands (docs/STAGE-6E.md).
+  const last = standingTurn(flow.turns);
+  return flow.turns.at(-1)?.who === "bugme" && (last?.next === "confirm" || last?.next === "close") && !flow.think.trim() && !flow.pick && Boolean(flow.ledger);
 }
 
 /** Jordan's last turn never got a reply (a failure, or a reload while it was out): Send asks again. */
@@ -107,10 +108,19 @@ export function unanswered(flow: Flow): boolean {
   return flow.turns.at(-1)?.who === "jordan" && !sending.has(flow);
 }
 
-/** Which of Jordan's scripted turns comes next: an unanswered turn is still the current one. */
+/** Which of Jordan's scripted words come next (examples.ts scriptWords): an unanswered turn is still
+ *  the current one, and a "Huh?" press is not words. */
 export function scriptIndex(flow: Flow): number {
-  const n = jordanTurns(flow.turns).length;
-  return flow.turns.at(-1)?.who === "jordan" ? n - 1 : n;
+  const n = wordTurns(flow.turns);
+  const last = flow.turns.at(-1);
+  return last?.who === "jordan" && !last.huh ? n - 1 : n;
+}
+
+/** Whether "Huh?" can be pressed now (docs/STAGE-6E.md): Bug Me has the floor (the card, or its last
+ *  turn, not a close), nothing is out or unanswered, and the thread has presses left. */
+export function canHuh(flow: Flow): boolean {
+  const last = flow.turns.at(-1);
+  return flow.phase === "choose" && !sending.has(flow) && last?.who !== "jordan" && last?.next !== "close" && huhs(flow.turns) < MAX_HUH;
 }
 
 function repaint(flow: Flow): void {
@@ -126,8 +136,10 @@ function threadCard(flow: Flow, d: Decision): Card | null {
 /**
  * Send Jordan's words (and any click) as a turn, or ask again for a reply that never came. Claimed at
  * once; the microphone finishes its phrase first; a reply is applied only to the thread it answers.
+ * With `huh`, the turn is a press of "Huh?" instead: no words, and whatever is in the box stays there.
  */
-export async function sendTurn(flow: Flow, d: Decision, route: RouteKind): Promise<void> {
+export async function sendTurn(flow: Flow, d: Decision, route: RouteKind, huh = false): Promise<void> {
+  if (huh && !canHuh(flow)) return;
   if (flow.phase !== "choose" || sending.has(flow)) return;
   sending.add(flow);
   const s0 = S;
@@ -144,22 +156,31 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind): Promi
     if (!still()) return;
     // Decided after the microphone has finished: a turn that never got a reply is asked again as it
     // was, unless the person has since changed the words or the pick; then the new input replaces it.
-    const waitingTurn = flow.turns.at(-1)?.who === "jordan";
-    if (waitingTurn && (flow.think.trim() || flow.pick)) {
+    // An unanswered "Huh?" is always asked again as it was: the words in the box were kept on purpose.
+    const waitingTurn = flow.turns.at(-1)?.who === "jordan" && !(flow.turns.at(-1) as JordanTurn).huh;
+    if (waitingTurn && !huh && (flow.think.trim() || flow.pick)) {
       const old = flow.turns.pop() as JordanTurn;
       if (!flow.pick && old.pick) flow.pick = old.pick;
     }
     const retry = flow.turns.at(-1)?.who === "jordan";
     const card = threadCard(flow, d);
     if (!card) return;
-    if (!retry) {
+    if (huh) {
+      // Checked again after the microphone: a turn may have gone out meanwhile.
+      if (retry || huhs(flow.turns) >= MAX_HUH) return;
+      turn = { who: "jordan", text: "", huh: true };
+      flow.turns.push(turn);
+      log("turn", { id: d.id, huh: true });
+      save();
+      repaint(flow);
+    } else if (!retry) {
       const text = flow.think.trim();
       if (!text && !flow.pick) return;
       if (text.length > MAX_REASON_CHARS) {
         flow.error = `That's more than ${MAX_REASON_CHARS} characters; the gist is enough.`;
         return;
       }
-      if (jordanTurns(flow.turns).length >= MAX_CONVERSE_TURNS || jordanTurns(flow.turns).reduce((n, t) => n + t.text.length, text.length) > MAX_TRANSCRIPT_CHARS) {
+      if (wordTurns(flow.turns) >= MAX_CONVERSE_TURNS || jordanTurns(flow.turns).reduce((n, t) => n + t.text.length, text.length) > MAX_TRANSCRIPT_CHARS) {
         flow.message = "That's plenty to go on. Confirm what Bug Me read back, or skip.";
         return;
       }
@@ -192,9 +213,12 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind): Promi
     if (!alive(s0, flow) || flow.turns.at(-1) !== asked) return;
     const bug: ShownBugTurn = { who: "bugme", text: r.reply, next: r.next, source: r.source, ...(r.heard ? { heard: r.heard } : {}) };
     flow.turns.push(bug);
-    flow.ledger = r.ledger;
-    // The lit option follows what Bug Me heard; a click since then would still win.
-    flow.choice = d.options.some((o) => o.key === r.ledger.choice) ? r.ledger.choice : null;
+    // A "Huh?" has no words, so it changes nothing Bug Me heard: the reading before it stands.
+    if (!asked.huh) {
+      flow.ledger = r.ledger;
+      // The lit option follows what Bug Me heard; a click since then would still win.
+      flow.choice = d.options.some((o) => o.key === r.ledger.choice) ? r.ledger.choice : null;
+    } else flow.ledger ??= EMPTY_LEDGER;
     log("reply", { id: d.id, text: r.reply, next: r.next, choice: r.ledger.choice, forced: r.forced, source: r.source });
     save();
     if (showing(flow)) announce(`Bug Me: ${r.reply}`);
@@ -291,6 +315,8 @@ async function delivered(flow: Flow, id: string, d: Delivery, where: "message" |
 }
 
 const threadOf = (flow: Flow): Thread | undefined => (flow.ledger ? { turns: flow.turns, ledger: flow.ledger } : undefined);
+/** The thread as logged with an outcome, with how often Bug Me's translation missed (docs/STAGE-6E.md). */
+const threadLog = (flow: Flow) => ({ thread: threadOf(flow), unclear: unclearCount(flow.turns, flow.ledger) || undefined });
 
 /**
  * A course of the person's own ("other"), or the question itself rejected: recorded as such, in their
@@ -309,7 +335,7 @@ export async function chooseOutside(flow: Flow, d: Decision, route: RouteKind, k
   if (!(await delivered(flow, d.id, { outcome: kind, course, reason: basis, conditions, instruction: send_down }))) return;
   const thread = threadOf(flow);
   S.answered[d.id] = { initial: kind, final: kind, other: course, outcome: kind, basis, guess: [], route, pushback: null, send_down, marks: [], narration: n.narration, narrationMarks: n.narrationMarks, ...(conditions ? { conditions } : {}), ...(thread ? { thread } : {}) };
-  log("answer", { id: d.id, route, initial: kind, final: kind, outcome: kind, other: course, basis, conditions: conditions || undefined, narration: n.narration, guess_before_answer: null, source: isCardLike(S.cards[d.id]) ? (S.cards[d.id] as Card).source : null, thread });
+  log("answer", { id: d.id, route, initial: kind, final: kind, outcome: kind, other: course, basis, conditions: conditions || undefined, narration: n.narration, guess_before_answer: null, source: isCardLike(S.cards[d.id]) ? (S.cards[d.id] as Card).source : null, ...threadLog(flow) });
   glowEvent({ kind: "answered", route, basis: substantiveBasis(basis || course), againstRecommendation: true });
   flow.choice = kind;
   flow.send_down = send_down;
@@ -329,7 +355,7 @@ export async function sendQuestionToAgent(flow: Flow, d: Decision, questions: st
   // Live queue only: the session is told what to find out, and the ticket is set aside (so it can be resumed).
   if (!(await delivered(flow, d.id, { outcome: "set-aside", kind: "info", reason: punt.reason, instruction: punt.instruction }))) return;
   S.punts[d.id] = punt;
-  log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: "ask", thread: threadOf(flow) });
+  log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: "ask", ...threadLog(flow) });
   glowEvent({ kind: "punted" });
   const here = showing(flow); // on /me the person may have moved on while the session was being told
   delete S.flows[d.id];
@@ -429,7 +455,7 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     conditions: conditions || undefined,
     narration: n?.narration || undefined,
     source: c.source,
-    thread: threadOf(flow),
+    ...threadLog(flow),
   });
   glowEvent({ kind: "answered", route, basis: substantiveBasis(basis), againstRecommendation: choice !== d.recommended });
   save();
@@ -689,7 +715,7 @@ async function setAsideNow(flow: Flow, d: Decision): Promise<void> {
   if (!(await delivered(flow, d.id, { outcome: "set-aside", kind: punt.kind, reason: punt.reason, instruction: punt.instruction }, "error"))) return;
   if (!alive(s0, flow)) return;
   S.punts[d.id] = punt;
-  log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: flow.puntFrom, thread: threadOf(flow) });
+  log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: flow.puntFrom, ...threadLog(flow) });
   glowEvent({ kind: "punted" });
   // The answer in progress is dropped: nothing was final, and the guess was never revealed.
   const here = showing(flow); // on /me the person may have moved on while the session was being told

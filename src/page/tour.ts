@@ -4,7 +4,7 @@
 // so the current step's target is re-found after every render. Escape or the close button ends it.
 
 import { type Driver, type DriveStep, driver } from "driver.js";
-import { CONVERSATIONS, EXAMPLES } from "../shared/examples";
+import { CONVERSATIONS, EXAMPLES, scriptWords } from "../shared/examples";
 import { TOURS, type Tour, type TourStep } from "../shared/tours";
 import { scriptIndex } from "./actions";
 import { voiceOff } from "./voice";
@@ -165,7 +165,7 @@ function exampleText(step: TourStep): string | null {
     // The conversation: the decision's scripted turn for where the thread is now.
     const script = CONVERSATIONS.find((c) => c.id === step.example!.decision);
     const at = F && F.id === step.example.decision ? scriptIndex(F) : 0;
-    return script?.turns[at]?.text || null;
+    return (script && scriptWords(script)[at]?.text) || null;
   }
   return EXAMPLES.find((e) => e.id === step.example!.decision)?.reason ?? null;
 }

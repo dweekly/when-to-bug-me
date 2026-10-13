@@ -1,0 +1,1916 @@
+{
+ "prompt_version": "2026-10-13.1",
+ "model": "claude-opus-5-5",
+ "trials": 3,
+ "spent_usd": 0.6700320000000001,
+ "raw": [
+  {
+   "case": "Huh? on the card gets the question again, plainly",
+   "trial": 2,
+   "turn": 0,
+   "ms": 4342,
+   "raw": {
+    "reply": "The billing agents are moving invoicing to the new payments provider, and they need to know how to handle tax on invoices. Option A would recalculate tax on every invoice sent since January and send customers corrected invoices wherever the total comes out different, which is about 1.5% of invoices, mostly off by a few cents. Option B keeps using the old lookup table that matches tax codes to invoice lines, and the material doesn't say what else would happen under it. It came to you because corrected invoices go to customers and can't be taken back. Should the agent recalculate and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "The billing agents are moving invoicing to the new payments provider, and they need to know how to handle tax on invoices. Option A would recalculate tax on every invoice sent since January and send customers corrected invoices wherever the total comes out different, which is about 1.5% of invoices, mostly off by a few cents. Option B keeps using the old lookup table that matches tax codes to invoice lines, and the material doesn't say what else would happen under it. It came to you because corrected invoices go to customers and can't be taken back. Should the agent recalculate and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "Huh? on the card gets the question again, plainly",
+   "trial": 1,
+   "turn": 0,
+   "ms": 4426,
+   "raw": {
+    "reply": "The billing agents are moving invoicing to the new payments provider, and they need to know how to handle tax. Option A recomputes tax on every invoice sent since January and sends customers corrected invoices where the total was off, which is about 1.5% of invoices, mostly by a few cents. Option B keeps using the old lookup table that matches tax codes to invoice lines, and the material doesn't say what happens to those small differences then. Corrected invoices would be seen by customers and can't be taken back, which is why this came to you. Should the agents recompute and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "The billing agents are moving invoicing to the new payments provider, and they need to know how to handle tax. Option A recomputes tax on every invoice sent since January and sends customers corrected invoices where the total was off, which is about 1.5% of invoices, mostly by a few cents. Option B keeps using the old lookup table that matches tax codes to invoice lines, and the material doesn't say what happens to those small differences then. Corrected invoices would be seen by customers and can't be taken back, which is why this came to you. Should the agents recompute and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "Huh? on the card gets the question again, plainly",
+   "trial": 0,
+   "turn": 0,
+   "ms": 4497,
+   "raw": {
+    "reply": "Some invoices since January may have slightly wrong tax, and the agent needs to know how to handle that. Option A would recompute the tax on every invoice issued since January and send customers corrected invoices wherever the total changed, which is about 1.5% of invoices, mostly by a few cents. Option B would keep using the old table that matches tax codes to invoice lines, as things work today; the agent didn't say what happens to past invoices under that choice. Corrected invoices are something customers would see and can't be taken back, which is why this came to you. Should the agent recompute and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Some invoices since January may have slightly wrong tax, and the agent needs to know how to handle that. Option A would recompute the tax on every invoice issued since January and send customers corrected invoices wherever the total changed, which is about 1.5% of invoices, mostly by a few cents. Option B would keep using the old table that matches tax codes to invoice lines, as things work today; the agent didn't say what happens to past invoices under that choice. Corrected invoices are something customers would see and can't be taken back, which is why this came to you. Should the agent recompute and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "typed confusion is heard as unclear, not as a question for the agent",
+   "trial": 2,
+   "turn": 0,
+   "ms": 3499,
+   "raw": {
+    "reply": "T-19 is the old table that matches tax codes to invoice line items; keeping it means tax stays as it was calculated. The other option recomputes tax on every invoice since January and sends corrected invoices where totals differ, about 1.5% of them, mostly by a few cents. Which way do you lean?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "What does T-19 even mean?",
+       "answerable": true,
+       "answer": "The legacy table that maps tax codes to invoice line items."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "T-19 is the old table that matches tax codes to invoice line items; keeping it means tax stays as it was calculated. The other option recomputes tax on every invoice since January and sends corrected invoices where totals differ, about 1.5% of them, mostly by a few cents. Which way do you lean?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "What does T-19 even mean?"
+       },
+       "answer": "The legacy table that maps tax codes to invoice line items."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "typed confusion is heard as unclear, not as a question for the agent",
+   "trial": 0,
+   "turn": 0,
+   "ms": 3584,
+   "raw": {
+    "reply": "T-19 is the old lookup table that matches tax codes to invoice line items; keeping it means tax stays as it's calculated today. The other option recomputes tax on every invoice since January and sends corrected invoices where totals differ, about 1.5% of them, mostly by a few cents. Which way do you lean?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "What does T-19 even mean?",
+       "answerable": true,
+       "answer": "The legacy table that maps tax codes to invoice line items."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "T-19 is the old lookup table that matches tax codes to invoice line items; keeping it means tax stays as it's calculated today. The other option recomputes tax on every invoice since January and sends corrected invoices where totals differ, about 1.5% of them, mostly by a few cents. Which way do yo…",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "What does T-19 even mean?"
+       },
+       "answer": "The legacy table that maps tax codes to invoice line items."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "typed confusion is heard as unclear, not as a question for the agent",
+   "trial": 1,
+   "turn": 0,
+   "ms": 3839,
+   "raw": {
+    "reply": "T-19 is the old lookup table that matches tax codes to invoice line items; keeping it means tax stays as it's computed today. The other path recomputes tax on every invoice since January and sends corrected invoices where totals differ, about 1.5% of them, mostly by a few cents. Which way do you lean?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "What does T-19 even mean?",
+       "answerable": true,
+       "answer": "T-19 is the legacy table that maps tax codes to invoice line items."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "T-19 is the old lookup table that matches tax codes to invoice line items; keeping it means tax stays as it's computed today. The other path recomputes tax on every invoice since January and sends corrected invoices where totals differ, about 1.5% of them, mostly by a few cents. Which way do you le…",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "What does T-19 even mean?"
+       },
+       "answer": "T-19 is the legacy table that maps tax codes to invoice line items."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a bare pick gets a why",
+   "trial": 0,
+   "turn": 0,
+   "ms": 2301,
+   "raw": {
+    "reply": "Got it, keep user_id. What's the main reason?",
+    "next": "ask",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Got it, keep user_id. What's the main reason?",
+    "next": "ask",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id."
+     },
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a bare pick gets a why",
+   "trial": 1,
+   "turn": 0,
+   "ms": 2382,
+   "raw": {
+    "reply": "Got it, keep user_id. What's the main reason, so the agents know?",
+    "next": "ask",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Got it, keep user_id. What's the main reason, so the agents know?",
+    "next": "ask",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id."
+     },
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a bare pick gets a why",
+   "trial": 2,
+   "turn": 0,
+   "ms": 3215,
+   "raw": {
+    "reply": "Got it, keep user_id. What's the main reason?",
+    "next": "ask",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Got it, keep user_id. What's the main reason?",
+    "next": "ask",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id."
+     },
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a full narration goes straight to the read-back",
+   "trial": 0,
+   "turn": 0,
+   "ms": 2781,
+   "raw": {
+    "reply": "Keep user_id, and note account_id in the docs as the internal name. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because renaming breaks every integrator who parses v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "But note account_id in the docs as the internal name."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id, and note account_id in the docs as the internal name. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because renaming breaks every integrator who parses v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "But note account_id in the docs as the internal name."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"But note account_id in the docs as the internal name.\"],[]]"
+   }
+  },
+  {
+   "case": "a full narration goes straight to the read-back",
+   "trial": 1,
+   "turn": 0,
+   "ms": 2892,
+   "raw": {
+    "reply": "Keep user_id in the v2 schema because renaming breaks integrators who parse v1 responses, and note account_id in the docs as the internal name. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "renaming breaks every integrator who parses v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "But note account_id in the docs as the internal name."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id in the v2 schema because renaming breaks integrators who parse v1 responses, and note account_id in the docs as the internal name. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "renaming breaks every integrator who parses v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "But note account_id in the docs as the internal name."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"But note account_id in the docs as the internal name.\"],[]]"
+   }
+  },
+  {
+   "case": "a full narration goes straight to the read-back",
+   "trial": 2,
+   "turn": 0,
+   "ms": 2979,
+   "raw": {
+    "reply": "Keep user_id in the v2 API so integrators parsing v1 responses don't break, and note account_id in the docs as the internal name. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because renaming breaks every integrator who parses v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "But note account_id in the docs as the internal name."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id in the v2 API so integrators parsing v1 responses don't break, and note account_id in the docs as the internal name. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because renaming breaks every integrator who parses v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "But note account_id in the docs as the internal name."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"But note account_id in the docs as the internal name.\"],[]]"
+   }
+  },
+  {
+   "case": "a question the agent's material answers",
+   "trial": 1,
+   "turn": 0,
+   "ms": 2667,
+   "raw": {
+    "reply": "About 300 customer endpoints receive these webhooks today. Which way do you lean: rename to created_at, or keep created?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "How many customer endpoints receive these webhooks?",
+       "answerable": true,
+       "answer": "About 300 customer endpoints receive them today."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "About 300 customer endpoints receive these webhooks today. Which way do you lean: rename to created_at, or keep created?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "How many customer endpoints receive these webhooks?"
+       },
+       "answer": "About 300 customer endpoints receive them today."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a question the agent's material answers",
+   "trial": 0,
+   "turn": 0,
+   "ms": 2707,
+   "raw": {
+    "reply": "About 300 customer endpoints receive these webhooks today. Which way do you lean: rename to created_at, or keep created?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "How many customer endpoints receive these webhooks?",
+       "answerable": true,
+       "answer": "About 300 customer endpoints receive them today."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "About 300 customer endpoints receive these webhooks today. Which way do you lean: rename to created_at, or keep created?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "How many customer endpoints receive these webhooks?"
+       },
+       "answer": "About 300 customer endpoints receive them today."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a question the agent's material answers",
+   "trial": 2,
+   "turn": 0,
+   "ms": 2792,
+   "raw": {
+    "reply": "About 300 customer endpoints receive these webhooks today. Which way do you lean: rename it to created_at, or keep created?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "How many customer endpoints receive these webhooks?",
+       "answerable": true,
+       "answer": "About 300 customer endpoints receive these webhooks today."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "About 300 customer endpoints receive these webhooks today. Which way do you lean: rename it to created_at, or keep created?",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "How many customer endpoints receive these webhooks?"
+       },
+       "answer": "About 300 customer endpoints receive these webhooks today."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a question the material can't answer",
+   "trial": 2,
+   "turn": 0,
+   "ms": 2761,
+   "raw": {
+    "reply": "The agent's material doesn't say whether any of those customers parse the field by name, so I'll ask the agent. It only says about 300 customer endpoints receive these webhooks today.",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "Do any of those customers parse the field by name?",
+       "answerable": false,
+       "answer": ""
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "The agent's material doesn't say whether any of those customers parse the field by name, so I'll ask the agent. It only says about 300 customer endpoints receive these webhooks today.",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Do any of those customers parse the field by name?"
+       },
+       "answer": null
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a question the material can't answer",
+   "trial": 0,
+   "turn": 0,
+   "ms": 2818,
+   "raw": {
+    "reply": "I don't know; the agent only says about 300 customer endpoints receive these webhooks, not how they parse them. I'll ask the agent.",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "Do any of those customers parse the field by name?",
+       "answerable": false,
+       "answer": ""
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "I don't know; the agent only says about 300 customer endpoints receive these webhooks, not how they parse them. I'll ask the agent.",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Do any of those customers parse the field by name?"
+       },
+       "answer": null
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a question the material can't answer",
+   "trial": 1,
+   "turn": 0,
+   "ms": 2927,
+   "raw": {
+    "reply": "The agent's note doesn't say whether any of the roughly 300 endpoints read that field by name. I'll ask the agent and come back to you.",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "Do any of those customers parse the field by name?",
+       "answerable": false,
+       "answer": ""
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "The agent's note doesn't say whether any of the roughly 300 endpoints read that field by name. I'll ask the agent and come back to you.",
+    "next": "ask",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Do any of those customers parse the field by name?"
+       },
+       "answer": null
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "\"just do it\" skips the why",
+   "trial": 1,
+   "turn": 0,
+   "ms": 1917,
+   "raw": {
+    "reply": "Book the 9:40am flight to Denver next Tuesday. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "the 9:40."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": true
+    }
+   },
+   "after_advance": {
+    "reply": "Book the 9:40am flight to Denver next Tuesday. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "the 9:40."
+     },
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": true
+    },
+    "heard": "[\"B\",\"\",[],[]]"
+   }
+  },
+  {
+   "case": "\"just do it\" skips the why",
+   "trial": 2,
+   "turn": 0,
+   "ms": 2842,
+   "raw": {
+    "reply": "Book the 9:40am flight to Denver next Tuesday. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Just do it, the 9:40."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": true
+    }
+   },
+   "after_advance": {
+    "reply": "Book the 9:40am flight to Denver next Tuesday. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Just do it, the 9:40."
+     },
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": true
+    },
+    "heard": "[\"B\",\"\",[],[]]"
+   }
+  },
+  {
+   "case": "\"just do it\" skips the why",
+   "trial": 0,
+   "turn": 0,
+   "ms": 3883,
+   "raw": {
+    "reply": "Book the 9:40am flight to Denver next Tuesday. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "the 9:40."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": true
+    }
+   },
+   "after_advance": {
+    "reply": "Book the 9:40am flight to Denver next Tuesday. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "the 9:40."
+     },
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": true
+    },
+    "heard": "[\"B\",\"\",[],[]]"
+   }
+  },
+  {
+   "case": "a mu: the question itself is rejected",
+   "trial": 1,
+   "turn": 0,
+   "ms": 3459,
+   "raw": {
+    "reply": "Got it: you're rejecting the question itself, since the rename shouldn't be on the table for v2. Before I read that back, why shouldn't v2 rename anything?",
+    "next": "ask",
+    "ledger": {
+     "choice": "reject",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Neither."
+     },
+     "course": {
+      "turn": 0,
+      "quote": "The rename shouldn't be on the table."
+     },
+     "action": "Take rename off the table",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "Why are we renaming anything in v2 at all?",
+       "answerable": true,
+       "answer": "The agent says it's to match the new internal tenancy naming, and v2 is a new version anyway."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Got it: you're rejecting the question itself, since the rename shouldn't be on the table for v2. Before I read that back, why shouldn't v2 rename anything?",
+    "next": "ask",
+    "ledger": {
+     "choice": "reject",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Neither."
+     },
+     "course": {
+      "turn": 0,
+      "quote": "The rename shouldn't be on the table."
+     },
+     "action": "Take rename off the table",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Why are we renaming anything in v2 at all?"
+       },
+       "answer": "The agent says it's to match the new internal tenancy naming, and v2 is a new version anyway."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "a mu: the question itself is rejected",
+   "trial": 0,
+   "turn": 0,
+   "ms": 3721,
+   "raw": {
+    "reply": "Got it: you're rejecting the rename question itself, since renaming anything in v2 shouldn't be on the table. Why it was proposed: the agent says it's to match the new internal tenancy naming. So: no rename in v2, user_id stays off the table for change. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "reject",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Neither."
+     },
+     "course": {
+      "turn": 0,
+      "quote": "The rename shouldn't be on the table."
+     },
+     "action": "Drop the v2 rename",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "Why are we renaming anything in v2 at all?",
+       "answerable": true,
+       "answer": "The agent says it's to match the new internal tenancy naming."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Got it: you're rejecting the rename question itself, since renaming anything in v2 shouldn't be on the table. Why it was proposed: the agent says it's to match the new internal tenancy naming. So: no rename in v2, user_id stays off the table for change. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "reject",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Neither."
+     },
+     "course": {
+      "turn": 0,
+      "quote": "The rename shouldn't be on the table."
+     },
+     "action": "Drop the v2 rename",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Why are we renaming anything in v2 at all?"
+       },
+       "answer": "The agent says it's to match the new internal tenancy naming."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"reject\",\"The rename shouldn't be on the table.\",[],[]]"
+   }
+  },
+  {
+   "case": "a mu: the question itself is rejected",
+   "trial": 2,
+   "turn": 0,
+   "ms": 3805,
+   "raw": {
+    "reply": "Got it: you're rejecting the question, and the rename shouldn't be on the table for v2. As for why it came up, the agent says the rename was meant to match the new internal tenancy naming, and since v2 is a new version anyway, it seemed like a good moment. So you're saying no rename in v2, it shouldn't be on the table. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "reject",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Neither."
+     },
+     "course": {
+      "turn": 0,
+      "quote": "The rename shouldn't be on the table."
+     },
+     "action": "Drop the v2 rename",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "turn": 0,
+       "quote": "Why are we renaming anything in v2 at all?",
+       "answerable": true,
+       "answer": "The agent says it matches the new internal tenancy naming, and v2 is a new version anyway."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "So you're rejecting the question: The rename shouldn't be on the table. I'll tell the agent. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "reject",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Neither."
+     },
+     "course": {
+      "turn": 0,
+      "quote": "The rename shouldn't be on the table."
+     },
+     "action": "Drop the v2 rename",
+     "why": [],
+     "conditions": [],
+     "questions": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Why are we renaming anything in v2 at all?"
+       },
+       "answer": "The agent says it matches the new internal tenancy naming, and v2 is a new version anyway."
+      }
+     ],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"reject\",\"The rename shouldn't be on the table.\",[],[]]",
+    "forced": "read-back too long"
+   }
+  },
+  {
+   "case": "routing feedback is heard",
+   "trial": 2,
+   "turn": 0,
+   "ms": 2935,
+   "raw": {
+    "reply": "Keep the field as created, and this shouldn't have come to you since it's the same call as the API rename. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep created."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "it's the same call as the API rename"
+      }
+     ],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "turn": 0,
+       "quote": "Honestly this shouldn't have come to me; it's the same call as the API rename.",
+       "kind": "routing"
+      }
+     ],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep the field as created, and this shouldn't have come to you since it's the same call as the API rename. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep created."
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "it's the same call as the API rename"
+      }
+     ],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Honestly this shouldn't have come to me; it's the same call as the API rename."
+       },
+       "kind": "routing"
+      }
+     ],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[],[]]"
+   }
+  },
+  {
+   "case": "routing feedback is heard",
+   "trial": 1,
+   "turn": 0,
+   "ms": 3153,
+   "raw": {
+    "reply": "Keep the field as created, and you'd note this shouldn't have come to you since it's the same call as the API rename. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep created."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "it's the same call as the API rename"
+      }
+     ],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "turn": 0,
+       "quote": "Honestly this shouldn't have come to me; it's the same call as the API rename.",
+       "kind": "routing"
+      }
+     ],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep the field as created, and you'd note this shouldn't have come to you since it's the same call as the API rename. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep created."
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "it's the same call as the API rename"
+      }
+     ],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Honestly this shouldn't have come to me; it's the same call as the API rename."
+       },
+       "kind": "routing"
+      }
+     ],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[],[]]"
+   }
+  },
+  {
+   "case": "routing feedback is heard",
+   "trial": 0,
+   "turn": 0,
+   "ms": 3387,
+   "raw": {
+    "reply": "Keep the field as created, and you'd note this shouldn't have come to you since it's the same call as the API rename. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep created."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "it's the same call as the API rename."
+      }
+     ],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "turn": 0,
+       "quote": "Honestly this shouldn't have come to me; it's the same call as the API rename.",
+       "kind": "routing"
+      }
+     ],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep the field as created, and you'd note this shouldn't have come to you since it's the same call as the API rename. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep created."
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "it's the same call as the API rename."
+      }
+     ],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "Honestly this shouldn't have come to me; it's the same call as the API rename."
+       },
+       "kind": "routing"
+      }
+     ],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[],[]]"
+   }
+  },
+  {
+   "case": "a correction after the read-back replaces the condition",
+   "trial": 0,
+   "turn": 0,
+   "ms": 3056,
+   "raw": {
+    "reply": "Keep user_id, as long as we note account_id in the docs. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "as long as we note account_id in the docs"
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id, as long as we note account_id in the docs. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "as long as we note account_id in the docs"
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"as long as we note account_id in the docs\"],[]]"
+   }
+  },
+  {
+   "case": "a correction after the read-back replaces the condition",
+   "trial": 2,
+   "turn": 0,
+   "ms": 3073,
+   "raw": {
+    "reply": "Keep user_id, as long as we note account_id in the docs. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "as long as we note account_id in the docs"
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id, as long as we note account_id in the docs. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "as long as we note account_id in the docs"
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"as long as we note account_id in the docs\"],[]]"
+   }
+  },
+  {
+   "case": "a correction after the read-back replaces the condition",
+   "trial": 1,
+   "turn": 0,
+   "ms": 3114,
+   "raw": {
+    "reply": "Keep user_id, with account_id noted in the docs. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "as long as we note account_id in the docs"
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id, with account_id noted in the docs. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 0,
+      "quote": "Keep user_id"
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 0,
+       "quote": "as long as we note account_id in the docs"
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"as long as we note account_id in the docs\"],[]]"
+   }
+  },
+  {
+   "case": "a correction after the read-back replaces the condition",
+   "trial": 1,
+   "turn": 1,
+   "ms": 2705,
+   "raw": {
+    "reply": "Keep user_id, with no docs note. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 1,
+      "quote": "Just keep user_id."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 1,
+       "quote": "Actually, skip the docs note."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id, with no docs note. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 1,
+      "quote": "Just keep user_id."
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 1,
+       "quote": "Actually, skip the docs note."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"Actually, skip the docs note.\"],[]]"
+   }
+  },
+  {
+   "case": "a correction after the read-back replaces the condition",
+   "trial": 2,
+   "turn": 1,
+   "ms": 2900,
+   "raw": {
+    "reply": "Keep user_id, with no docs note. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 1,
+      "quote": "Just keep user_id."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 1,
+       "quote": "Actually, skip the docs note."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id, with no docs note. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 1,
+      "quote": "Just keep user_id."
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 1,
+       "quote": "Actually, skip the docs note."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"Actually, skip the docs note.\"],[]]"
+   }
+  },
+  {
+   "case": "a correction after the read-back replaces the condition",
+   "trial": 0,
+   "turn": 1,
+   "ms": 3296,
+   "raw": {
+    "reply": "Keep user_id, with no docs note. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 1,
+      "quote": "Just keep user_id."
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 1,
+       "quote": "Actually, skip the docs note."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "Keep user_id, with no docs note. Right?",
+    "next": "confirm",
+    "ledger": {
+     "choice": "B",
+     "choice_quote": {
+      "turn": 1,
+      "quote": "Just keep user_id."
+     },
+     "course": null,
+     "action": "",
+     "why": [
+      {
+       "turn": 0,
+       "quote": "because integrators parse v1 responses"
+      }
+     ],
+     "conditions": [
+      {
+       "turn": 1,
+       "quote": "Actually, skip the docs note."
+      }
+     ],
+     "questions": [],
+     "feedback": [],
+     "no_more_questions": false
+    },
+    "heard": "[\"B\",\"\",[\"Actually, skip the docs note.\"],[]]"
+   }
+  }
+ ]
+}

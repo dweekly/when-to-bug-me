@@ -35,12 +35,13 @@ async function act(page: Page, step: TourStep): Promise<void> {
   }
   // Steps that finish when something appears: a turn of the conversation (use Jordan's words, then
   // Send), Send or the decision button (press it), the why prompt, keeping guidance.
-  if (step.target === "#now .thread") {
+  if (step.target === "#now .composer") {
     await example.click();
     await page.locator("#now .send").click();
     return;
   }
-  if (step.target === "#now .send" || step.target === "#now .send.decide") {
+  // Send, the decision button, or "Huh?": press it.
+  if (step.target === "#now .send" || step.target === "#now .send.decide" || step.target === "#now .huh-q") {
     await page.locator(step.target).click();
     return;
   }

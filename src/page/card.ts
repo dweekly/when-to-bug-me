@@ -2,12 +2,12 @@
 // and the follow-up after an answer (pushback, "why?", proposed guidance, what was sent down). The
 // work each button starts lives in actions.ts; this module only draws and wires it.
 
-import { CONVERSATIONS, EXAMPLES } from "../shared/examples";
+import { CONVERSATIONS, EXAMPLES, scriptWords } from "../shared/examples";
 import { type JordanTurn, type Quote, jordanTurns, primaryLabel } from "../shared/converse";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, Mark, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { confirmThread, done, finalize, glowEvent, isSending, keepFact, next, pick, propose, readyToConfirm, resume, scriptIndex, sendTurn, setAside, thinkEdited, unanswered } from "./actions";
+import { canHuh, confirmThread, done, finalize, glowEvent, isSending, keepFact, next, pick, propose, readyToConfirm, resume, scriptIndex, sendTurn, setAside, showing, thinkEdited, unanswered } from "./actions";
 import { drawableMarks } from "../shared/parse";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import { payloadLine } from "./visuals-layout";
@@ -165,6 +165,8 @@ function drawNow(): void {
       h("p", { class: "quiet" }, `Routing, briefing and notes: ${SOURCE_LABEL[c.source]}.`),
     ),
     h("h3", { id: "now-q" }, c.headline || d.question),
+    // Until Bug Me has said anything, "Huh?" is about the card itself (paintThread shows or hides it).
+    flow.phase === "choose" ? huhButton(flow, d, route, "huh-q") : null,
     lastPunt
       ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
       : null,
@@ -237,7 +239,7 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
                 type: "button",
                 class: "linkish",
                 onclick: () => {
-                  const t = script.turns[scriptIndex(flow)];
+                  const t = scriptWords(script)[scriptIndex(flow)];
                   if (!t) return;
                   if (t.pick) pick(flow, t.pick);
                   ta.value = t.text;
@@ -255,6 +257,22 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
   );
   threadNodes.set(flow.id, { el, route, flow });
   return el;
+}
+
+/** "Huh?" (docs/STAGE-6E.md): one press asks Bug Me to say the last thing it showed more plainly. */
+function huhButton(flow: Flow, d: Decision, route: RouteKind, cls: string): HTMLElement {
+  return h(
+    "button",
+    {
+      type: "button",
+      class: `huh ${cls}`,
+      title: "Say that more plainly",
+      // The explanation lands below the options; bring it into view, since this press asked for it.
+      onclick: () => void sendTurn(flow, d, route, true).then(() => showing(flow) && document.querySelector("#now .turns > li:last-child")?.scrollIntoView({ block: "nearest" })),
+    },
+    h("span", { "aria-hidden": "true" }, "🤔 "),
+    "Huh?",
+  );
 }
 
 /** The primary button (and Enter): confirm what Bug Me read back, or send this turn. */
@@ -293,6 +311,7 @@ function jordanTurn(d: Decision, flow: Flow, t: JordanTurn, n: number): HTMLElem
   }
   parts.push(t.text.slice(at));
   const picked = t.pick ? d.options.find((o) => o.key === t.pick) : undefined;
+  if (t.huh) return h("li", { class: "turn mine huh-turn" }, h("span", { class: "sr-only" }, `${Q.persona.first_name}: `), h("span", { class: "huh-chip" }, h("span", { "aria-hidden": "true" }, "🤔 "), "Huh?"));
   return h(
     "li",
     { class: "turn mine" },
@@ -304,13 +323,14 @@ function jordanTurn(d: Decision, flow: Flow, t: JordanTurn, n: number): HTMLElem
 
 const face = () => h("img", { class: "bug-face", src: "/firefly/clay/attentive.png", alt: "", width: 28, height: 28 });
 
-function bugTurn(t: ShownBugTurn): HTMLElement {
+function bugTurn(t: ShownBugTurn, huh: HTMLElement | null = null): HTMLElement {
   return h(
     "li",
-    { class: `turn bug${t.next === "confirm" ? " readback" : ""}` },
+    { class: `turn bug${t.next === "confirm" ? " readback" : t.next === "explain" ? " explain" : ""}` },
     face(),
     h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), t.text),
     t.source && t.source !== "live" ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "code" ? "stand-in" : t.source) : null,
+    huh,
   );
 }
 
@@ -336,7 +356,11 @@ export function paintThread(): void {
 
   const list = area.querySelector(".turns")!;
   let n = 0;
-  const items = flow.turns.map((t) => (t.who === "jordan" ? jordanTurn(d, flow, t, n++) : bugTurn(t)));
+  const route = threadNodes.get(flow.id)?.route ?? routeOf(flow.id) ?? "decide";
+  const huh = canHuh(flow);
+  const items = flow.turns.map((t, i) => (t.who === "jordan" ? jordanTurn(d, flow, t, n++) : bugTurn(t, huh && i === flow.turns.length - 1 ? huhButton(flow, d, route, "huh-turn-btn") : null)));
+  const huhQ = document.querySelector<HTMLElement>("#now .huh-q");
+  if (huhQ) huhQ.hidden = !huh || flow.turns.some((t) => t.who === "bugme");
   if (busy && flow.turns.at(-1)?.who === "jordan") items.push(h("li", { class: "turn bug typing", "aria-hidden": "true" }, face(), h("p", {}, h("span", { class: "dots" }, "…"))));
   const grew = items.length !== list.childElementCount;
   list.replaceChildren(...items);
@@ -361,7 +385,8 @@ export function paintThread(): void {
   const msg = area.querySelector(".think-msg")!;
   msg.textContent = flow.error || (choosing ? flow.message : "");
   const ex = area.querySelector<HTMLElement>(".example");
-  if (ex) ex.hidden = !choosing || !CONVERSATIONS.find((c) => c.id === d.id)?.turns[scriptIndex(flow)];
+  const script = CONVERSATIONS.find((c) => c.id === d.id);
+  if (ex) ex.hidden = !choosing || !script || !scriptWords(script)[scriptIndex(flow)];
   const skip = area.querySelector<HTMLButtonElement>(".skip-q");
   if (skip) {
     skip.hidden = !choosing;

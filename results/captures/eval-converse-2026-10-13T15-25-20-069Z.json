@@ -1,0 +1,176 @@
+{
+ "prompt_version": "2026-10-13.1",
+ "model": "claude-opus-5-5",
+ "trials": 3,
+ "spent_usd": 0.06808,
+ "raw": [
+  {
+   "case": "typed confusion is heard as unclear, not as a question for the agent",
+   "trial": 2,
+   "turn": 0,
+   "ms": 4181,
+   "raw": {
+    "reply": "The billing agents are moving invoicing to the new payments provider and need to know how to handle tax on invoices. Option A recomputes tax on every invoice issued since January and sends customers corrected invoices where the totals differ, which is about 1.5% of invoices, mostly off by a few cents. Option B keeps using the old lookup table that matches tax codes to invoice lines; the agent didn't say what happens to those small differences under B. It came to you because corrected invoices are something customers will see and can't be taken back. Should the agent send corrected invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "turn": 0,
+       "quote": "I don't follow any of this.",
+       "kind": "unclear"
+      }
+     ],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "The billing agents are moving invoicing to the new payments provider and need to know how to handle tax on invoices. Option A recomputes tax on every invoice issued since January and sends customers corrected invoices where the totals differ, which is about 1.5% of invoices, mostly off by a few cents. Option B keeps using the old lookup table that matches tax codes to invoice lines; the agent didn't say what happens to those small differences under B. It came to you because corrected invoices are something customers will see and can't be taken back. Should the agent send corrected invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "I don't follow any of this."
+       },
+       "kind": "unclear"
+      }
+     ],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "typed confusion is heard as unclear, not as a question for the agent",
+   "trial": 1,
+   "turn": 0,
+   "ms": 4387,
+   "raw": {
+    "reply": "The billing agent is moving invoicing to the new payments provider and needs to know how to handle tax on invoices. Option A recalculates tax on every invoice sent since January and sends customers corrected invoices where the total was off; that's about 1.5% of invoices, mostly by a few cents, and it can't be undone. Option B keeps using the old lookup table that matches tax codes to invoice lines, and the material doesn't say what happens to those small differences then. It came to you because customers would see the corrected invoices. Should the agent recalculate and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "turn": 0,
+       "quote": "I don't follow any of this.",
+       "kind": "unclear"
+      }
+     ],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "The billing agent is moving invoicing to the new payments provider and needs to know how to handle tax on invoices. Option A recalculates tax on every invoice sent since January and sends customers corrected invoices where the total was off; that's about 1.5% of invoices, mostly by a few cents, and it can't be undone. Option B keeps using the old lookup table that matches tax codes to invoice lines, and the material doesn't say what happens to those small differences then. It came to you because customers would see the corrected invoices. Should the agent recalculate and reissue those invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "I don't follow any of this."
+       },
+       "kind": "unclear"
+      }
+     ],
+     "no_more_questions": false
+    }
+   }
+  },
+  {
+   "case": "typed confusion is heard as unclear, not as a question for the agent",
+   "trial": 0,
+   "turn": 0,
+   "ms": 4523,
+   "raw": {
+    "reply": "The billing agents are moving invoices to the new payments provider and need to know how to handle tax. Option A, the \"v2 reconciliation path,\" recalculates tax on every invoice sent since January and sends customers corrected invoices where the total changed, which is about 1.5% of invoices, mostly off by a few cents. Option B keeps using the old lookup table (called T-19) that matches tax codes to invoice lines, and the agent didn't say what happens to past invoices under it. It came to you because corrected invoices are something customers will see and can't be taken back. Should the agent recalculate and send corrected invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": {
+      "turn": 0,
+      "quote": ""
+     },
+     "course": {
+      "turn": 0,
+      "quote": ""
+     },
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "turn": 0,
+       "quote": "I don't follow any of this.",
+       "kind": "unclear"
+      }
+     ],
+     "no_more_questions": false
+    }
+   },
+   "after_advance": {
+    "reply": "The billing agents are moving invoices to the new payments provider and need to know how to handle tax. Option A, the \"v2 reconciliation path,\" recalculates tax on every invoice sent since January and sends customers corrected invoices where the total changed, which is about 1.5% of invoices, mostly off by a few cents. Option B keeps using the old lookup table (called T-19) that matches tax codes to invoice lines, and the agent didn't say what happens to past invoices under it. It came to you because corrected invoices are something customers will see and can't be taken back. Should the agent recalculate and send corrected invoices, or keep the old table?",
+    "next": "explain",
+    "ledger": {
+     "choice": "none",
+     "choice_quote": null,
+     "course": null,
+     "action": "",
+     "why": [],
+     "conditions": [],
+     "questions": [],
+     "feedback": [
+      {
+       "quote": {
+        "turn": 0,
+        "quote": "I don't follow any of this."
+       },
+       "kind": "unclear"
+      }
+     ],
+     "no_more_questions": false
+    }
+   }
+  }
+ ]
+}

@@ -50,7 +50,7 @@ import { answerParts, guidanceText, parseParseOutput } from "../src/shared/parse
 import { MAX_REASON_CHARS } from "../src/shared/constants";
 import { enforceSettleInvariant, parseRouteOutput } from "../src/shared/route";
 import type { Decision, Fact, Persona, Rule } from "../src/shared/types";
-import { CONVERSATIONS, EXAMPLES } from "../src/shared/examples";
+import { CONVERSATIONS, EXAMPLES, scriptTurn } from "../src/shared/examples";
 
 /** Hard ceiling on what one recording run may spend, in dollars. About 60 low-effort calls fit well under it. */
 const LOCAL_BUDGET_USD = 4;
@@ -172,13 +172,13 @@ async function playConversation(s: (typeof CONVERSATIONS)[number]): Promise<void
   const turns: ConvTurn[] = [];
   let last: ConverseResult | null = null;
   for (const [i, t] of s.turns.entries()) {
-    turns.push(t.pick ? { who: "jordan", text: t.text, pick: t.pick } : { who: "jordan", text: t.text });
+    turns.push(scriptTurn(t));
     const at = [...turns];
     const finish = (raw: unknown): ConverseResult => {
       const o = raw as { reply: string; next: Next; ledger: unknown };
       return advance(d, at, o.reply, o.next, sanitizeLedger(o.ledger, d, at));
     };
-    const raw = await ask(`converse ${s.id} [turn ${i}]`, conversePrompt(persona, rules, facts, d, card, at), converseSchema(d.options.map((o) => o.key)), finish, CONVERSE_PROMPT_VERSION);
+    const raw = await ask(`converse ${s.id}${s.variant ? ` (${s.variant})` : ""} [turn ${i}]`, conversePrompt(persona, rules, facts, d, card, at), converseSchema(d.options.map((o) => o.key)), finish, CONVERSE_PROMPT_VERSION);
     if (!raw) return;
     last = finish(raw);
     console.log(`  converse ${s.id} [turn ${i}]: ${last.next}${last.forced ? ` (forced: ${last.forced})` : ""} "${last.reply}"`);

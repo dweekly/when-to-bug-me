@@ -6,13 +6,15 @@
 // what Bug Me is expected to do after each one, once `advance` has had its say. The recorder plays it
 // against live Claude and fails when Bug Me does something else; the tours offer the same turns.
 
-import type { Next } from "./converse";
+import type { JordanTurn, Next } from "./converse";
 
 /** One scripted conversation: Jordan's turns, and Bug Me's expected `next` after each. Ends at a
  *  read-back, which Jordan confirms with the button (no further call). */
 export interface Script {
   id: string;
-  turns: { text: string; pick?: string }[];
+  /** Tells apart two scripts for one decision; the page offers the first script's words. */
+  variant?: string;
+  turns: { text: string; pick?: string; huh?: true }[];
   expect: Next[];
   /** The listed option the thread resolves to. */
   choice: string;
@@ -57,6 +59,12 @@ export const EXAMPLES: Example[] = [
 
 const said = (id: string) => EXAMPLES.find((e) => e.id === id)!;
 
+/** A scripted turn as sent. */
+export const scriptTurn = (t: Script["turns"][number]): JordanTurn => (t.huh ? { who: "jordan", text: "", huh: true } : t.pick ? { who: "jordan", text: t.text, pick: t.pick } : { who: "jordan", text: t.text });
+
+/** The words a visitor is offered for a script, in order: everything but "Huh?" presses, which have a button of their own. */
+export const scriptWords = (s: Script): Script["turns"] => s.turns.filter((t) => !t.huh);
+
 /** Jordan's side of each tour decision's conversation. */
 export const CONVERSATIONS: Script[] = [
   // A bare pick earns one light "why?"; the answer becomes the reason.
@@ -65,6 +73,8 @@ export const CONVERSATIONS: Script[] = [
   { id: "api-rename", turns: [{ text: said("api-rename").narration }], expect: ["confirm"], choice: "B" },
   { id: "settings-redesign", turns: [{ text: said("settings-redesign").narration }], expect: ["confirm"], choice: "B" },
   { id: "reconciliation-path", turns: [{ text: said("reconciliation-path").narration }], expect: ["confirm"], choice: "B" },
+  // The Lost in translation tour (docs/STAGE-6E.md): "Huh?" first, then the same words.
+  { id: "reconciliation-path", variant: "with Huh?", turns: [{ text: "", huh: true }, { text: said("reconciliation-path").narration }], expect: ["explain", "confirm"], choice: "B" },
   // The pushback tour: a click on the agent's pick with no words, then "just do it". Bug Me stops
   // asking; the answer then meets Jordan's own record (no new SDK dependencies) before it goes out.
   { id: "sdk-dependency", turns: [{ text: "", pick: "A" }, { text: "Just do it." }], expect: ["ask", "confirm"], choice: "A" },

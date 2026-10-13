@@ -34,6 +34,14 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Streaming Bug Me's replies,** token by token, once a reply's latency is measured on real use.
 - **Retire `/api/parse` and `/api/ask`** once nothing records or evals through them.
 
+## From the stage 6e plan review ("Huh?")
+
+- **Explanations with pictures, widgets or a short video** (David, 2026-10-12), for decisions words explain badly.
+- **Make the miss count useful:** a scorecard with denominators (cards shown, threads abandoned), attributed to the asking agent, and guidance for Bug Me drawn from it (a glossary of an agent's terms).
+- **Repair the exact wording that failed:** give the model the card's translated briefing and headline (bounded, through the request and the recording key), not only the agent's material.
+- **Huh? on an older turn or a single phrase,** and sending the confusion back to the asking agent ("ask it again, more plainly") or fetching material the agent never supplied.
+- **Explanation quality beyond the designed cases:** indirect confusion, accurate definitions, and a second explanation that differs from the first.
+
 ## From the stage 7 plan review (live fire)
 
 - **Verify what agents declare.** Live asks carry the agent's own claims of reversibility and cost; settling trusts them within a $1 ceiling and permission-granting rules. Independent checks (deploy target, money at stake, data touched) would let Bug Me settle more, safely.
