@@ -52,7 +52,7 @@ export const EXAMPLES: Example[] = [
   {
     id: "reconciliation-path",
     choice: "B",
-    narration: "Keep the T-19 mapping. Corrected invoices for a few cents would confuse customers and give finance a mess to explain. Fix the tax going forward; don't rewrite invoices people already paid.",
+    narration: "Keep the old tax table. Corrected invoices for a few cents would confuse customers and give finance a mess to explain. Fix the tax going forward; don't rewrite invoices people already paid.",
     reason: "Corrected invoices for a few cents would confuse customers and give finance a mess to explain. Fix the tax going forward; don't rewrite invoices people already paid.",
   },
 ];

@@ -60,8 +60,8 @@ test("a reason gets the read-back; the button is the decision, and pressing it a
   expect(a.basis).toBe("Because the volunteers already agreed in the meeting.");
   expect(a.outcome).toBe("option");
   expect((a.thread as { turns: unknown[] }).turns).toHaveLength(4);
-  // The conversation already asked, so the backstop "I'm curious: why?" never does.
-  await expect(page.getByText("I'm curious: why?")).toHaveCount(0);
+  // A reason was given, so there's no nudge for one.
+  await expect(page.locator("#now .why-lead")).toHaveCount(0);
 });
 
 test("what Bug Me heard is marked in the person's words, and conditions go down verbatim", async ({ page }) => {
@@ -138,8 +138,8 @@ test("\"just do it\" stops the questions, and the why backstop stays quiet", asy
   await say(page, "Just do it.");
   await expect(sendBtn(page)).toHaveText("9:40am flight");
   await sendBtn(page).click();
-  await expect(page.locator("#now")).toContainText("Bug Me's guess, hidden until now:");
-  await expect(page.getByText("I'm curious: why?")).toHaveCount(0);
+  await expect(page.locator("#now .reveal-line")).toBeVisible();
+  await expect(page.locator("#now .why-lead")).toHaveCount(0);
 });
 
 test("Send is claimed once: a double click sends one turn", async ({ page }) => {
@@ -193,13 +193,13 @@ test("an answered decision re-opens with its conversation, read-only", async ({ 
   await expect(page.locator("#now #think")).toHaveCount(0);
 });
 
-test("Use Jordan's words offers the next scripted turn", async ({ page }) => {
+test("DEMO REPLY offers the next scripted turn", async ({ page }) => {
   await openDecision(page, "onsite-flight");
-  await page.locator("#now .example button").click();
+  await page.locator("#now .demo-reply").click();
   await expect(page.locator("#think")).toHaveValue("Let's take the 9:40.");
   await sendBtn(page).click();
   await reply(page);
-  await page.locator("#now .example button").click();
+  await page.locator("#now .demo-reply").click();
   await expect(page.locator("#think")).not.toHaveValue("");
 });
 

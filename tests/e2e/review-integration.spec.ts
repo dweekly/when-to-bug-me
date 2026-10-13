@@ -17,7 +17,7 @@ const R11_CLEARS = "UI layout choices on a preview branch: just do it.";
 async function flightToWhy(page: import("@playwright/test").Page) {
   await openDecision(page, "onsite-flight");
   await decideQuietly(page, "9:40am flight");
-  await expect(page.getByText("I'm curious: why?")).toBeVisible();
+  await expect(page.locator("#now .why-lead")).toBeVisible();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
 test("the why prompt survives a reload", async ({ page }) => {
   await flightToWhy(page);
   await page.reload();
-  await expect(page.getByText("I'm curious: why?")).toBeVisible();
+  await expect(page.locator("#now .why-lead")).toBeVisible();
 });
 
 test("an answer given while a re-check is out is not overwritten by it", async ({ page }) => {

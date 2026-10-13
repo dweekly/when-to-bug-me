@@ -150,7 +150,9 @@ export function decisionFromAsk(raw: unknown, id: string): Decision {
   });
   // The agent may name its recommendation by key or by label.
   const rec = str(b.recommended);
-  const recommended = options.find((o) => o.key === rec || o.label === rec)?.key ?? options[0].key;
+  const named = options.find((o) => o.key === rec || o.label === rec)?.key;
+  // Routing needs a key, but the page must never claim the agent picked one it didn't (docs/STAGE-6F.md).
+  const recommended = named ?? options[0].key;
   return {
     id,
     category: "Live",
@@ -161,6 +163,7 @@ export function decisionFromAsk(raw: unknown, id: string): Decision {
     question,
     options,
     recommended,
+    ...(named ? {} : { no_recommendation: true as const }),
     context,
     bounds,
     tags: [],

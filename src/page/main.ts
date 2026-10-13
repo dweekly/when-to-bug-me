@@ -13,12 +13,24 @@ import { initVoice, voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
 import { type Queue, Q, S, STORE_KEY, fresh, load, save, setById, setF, setQ, setS } from "./state";
+import { plainOptions } from "../shared/titles";
 import { startTour } from "./tour";
 import { render } from "./views";
 
+/** Each decision's options in the person's terms, from its card (docs/STAGE-6F.md): the page shows,
+ *  and Bug Me says, these; the agent's own labels stay as `agent_label`, for More context. */
+function inPlainTerms(q: Queue): Queue {
+  const labels = new Map(q.cards.flatMap((c) => ("labels" in c && c.labels ? [[c.id, c.labels] as const] : [])));
+  return {
+    ...q,
+    decisions: q.decisions.map((d) => plainOptions(d, labels.get(d.id))),
+    ...(q.answered ? { answered: q.answered.map((r) => ({ ...r, decision: plainOptions(r.decision, (r.card as { labels?: Record<string, string> } | null)?.labels) })) } : {}),
+  };
+}
+
 async function boot(): Promise<void> {
   await signIn();
-  setQ(await api<Queue>("/api/queue"));
+  setQ(inPlainTerms(await api<Queue>("/api/queue")));
   setS(load(Q));
   // On /me the server is the source of truth for the queue, rules and set-asides (docs/STAGE-7.md).
   if (Q.owner) startOwner(Q);

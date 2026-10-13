@@ -38,7 +38,7 @@ test("no guess in the DOM, the queue response or the page bundle before answerin
     expect(appJs, `app.js contains ${leak}`).not.toContain(leak);
   }
   // Nor is the guess shown in words.
-  await expect(page.getByText("hidden until now")).toHaveCount(0);
+  await expect(page.locator("#now .reveal-line")).toHaveCount(0);
 });
 
 for (const path of ["/fixtures/decisions.json", "/fixtures/recorded.json", "/fixtures/captures/recorded.json", "/fixtures/rules.json", "/recorded.json", "/decisions.json"]) {

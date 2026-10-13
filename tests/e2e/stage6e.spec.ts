@@ -10,15 +10,15 @@ test.beforeEach(async ({ page }) => {
 
 const turns = (page: Page) => page.locator("#now .turns > li");
 const sendBtn = (page: Page) => page.locator("#now .send");
-const huhQ = (page: Page) => page.locator("#now .huh-q");
-const huhOnTurn = (page: Page) => page.locator("#now .turns .huh");
+// One Huh? button, just above the box (docs/STAGE-6F.md).
+const huh = (page: Page) => page.locator("#now .huh-row .huh");
 const record = async (page: Page) => ((await stored(page))?.record ?? []) as Record<string, unknown>[];
 
-test("Huh? under the question sends at once, keeps unsent words, and moves to Bug Me's turn", async ({ page }) => {
+test("Huh? sends at once and keeps unsent words; it stays just above the box, never on a turn", async ({ page }) => {
   await openDecision(page, "reconciliation-path");
-  await expect(huhQ(page)).toBeVisible();
+  await expect(huh(page)).toBeVisible();
   await page.locator("#think").fill("Half a thought");
-  await huhQ(page).click();
+  await huh(page).click();
   await reply(page);
   await expect(turns(page)).toHaveCount(2);
   await expect(turns(page).nth(0)).toHaveClass(/huh-turn/);
@@ -29,24 +29,26 @@ test("Huh? under the question sends at once, keeps unsent words, and moves to Bu
   await expect(page.locator("#think")).toHaveValue("Half a thought");
   // An explanation is not a read-back: the button still sends.
   await expect(sendBtn(page)).toHaveText("Send");
-  await expect(huhQ(page)).toBeHidden();
-  await expect(huhOnTurn(page)).toHaveCount(1);
-  await expect(turns(page).last().locator(".huh")).toBeVisible();
+  await expect(huh(page)).toBeVisible();
+  await expect(page.locator("#now .turns .huh, #now-q ~ .huh")).toHaveCount(0);
+  const below = (a: string, b: string) => page.evaluate(`Boolean(document.querySelector(${JSON.stringify(a)}).compareDocumentPosition(document.querySelector(${JSON.stringify(b)})) & Node.DOCUMENT_POSITION_FOLLOWING)`);
+  expect(await below("#now .options", "#now .huh-row")).toBe(true);
+  expect(await below("#now .turns", "#now .huh-row")).toBe(true);
+  expect(await below("#now .huh-row", "#now .composer")).toBe(true);
 });
 
 test("two presses per conversation; after that, talking and deciding still work", async ({ page }) => {
   await openDecision(page, "reconciliation-path");
-  await huhQ(page).click();
+  await huh(page).click();
   await reply(page);
-  await huhOnTurn(page).click();
+  await huh(page).click();
   await reply(page);
   await expect(turns(page)).toHaveCount(4);
-  await expect(huhOnTurn(page)).toHaveCount(0);
-  await expect(huhQ(page)).toBeHidden();
+  await expect(huh(page)).toBeHidden();
   await option(page, "Keep T-19 mapping").click();
   await say(page, "Because corrected invoices would confuse customers.");
   await expect(turns(page).last()).toHaveClass(/readback/);
-  await expect(huhOnTurn(page)).toHaveCount(0);
+  await expect(huh(page)).toBeHidden();
   await sendBtn(page).click();
   await expect.poll(async () => (await record(page)).find((e) => e.kind === "answer" && e.id === "reconciliation-path")?.unclear).toBe(2);
 });
@@ -56,10 +58,9 @@ test("Huh? is off while a turn is out, and a double press sends one turn", async
   page.on("request", (r) => r.url().includes("/api/converse") && calls.push(r.postDataJSON()));
   await openDecision(page, "reconciliation-path");
   const release = await hold(page, "/api/converse");
-  await huhQ(page).dblclick();
+  await huh(page).dblclick();
   await expect(page.locator("#now .turns li.typing")).toHaveCount(1);
-  await expect(huhQ(page)).toBeHidden();
-  await expect(huhOnTurn(page)).toHaveCount(0);
+  await expect(huh(page)).toBeHidden();
   release();
   await reply(page);
   expect(calls).toHaveLength(1);
@@ -71,7 +72,7 @@ test("Huh? on the read-back keeps what Bug Me heard and leaves the decision one 
   await say(page, "Keep user_id, because integrators parse v1 responses.");
   await expect(turns(page).last()).toHaveClass(/readback/);
   await expect(sendBtn(page)).toHaveText("Keep user_id");
-  await huhOnTurn(page).click();
+  await huh(page).click();
   await reply(page);
   await expect(turns(page).last()).toHaveClass(/explain/);
   await expect(sendBtn(page)).toHaveText("Keep user_id");
@@ -95,9 +96,9 @@ test("a press that fails offers Send again, which asks the same thing again and 
   await openDecision(page, "reconciliation-path");
   await page.locator("#think").fill("A draft I'm keeping");
   await page.route("**/api/converse", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "down for a moment" }) }));
-  await huhQ(page).click();
+  await huh(page).click();
   await expect(page.locator("#now .think-msg")).toContainText("Bug Me couldn't reply just now");
-  await expect(huhQ(page)).toBeHidden();
+  await expect(huh(page)).toBeHidden();
   await page.unroute("**/api/converse");
   await expect(sendBtn(page)).toHaveText("Send again");
   await sendBtn(page).click();
@@ -112,8 +113,8 @@ test("at 320px: Huh? and a long explanation fit without sideways scroll @narrow"
   const wide = () => page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth") as Promise<number>;
   await openDecision(page, "reconciliation-path");
   expect(await wide()).toBeLessThanOrEqual(0);
-  await huhQ(page).click();
+  await huh(page).click();
   await reply(page);
-  await expect(huhOnTurn(page)).toBeVisible();
+  await expect(huh(page)).toBeVisible();
   expect(await wide()).toBeLessThanOrEqual(0);
 });

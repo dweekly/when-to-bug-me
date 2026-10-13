@@ -116,7 +116,7 @@ test.describe("review fixes", () => {
     await page.goto("/app#/settled");
     await page.locator('#settled .dgroup[data-work="branches"] > summary').click();
     await expect(page.locator("#settled .dgroup[open]")).toHaveCount(1);
-    await page.locator("#bar").getByRole("button", { name: "Tours" }).click();
+    await page.locator("#bar").getByRole("button", { name: "Demos" }).click();
     await page.locator(".tour-item").filter({ hasText: "What Bug Me decided for you" }).click();
     await expect(page.locator(".driver-popover-title")).toHaveText("Decided for you");
     await expect(page.locator("#settled .dgroup[open]")).toHaveCount(0);

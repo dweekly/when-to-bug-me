@@ -32,7 +32,7 @@ test("an answer uses the card it started on: a re-route leaves a decision alone 
   // The guess sealed on the original card (the fake model's 70% on A), not the re-routed one.
   expect(guess.find((g) => g.option === "A")!.p).toBeCloseTo(0.7);
   await openDecision(page, "onsite-flight");
-  await expect(page.getByText("I'm curious: why?")).toBeVisible();
+  await expect(page.locator("#now .why-lead")).toBeVisible();
 });
 
 test("starting over discards a response that arrives afterwards", async ({ page }) => {
@@ -49,13 +49,13 @@ test("starting over discards a response that arrives afterwards", async ({ page 
 test("an open 'why?' stays reachable after opening another card", async ({ page }) => {
   await openDecision(page, "onsite-flight");
   await decideQuietly(page, "9:40am flight");
-  await expect(page.getByText("I'm curious: why?")).toBeVisible();
+  await expect(page.locator("#now .why-lead")).toBeVisible();
   await openFromAgenda(page, "File the five action items");
   await goHome(page);
   const unfinished = page.locator("#unfinished");
   await expect(unfinished.getByText("Waiting for you to finish")).toBeVisible();
   await unfinished.getByRole("link", { name: /flight/i }).click();
-  await expect(page.getByText("I'm curious: why?")).toBeVisible();
+  await expect(page.locator("#now .why-lead")).toBeVisible();
 });
 
 test("the explored-options card prompts a teach-back, and deciding without one still works", async ({ page }) => {

@@ -25,7 +25,7 @@ import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT,
 import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
-import type { Titles } from "../shared/titles";
+import { type Titles, plainOptions } from "../shared/titles";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
 import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, factFor, parseFor, routeFor, titlesFor } from "./model";
 import { AskError, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askProjectName, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
@@ -53,6 +53,8 @@ interface World {
    * revision in one step, so routing never pairs old rules with a newer revision.
    */
   snapshot?(rules?: Rule[], facts?: Fact[]): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }>;
+  /** The option labels in the person's terms that the card shows (docs/STAGE-6F.md), if any. */
+  labelsOf(d: Decision): Promise<Record<string, string> | undefined>;
   canSpend: boolean;
 }
 
@@ -82,7 +84,7 @@ function decisionOf(id: unknown): Decision {
   return d;
 }
 
-function publicWorld(canSpend: boolean): World {
+function publicWorld(env: Env, canSpend: boolean): World {
   return {
     ctx: PUBLIC_CTX,
     decisionOf: async (id) => decisionOf(id),
@@ -90,6 +92,9 @@ function publicWorld(canSpend: boolean): World {
     // so a recorded answer) does not depend on what the visitor happened to answer first.
     others: async (d) => decisions.filter((x) => x.id !== d.id),
     defaults: async () => ({ rules: defaultRules, facts: defaultFacts }),
+    // From the card's own source (recorded or cached titles). Never spends: the card's load already
+    // asked, and a turn's reservation is never crowded out by them.
+    labelsOf: async (d) => (await titlesFor(env, false, d, PUBLIC_CTX).catch(() => null))?.out.labels,
     canSpend,
   };
 }
@@ -120,6 +125,8 @@ async function ownerWorld(env: Env): Promise<World> {
     others: async (d) => open.filter((x) => x.id !== d.id).slice(-MAX_OTHERS_IN_PROMPT),
     defaults: () => q.context(),
     snapshot: (rules, facts) => q.snapshot(rules, facts),
+    // Nothing from the real queue is cached, so the labels are the ones stored on the ticket's card.
+    labelsOf: async (d) => (await q.ticket(d.id))?.card?.labels,
     // The signed-in owner may make live calls without a human check; the daily cap still applies.
     canSpend: true,
   };
@@ -232,7 +239,7 @@ async function cardFromRoute(
     problem: out.problem,
     source,
     sealed,
-    ...(titles ? { emoji: titles.out.emoji, title: titles.out.title, done: titles.out.done } : {}),
+    ...(titles ? { emoji: titles.out.emoji, title: titles.out.title, done: titles.out.done, ...(Object.keys(titles.out.labels).length ? { labels: titles.out.labels } : {}) } : {}),
   };
 }
 
@@ -283,7 +290,7 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
 
   // Live calls need a session only when the Turnstile gate is configured.
   const canSpend = !env.TURNSTILE_SECRET || (await sessionValid(env.SEAL_KEY!, req.headers.get("x-bugme-session")));
-  return (await modelCall(env, key, path.slice("/api".length), b, publicWorld(canSpend))) ?? json({ error: "not found" }, 404);
+  return (await modelCall(env, key, path.slice("/api".length), b, publicWorld(env, canSpend))) ?? json({ error: "not found" }, 404);
 }
 
 /**
@@ -376,7 +383,9 @@ async function modelCall(
       if (e instanceof ConverseError) throw new BadRequest(e.message);
       throw e;
     }
-    const { out, source } = await converseFor(env, canSpend, d, req.card, req.turns, rules, facts, ctx);
+    // Bug Me talks in the person's terms: the same option labels the card shows (docs/STAGE-6F.md);
+    // without them, the agent's.
+    const { out, source } = await converseFor(env, canSpend, plainOptions(d, await w.labelsOf(d)), req.card, req.turns, rules, facts, ctx);
     return json({ ...out, source });
   }
 

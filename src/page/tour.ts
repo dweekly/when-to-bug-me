@@ -53,7 +53,7 @@ function confirmFresh(tour: Tour, ok: () => void): void {
     "dialog",
     { class: "ts", "aria-labelledby": "tour-confirm-h" },
     h("h2", { id: "tour-confirm-h" }, "Start a fresh morning?"),
-    h("p", {}, "Tours start from the beginning of Jordan's morning, so your answers so far will be cleared. You can export your record first from Record."),
+    h("p", {}, "Demos start from the beginning of Jordan's morning, so your answers so far will be cleared. You can export your record first from Record."),
     h("div", { class: "row" }, no, yes),
   ) as HTMLDialogElement;
   document.body.append(dlg);
@@ -188,7 +188,7 @@ function show(r: Running, step: TourStep, el: Element): void {
       onPopoverRender: (pop) => {
         const text = exampleText(step);
         if (!text) return;
-        const label = step.example?.text ? "Use this sentence" : "Use Jordan's words (recorded)";
+        const label = step.example?.text ? "Use this sentence" : "DEMO REPLY";
         const btn = h("button", { type: "button", class: "bm-example" }, label);
         btn.addEventListener("click", () => {
           const ta = document.querySelector<HTMLTextAreaElement>(step.example!.textarea);
@@ -384,7 +384,7 @@ export function openToursMenu(): void {
     ),
   );
   const close = h("button", { type: "button", class: "ghost" }, "Close");
-  const dlg = h("dialog", { class: "ts tours", "aria-labelledby": "tours-h" }, h("h2", { id: "tours-h" }, "Tours"), list, close) as HTMLDialogElement;
+  const dlg = h("dialog", { class: "ts tours", "aria-labelledby": "tours-h" }, h("h2", { id: "tours-h" }, "Demos"), list, close) as HTMLDialogElement;
   document.body.append(dlg);
   const done = () => {
     dlg.close();

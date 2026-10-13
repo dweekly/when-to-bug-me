@@ -47,12 +47,48 @@ The layouts were agreed as mocks first: scratchpad screenshots, five states, at 
    - "Tours" becomes "Demos": the button, the menu, the restart notice.
    - The phone nav keeps its right padding when scrolled to the end.
 
+## As built
+
+- **Labels.** 36 of 40 decisions have at least one option in Haiku's words. On the other four the agent's labels stay: on three they were already plain (flight times, request limits, "Quarantine with a ticket"), and on tax-mapper-lint the titles answer failed. Code keeps the agent's label wherever a label fails the checks (word count, or an agent code such as "T-19", "R2" or "v2"). All 40 pairs were read by hand (2026-10-13). The two the demo turns on:
+  - "Keep T-19 mapping" → "Keep using the old tax table";
+  - "Apply v2 reconciliation path" → "Recheck and fix invoices since January".
+  Two housekeeping labels lean a little ("Apply fixes now; easy to undo", "Merge three small safe updates"). They show only on an undone job; label fidelity is on the roadmap.
+- **Title retries.** Adding the labels line made Haiku's titles a word longer. The prompt now says so plainly (2026-10-13.2). One title, tax-mapper-lint, comes back at seven words on every retry; its row shows the headline, as dockerfile-format's did before.
+- **Read-backs.** Recorded read-backs now speak the labels ("Keep using the old tax table and don't rewrite invoices people already paid, but fix the tax going forward. Right?"). Routing was not re-recorded (no route calls in the dry run), so the pros and cons are the recorded ones.
+- **The reveal** says a shared expectation once: "The agent would have picked **6:05am flight**, and so would I."
+- **The corner firefly** scrolls away with the header on a phone. Pinned, it floated over the thread, the second firefly in David's screenshot.
+- **The why box's "Use Jordan's recorded reason" link** is a DEMO REPLY button beside its microphone too.
+- **Cost.** Re-recording about $0.42 (mostly the conversation turns; the titles are under a cent); eval 10/10, $0.68.
+
+### Codex plan review (gpt-6.1-sol, high, 2026-10-13)
+
+**Folded in:**
+- **The owner page.** `/me` reads labels from the ticket's stored card: its calls never touch the cache. Each world has a `labelsOf`.
+- **Recorder, replay test and eval.** All three run the conversation on the plain labels; guidance and routing stay on the agent's.
+- **Guidance provenance.** Kept guidance names the option by the agent's label, which feeds routing, so re-routes still replay.
+- **Jargon check.** The label check rejects agent codes.
+- **Demos.** They no longer say "Take the agent's pick". The conversation prompt (2026-10-13.2) never names the agent's recommendation.
+- **The Huh? demo step and its runner** target the new button.
+- **The 320px project** includes this spec.
+- **A recorded-run test** covers DEMO REPLY on real labels (`tours-plain.spec.ts`).
+- **Live asks with no recommendation** are marked `no_recommendation`. The reveal and the against-the-agent nudge only use a real pick.
+- **DEMO REPLY** is off while a turn is out.
+- **Phone tests** measure the paragraph's width, the follow-up's `::before`, and the space after Demos.
+- **Old assertions and the stage 6 doc** are updated.
+
+**Declined or deferred:**
+- **The stand-in doesn't get hand-written plain labels.** The scripted T-19 words now say "old tax table", which the keyword stand-in can't match to "Keep T-19 mapping". That only matters on the fake-model server, where no test drives that script. The recorded and live runs use real labels.
+- **Re-applying labels when a re-route replaces a card.** Titles don't change on a re-route.
+- **Label fidelity, and versioning saved conversations across label changes.** Both on the roadmap.
+- **Conditions count as a reason** for the nudge, as before 6f.
+
 ## Gates
 
 ```bash
 npm run typecheck && npm test   # labels parse (fallback per option), plainOptions, shouldAskWhy against the agent, recorded titles carry labels, both T-19 scripts replay
 npm run e2e                     # stage6e/6f specs: one Huh? above the box; no agent's pick before deciding; reveal + nudge; DEMO REPLY fills the box;
-                                # at 390px Bug Me's turn text is at least 80% of the thread's width and no turn shows a firefly; header fits at 320px
+                                # at phone width Bug Me's words take over 80% of the thread, the source sits under them, no turn or follow-up has its own firefly,
+                                # the corner firefly scrolls away, and the views row ends with a gutter after Demos
 npm run e2e -- --project=recorded-desktop --project=recorded-phone
 npm run eval:converse           # 10/10 again on the plain labels (about $0.70)
 python3 scripts/scan.py

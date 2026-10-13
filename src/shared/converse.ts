@@ -346,8 +346,6 @@ export interface CloseInputs {
   hasFeedback: boolean;
   /** Times Bug Me's translation missed: "Huh?" presses plus "unclear" feedback (docs/STAGE-6E.md). */
   unclear: number;
-  /** The conversation already asked an elicitation question: "I'm curious: why?" stays quiet. */
-  whyAsked: boolean;
   noMoreQuestions: boolean;
 }
 
@@ -387,7 +385,6 @@ export function closeInputs(d: Decision, turns: ConvTurn[], l: Ledger): CloseInp
     evidence,
     hasFeedback: aboutDecision.length > 0,
     unclear: unclearCount(turns, l),
-    whyAsked: questionsAsked(turns) > 0,
     noMoreQuestions: l.no_more_questions,
   };
 }

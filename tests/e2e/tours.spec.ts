@@ -41,7 +41,7 @@ async function act(page: Page, step: TourStep): Promise<void> {
     return;
   }
   // Send, the decision button, or "Huh?": press it.
-  if (step.target === "#now .send" || step.target === "#now .send.decide" || step.target === "#now .huh-q") {
+  if (step.target === "#now .send" || step.target === "#now .send.decide" || step.target === "#now .huh-row .huh") {
     await page.locator(step.target).click();
     return;
   }

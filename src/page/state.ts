@@ -135,7 +135,6 @@ export interface Flow {
   /** From the confirmed thread, for the close path: the guidance evidence (why, conditions and
    *  feedback quotes), and what the "why?" backstop and the guidance offer need to know. */
   evidence: string;
-  whyAsked: boolean;
   noMoreQuestions: boolean;
   hasFeedback: boolean;
   /** The person's "but…" phrases as sent with the answer. */
@@ -164,7 +163,7 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, sent: 0, evidence: "", whyAsked: false, noMoreQuestions: false, hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, sent: 0, evidence: "", noMoreQuestions: false, hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
 }
 
 /** A conversation has started on this decision and isn't finished: it stays with the person. */
