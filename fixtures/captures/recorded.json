@@ -6834,6 +6834,239 @@
         "output": 96
       },
       "ms": 1734
+    },
+    "1fc9282bf77580ce725a1251caf7c21a19f528cb49d08511385a9b6f53d8f213": {
+      "label": "dispatch usage-demo",
+      "output": {
+        "headline": "Clickable usage dashboard demo for Thursday review",
+        "goal": "A running, clickable prototype of the usage dashboard showing the three charts sketched last week, using hardcoded or sample data, on a preview link.",
+        "why": "So the team can click around and react to the chart designs at Thursday's review; anything that gets a clickable version of those three charts in front of them would serve.",
+        "questions": [
+          "Where are last week's three chart sketches (Figma file, doc, or whiteboard photo), and which charts are they?"
+        ],
+        "stage": "prototype",
+        "done": [
+          "The three sketched charts render with sample data and respond to clicks/hover on a preview link",
+          "The demo runs from a branch (not main) and the preview URL has been shared with Jordan",
+          "One smoke run in a browser loads the page without console errors"
+        ],
+        "out_of_scope": [
+          "Wiring to real usage data, the production API, or a backend",
+          "Auth, user accounts, or permissions on the dashboard",
+          "Date-range pickers, filters, export, or other configuration beyond what the sketches show",
+          "Reusable chart component libraries, tests beyond one smoke run, or a production deploy"
+        ],
+        "estimate_minutes": 90,
+        "budget_usd": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "low",
+        "permission_mode": "acceptEdits",
+        "sensitivity": "low",
+        "sensitivity_reason": "Uses made-up sample data; no customer or personal data needed.",
+        "urgency": "medium",
+        "urgency_reason": "Needed for Thursday's review, not today, but has a fixed date.",
+        "tools_off": [
+          "mcp__Sentry",
+          "mcp__Datadog",
+          "mcp__Gmail",
+          "mcp__Google_Calendar",
+          "mcp__PagerDuty",
+          "mcp__Zendesk",
+          "mcp__Linear",
+          "mcp__Slack"
+        ],
+        "tools_needed": [
+          "mcp__GitHub",
+          "mcp__Figma"
+        ],
+        "skills": [
+          "frontend-design",
+          "webapp-testing"
+        ],
+        "context": [
+          "The three usage dashboard charts sketched last week",
+          "Thursday's review, where the team will click around the demo"
+        ],
+        "guidance": [
+          "Never push to main; work on a branch with a preview.",
+          "If a task runs past twice its time budget, stop and check in with me.",
+          "Outages and bad weeks stay in any chart that leaves the team, with a note if needed."
+        ],
+        "prerequisites": [
+          {
+            "what": "Point the session at last week's chart sketches (e.g. share the Figma link).",
+            "why": "Without them the session would have to guess the three charts and stop to ask."
+          }
+        ],
+        "check_ins": [
+          "If the sketches are ambiguous about what a chart shows, ask rather than invent new charts",
+          "If showing the demo outside the team, or with any real customer data, check with Jordan first",
+          "Share the preview link with Jordan before Thursday for review"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-13T22:56:25.594Z",
+      "usage": {
+        "input": 4048,
+        "output": 890
+      },
+      "ms": 12315
+    },
+    "201889cbf10e43accda9418ff204191f73c67a19d36a4675347c47c1420957c8": {
+      "label": "dispatch billing-complaints",
+      "output": {
+        "headline": "Group last quarter's billing support complaints",
+        "goal": "A short written summary of last quarter's billing-related support tickets from Zendesk, grouped into categories of what went wrong, with counts and a few representative ticket links per group.",
+        "why": "So Jordan can see which billing problems customers actually hit, to inform the move to the new payments provider and what the cutover must get right.",
+        "questions": [],
+        "stage": "prototype",
+        "done": [
+          "Every ticket from last quarter tagged or worded as billing-related has been reviewed and assigned to exactly one category (or an 'other/unclear' bucket)",
+          "A written summary exists with each category, its ticket count, a one-line description of what went wrong for customers, and 2-3 example ticket links",
+          "The summary notes how tickets were identified as billing-related and any spikes or bad weeks, kept in rather than smoothed out"
+        ],
+        "out_of_scope": [
+          "Building a reusable ticket-classification pipeline, script library or dashboard",
+          "Replying to, tagging, merging or otherwise changing any Zendesk tickets",
+          "Proposing or filing fixes in the billing code or opening Linear tickets",
+          "Polished charts or a slide deck meant to go outside the team"
+        ],
+        "estimate_minutes": 60,
+        "budget_usd": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "permission_mode": "plan",
+        "sensitivity": "high",
+        "sensitivity_reason": "Reads customer support tickets containing personal details and billing/payment information.",
+        "urgency": "low",
+        "urgency_reason": "Jordan said no rush, any time this week.",
+        "tools_off": [
+          "mcp__GitHub",
+          "mcp__Linear",
+          "mcp__Sentry",
+          "mcp__Datadog",
+          "mcp__Slack",
+          "mcp__Gmail",
+          "mcp__Google_Calendar",
+          "mcp__Figma",
+          "mcp__PagerDuty"
+        ],
+        "tools_needed": [
+          "mcp__Zendesk",
+          "mcp__bugme"
+        ],
+        "skills": [
+          "data-analysis"
+        ],
+        "context": [
+          "Support tickets live in Zendesk; 'last quarter' means the most recent full calendar quarter",
+          "This is for the Billing project: invoicing is moving to a new payments provider"
+        ],
+        "guidance": [
+          "Never delete or merge customer data without asking me.",
+          "Outages and bad weeks stay in any chart that leaves the team, with a note if needed.",
+          "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
+          "Prefers a short written summary to a meeting when either would do.",
+          "If a task runs past twice its time budget, stop and check in with me."
+        ],
+        "prerequisites": [],
+        "check_ins": [
+          "Before sharing the summary beyond Jordan, or anything that could reach customers",
+          "Before any change to tickets or customer records in Zendesk",
+          "If the run passes 2 hours (twice the estimate)",
+          "If tickets point to a likely wrong-invoice bug, flag it to Jordan rather than acting on it"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-13T22:56:36.422Z",
+      "usage": {
+        "input": 4048,
+        "output": 953
+      },
+      "ms": 10828
+    },
+    "c9d03fc2ff2cb8dc32b89817a00448b65d8b675cd334bd25e2256a9cf5e9f2b6": {
+      "label": "dispatch pagerduty",
+      "output": {
+        "headline": "Page on-call when a release fails",
+        "goal": "The release bot triggers a PagerDuty incident routed to the current on-call whenever a release fails.",
+        "why": "So failed releases get a human's attention fast instead of sitting unnoticed in a channel; any approach that reliably pages on-call on failure would serve.",
+        "questions": [
+          "Which PagerDuty service and escalation policy should release failures page: an existing one, or a new one for releases?",
+          "Should every failed release page, or only failures on production releases (not staging or preview)?"
+        ],
+        "stage": "mvp",
+        "done": [
+          "A deliberately failed test release on a branch triggers a PagerDuty incident on the agreed service, and it reaches the on-call person.",
+          "A successful release does not page, and a failure that is retried and recovered resolves or does not duplicate the incident.",
+          "The change is on a branch with a preview or PR link, with a short written summary of what on-call will now see."
+        ],
+        "out_of_scope": [
+          "Paging rules by severity, time of day or release type beyond the one agreed rule",
+          "A general alerting abstraction that supports Slack, email and other providers",
+          "Changing PagerDuty schedules, escalation policies or who is on call",
+          "Auto-rollback or other remediation on failure"
+        ],
+        "estimate_minutes": 60,
+        "budget_usd": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "permission_mode": "acceptEdits",
+        "sensitivity": "medium",
+        "sensitivity_reason": "Internal release tooling plus a PagerDuty integration key, which is a credential that must stay out of the code and logs.",
+        "urgency": "low",
+        "urgency_reason": "No deadline given; it improves response to failures but nothing is broken today.",
+        "tools_off": [
+          "mcp__Gmail",
+          "mcp__Google_Calendar",
+          "mcp__Figma",
+          "mcp__Zendesk",
+          "mcp__Sentry",
+          "mcp__Datadog"
+        ],
+        "tools_needed": [
+          "mcp__GitHub"
+        ],
+        "skills": [],
+        "context": [
+          "The release bot's code and how it reports a failed release today",
+          "Jordan's rule: never push to main; work on a branch with a preview"
+        ],
+        "guidance": [
+          "Access and security changes are always mine.",
+          "Never push to main; work on a branch with a preview.",
+          "Anything that spends more than $100 a month, or commits us to a contract, comes to me.",
+          "If a task runs past twice its time budget, stop and check in with me.",
+          "Prefers a short written summary to a meeting when either would do."
+        ],
+        "prerequisites": [
+          {
+            "what": "Authenticate the PagerDuty connection and create or pick the service, then put its Events API integration key in the release bot's secret store.",
+            "why": "PagerDuty needs authentication and creating keys is an access change, which is Jordan's call; without it the session can't send a test page."
+          },
+          {
+            "what": "Decide which releases should page (all failures or production only) and which service and escalation policy it goes to.",
+            "why": "This sets who gets woken up and is the main scope decision."
+          },
+          {
+            "what": "Warn the current on-call that a test page will come through.",
+            "why": "So the end-to-end test doesn't get treated as a real incident."
+          }
+        ],
+        "check_ins": [
+          "Any new PagerDuty service, escalation policy, user or permission change",
+          "Anything that would add PagerDuty seats or cost over $100 a month",
+          "Merging to main: bring Jordan the preview or PR link to review",
+          "If it runs past 2 hours, stop and check in"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-13T22:56:48.263Z",
+      "usage": {
+        "input": 4035,
+        "output": 1088
+      },
+      "ms": 11841
     }
   }
 }

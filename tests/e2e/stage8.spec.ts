@@ -38,7 +38,7 @@ test("a task becomes a brief; Copy command waits for every prerequisite", async 
   await expect(copy).toBeEnabled();
   await copy.click();
   const copied = (await page.evaluate("navigator.clipboard.readText()")) as string;
-  expect(copied).toMatch(/^claude --model 'claude-opus-5-5' --effort 'medium' --permission-mode 'auto' "\$\(cat <<'BRIEF'\n/);
+  expect(copied).toMatch(/^claude --model 'claude-opus-5-5' --effort 'medium' --permission-mode 'auto' -- "\$\(cat <<'BRIEF'\n/);
   expect(copied).toContain("report_to_bug_me");
 });
 

@@ -10,6 +10,7 @@ import { modelCacheKey } from "../../src/shared/hash";
 import {
   ASK_SCHEMA,
   CONVERSE_PROMPT_VERSION,
+  DISPATCH_PROMPT_VERSION,
   FACT_SCHEMA,
   PARSE_PROMPT_VERSION,
   PROMPT_VERSION,
@@ -17,6 +18,7 @@ import {
   askPrompt,
   conversePrompt,
   converseSchema,
+  dispatchPrompt,
   factPrompt,
   parsePrompt,
   parseSchema,
@@ -29,6 +31,9 @@ import { CONVERSATIONS, EXAMPLES, scriptTurn } from "../../src/shared/examples";
 import { answerParts, guidanceText, parseParseOutput } from "../../src/shared/parse";
 import { enforceSettleInvariant, parseRouteOutput } from "../../src/shared/route";
 import { decisions, facts, persona, rules } from "./helpers";
+import { dispatchSchema, finishBrief, parseBriefDraft, parseCatalog, runWhere } from "../../src/shared/dispatch";
+import { DISPATCH_EXAMPLES } from "../../src/shared/dispatchExamples";
+import catalogJson from "../../fixtures/catalog.json";
 
 const entries = (recorded as { entries: Record<string, unknown> }).entries;
 
@@ -157,4 +162,28 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
       }
     });
   }
+});
+
+describe("the Dispatch demo's recorded briefs (docs/STAGE-8.md)", () => {
+  const catalog = parseCatalog(catalogJson);
+  const brief = async (task: string) => {
+    const t = task.replace(/\s+/g, " ").trim();
+    const k = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion: DISPATCH_PROMPT_VERSION, schema: dispatchSchema(catalog), prompt: dispatchPrompt(persona, rules, facts, t, "", catalog) });
+    const e = entries[k] as { output: unknown } | undefined;
+    return e ? parseBriefDraft(e.output, catalog, rules, facts) : null;
+  };
+
+  it("every demo task has a brief that passes today's checks", async () => {
+    for (const x of DISPATCH_EXAMPLES) expect(await brief(x.task), `${x.id}: re-record with \`npm run record\``).not.toBeNull();
+  });
+
+  it("the three show what they're for: a prototype with a short leash, a local run, a token up front", async () => {
+    const demo = (await brief(DISPATCH_EXAMPLES[0].task))!;
+    expect(demo.stage).toBe("prototype");
+    expect(demo.out_of_scope.length).toBeGreaterThan(0);
+    const tickets = (await brief(DISPATCH_EXAMPLES[1].task))!;
+    expect(runWhere(tickets.sensitivity, tickets.urgency).where).toBe("local");
+    const pager = finishBrief((await brief(DISPATCH_EXAMPLES[2].task))!, catalog, { id: "b-abcdefghij", task: "t", now: new Date(), owner: false });
+    expect(pager.prerequisites.map((p) => p.what).join(" ")).toMatch(/PagerDuty/);
+  });
 });
