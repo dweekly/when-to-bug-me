@@ -72,10 +72,14 @@ test("a short task gets questions; answering them redrafts the brief", async ({ 
   await page.goto("/app#/dispatch");
   await page.locator("#dispatch-task").fill("Make a status page");
   await page.locator("#draft-brief").click();
-  await expect(page.locator("#brief .brief-qs li")).toHaveText(["Who is this for, and by when?"]);
+  await expect(page.locator(".dispatch-thread .turn-qs li")).toHaveText(["Who is this for, and by when?"]);
   await page.locator("#dispatch-answers").fill("For customers, by Friday.");
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/dispatch") && Boolean(r.postDataJSON()?.answers));
   await page.locator("#redraft").click();
-  await expect(page.locator("#brief .brief-qs")).toHaveCount(0);
+  expect((await sent).postDataJSON().answers).toBe("For customers, by Friday.");
+  // The thread keeps what was said: the task and the answers, as the person's turns.
+  await expect(page.locator(".dispatch-thread .turn.mine")).toHaveText(["Make a status page", "For customers, by Friday."]);
+  await expect(page.locator(".dispatch-thread .turn-qs")).toHaveCount(0);
   await expect(page.locator(".briefs li")).toHaveCount(1); // the public redraft replaced the draft it answered
 });
 

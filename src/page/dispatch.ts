@@ -107,6 +107,7 @@ export function renderDispatchView(view: HTMLElement, id?: string): void {
       h("h1", {}, "Dispatch"),
       h("p", { class: "quiet" }, "Say what you want done. Bug Me sizes it and sets it up before a session starts."),
       composer(),
+      open ? conversation(open) : null,
       open ? briefCard(open) : null,
       briefs.length ? h("h2", { class: "section-h" }, "Briefs") : null,
       briefs.length ? h("ol", { class: "briefs" }, ...briefs.map((b) => briefRow(b, b.id === id))) : null,
@@ -194,7 +195,9 @@ async function draftBrief(redraft?: Shown): Promise<void> {
     return paint();
   }
   try {
-    const r = await api<{ brief: Brief; source: Source }>("/api/dispatch", { task, ...(said ? { answers: said } : {}), rules: S.rules, facts: S.facts });
+    // Every answer so far goes along, so a second round of questions doesn't lose the first round's answers.
+    const all = [redraft?.answers, said].filter(Boolean).join("\n\n");
+    const r = await api<{ brief: Brief; source: Source }>("/api/dispatch", { task, ...(all ? { answers: all } : {}), rules: S.rules, facts: S.facts });
     const b: Shown = { ...r.brief, source: r.source };
     // A redrafted public brief replaces the one it answered; the owner's queue keeps both.
     briefs = [b, ...briefs!.filter((x) => Q.owner || x.id !== redraft?.id)];
@@ -211,6 +214,38 @@ async function draftBrief(redraft?: Shown): Promise<void> {
     draft.busy = "";
     paint();
   }
+}
+
+const face = () => h("img", { class: "bug-face", src: "/firefly/clay/attentive.png", alt: "", width: 28, height: 28 });
+
+/**
+ * What was said before the brief: the task, any answers so far, and Bug Me's questions with the box to
+ * answer them. The brief under it is Bug Me's best reading until they're answered.
+ */
+function conversation(b: Shown): HTMLElement | null {
+  if (!b.questions.length && !b.answers) return null;
+  return h(
+    "section",
+    { class: "think thread dispatch-thread", "aria-label": "Talking the task through" },
+    h(
+      "ol",
+      { class: "turns" },
+      h("li", { class: "turn mine" }, h("p", {}, b.task)),
+      b.answers ? h("li", { class: "turn mine" }, h("p", {}, b.answers)) : null,
+      b.questions.length
+        ? h("li", { class: "turn bug" }, face(), h("p", {}, "Before I size this:"), h("ol", { class: "turn-qs" }, ...b.questions.map((q) => h("li", {}, q))))
+        : null,
+    ),
+    b.questions.length ? textBox("dispatch-answers", "Your answers", "Answer any of them…", () => answers.get(b.id) ?? "", (v) => answers.set(b.id, v)) : null,
+    b.questions.length
+      ? h(
+          "div",
+          { class: "think-actions" },
+          h("p", { class: "think-msg quiet" }, "Until then, the brief below is my best reading."),
+          h("button", { type: "button", class: "primary", id: "redraft", disabled: Boolean(draft.busy), onclick: () => void draftBrief(b) }, draft.busy === b.id ? "Resizing…" : "Send"),
+        )
+      : null,
+  );
 }
 
 function briefRow(b: Shown, current: boolean): HTMLElement {
@@ -289,17 +324,6 @@ function briefCard(b: Shown): HTMLElement {
   ticked.set(b.id, ticks);
   const { ready, message } = copyState(b);
   const local = b.where === "local";
-
-  const questions = b.questions.length
-    ? h(
-        "div",
-        { class: "brief-qs" },
-        h("p", {}, "These would change the brief:"),
-        h("ol", {}, ...b.questions.map((q) => h("li", {}, q))),
-        textBox("dispatch-answers", "Your answers", "Answer any of them…", () => answers.get(b.id) ?? "", (v) => answers.set(b.id, v)),
-        h("div", { class: "row" }, h("button", { type: "button", class: "ghost", id: "redraft", disabled: Boolean(draft.busy), onclick: () => void draftBrief(b) }, draft.busy === b.id ? "Redrafting…" : "Redraft")),
-      )
-    : null;
 
   const runsOn = h(
     "div",
@@ -397,7 +421,6 @@ function briefCard(b: Shown): HTMLElement {
       h("p", { class: "brief-size" }, sizeLine(b)),
       b.source ? h("span", { class: "turn-src" }, SOURCE_LABEL[b.source]) : null,
     ),
-    questions,
     h(
       "dl",
       { class: "brief-grid" },
@@ -447,16 +470,23 @@ function report(b: Shown): HTMLElement | null {
 }
 
 async function copy(b: Shown, what: "command" | "brief"): Promise<void> {
+  // The text is fixed at the click, from the fields as they are now.
   const text = what === "command" ? buildCommand(b, catalog) : briefText(b, catalog);
   actionMsg = "";
   try {
-    // On /me, the fields as copied are what ran: store them, and start the clock, before copying.
     if (Q.owner) {
+      // On /me the fields as copied are what ran: store them, and start the clock, before the text is
+      // released. The clipboard call itself stays inside the click (Safari refuses one made after an
+      // await), with a promise that resolves once the save has landed.
       const { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off } = b;
-      const r = await api<{ brief: Brief }>(`/api/me/briefs/${b.id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off });
-      Object.assign(b, r.brief);
-    }
-    await navigator.clipboard.writeText(text);
+      const saved = api<{ brief: Brief }>(`/api/me/briefs/${b.id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off });
+      const wrote = typeof ClipboardItem !== "undefined"
+        ? navigator.clipboard.write([new ClipboardItem({ "text/plain": saved.then(() => new Blob([text], { type: "text/plain" })) })])
+        : saved.then(() => navigator.clipboard.writeText(text));
+      // Only the clock comes back: edits made while this was out stay as they are.
+      b.dispatched_at = (await saved).brief.dispatched_at;
+      await wrote;
+    } else await navigator.clipboard.writeText(text);
     actionMsg = what === "command" ? "Copied. Paste it in a terminal, in the folder where the work should happen." : "Brief copied.";
   } catch (e) {
     actionMsg = `Couldn't copy it (${(e as Error).message}). Open "The command" below and copy it from there.`;

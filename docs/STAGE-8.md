@@ -148,7 +148,15 @@ The first carries a synthetic report, labeled synthetic like everything else: do
   Twice, with the stand-in's vague "runs from one command" check, it reported "partial" and said why, instead of claiming done.
 - **The first request after a session's run can hit a dropped connection** on the local Worker. One retry succeeds, which says the Worker was alive (seen every run on 2026-10-13, never twice in a row).
 - **The Dispatch demo** ("Send work out at the right size") runs start to finish on the recorded run at desktop and phone widths. Its first popover sits above the box, because on a phone it covered Draft brief.
-- **Spend:** about $0.17 in all (the recording, plus about a dozen cent-sized CLI checks).
+- **Questions are a conversation** (David, 2026-10-13: a question box on top of the card with a Redraft button "is a little silly"). The task and answers show as the person's turns, Bug Me asks under them, and Send redrafts. Every answer so far goes along, so a second round of questions doesn't drop the first.
+- **Copy on `/me`** calls the clipboard inside the click, with a promise that resolves once the save lands, because Safari refuses a clipboard write made after an await. Only the clock comes back from the save, so edits made meanwhile stay.
+- **Review decisions (David, 2026-10-13):**
+  - #36 (engine): merge after the round-2 fixes, with no third round;
+  - #37 (page): Codex escalated after round 2 with three bugs, all fixed (answers across redrafts, the Safari clipboard, the save overwriting edits); merge, then plan stage 9.
+- **Next (stage 9):** a local runner reached over localhost or Tailscale.
+  - It starts the session itself, reads the tools live and makes the worktree.
+  - "Walk me through it" on each prerequisite: at least step-by-step instructions, at best a Claude session that drives Chrome with the person.
+- - **Spend:** about $0.17 in all (the recording, plus about a dozen cent-sized CLI checks).
 
 ## Gates
 
