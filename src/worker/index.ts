@@ -153,11 +153,20 @@ async function contextIn(b: Record<string, unknown>, w: World): Promise<{ rules:
   return b.rules !== undefined || b.facts !== undefined ? w.snapshot(c.rules, c.facts) : w.snapshot();
 }
 
-/** A dispatch request's task and answers (docs/STAGE-8.md). */
+/**
+ * A dispatch request's task and answers (docs/STAGE-8.md), trimmed but otherwise exactly as written:
+ * the session gets the person's own words, so "exactly two spaces" must survive.
+ */
 function dispatchInput(b: Record<string, unknown>): { task: string; answers: string } {
-  const task = cleanText(b.task, MAX_TASK_CHARS, "task");
+  const exact = (v: unknown, max: number, field: string) => {
+    if (typeof v !== "string") throw new BadRequest(`${field} must be a string`);
+    const t = v.trim();
+    if (t.length > max) throw new BadRequest(`${field} is longer than ${max} characters`);
+    return t;
+  };
+  const task = exact(b.task, MAX_TASK_CHARS, "task");
   if (!task) throw new BadRequest("task is required");
-  return { task, answers: b.answers === undefined ? "" : cleanText(b.answers, MAX_ANSWERS_CHARS, "answers") };
+  return { task, answers: b.answers === undefined ? "" : exact(b.answers, MAX_ANSWERS_CHARS, "answers") };
 }
 
 /** A fact's scope is "all" or a project id; a live project's id can be as long as its name (60). */

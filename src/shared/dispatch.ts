@@ -327,6 +327,8 @@ export function briefText(b: Brief, c: Catalog): string {
   const parts = [
     `Bug Me brief ${b.id}: ${b.headline}`,
     `Goal: ${b.goal}${b.why ? `\nWhy: ${b.why} (If a different approach serves this better, say so.)` : ""}`,
+    // The person's own words, exactly as given: the brief summarizes them, it doesn't replace them.
+    `The request, in the person's own words:\n${b.task}${b.answers ? `\n\nTheir answers to Bug Me's questions:\n${b.answers}` : ""}`,
     `Stage: ${b.stage}. Build to this stage and no further.`,
     b.done.length ? `Done when:\n${bullets(b.done)}` : "",
     b.out_of_scope.length ? `Out of scope (don't build these; if one seems necessary, ask first):\n${bullets(b.out_of_scope)}` : "",
