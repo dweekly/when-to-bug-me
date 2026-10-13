@@ -24,6 +24,7 @@ import { SOURCE_LABEL } from "./derive";
 import { $, announce, h } from "./dom";
 import { go, hrefFor } from "./router";
 import { Q, S } from "./state";
+import { tourAfterRender } from "./tour";
 import { setVoiceTarget } from "./voice";
 
 /** Where the public site keeps its briefs: this browser only, separate from the morning. */
@@ -62,25 +63,27 @@ function savePublic(): void {
   }
 }
 
+/** The owner's briefs and catalog, from the server. (The public site's are read synchronously below.) */
 async function load(): Promise<void> {
-  if (!Q.owner) {
-    briefs = loadPublic();
-    catalog = Q.catalog ?? catalog;
-    return;
-  }
   const r = await api<{ briefs: Brief[]; catalog: Catalog }>("/api/me/briefs");
   briefs = r.briefs;
   catalog = r.catalog;
 }
 
-/** Redraw this view if it's still the one showing. */
+/** Redraw this view if it's still the one showing, and let a running tour find its target again. */
 function paint(): void {
-  if (onDispatch()) renderDispatchView($("view"), openId);
+  if (!onDispatch()) return;
+  renderDispatchView($("view"), openId);
+  tourAfterRender();
 }
 
 export function renderDispatchView(view: HTMLElement, id?: string): void {
   if (id !== openId) actionMsg = "";
   openId = id;
+  if (!briefs && !Q.owner) {
+    briefs = loadPublic();
+    catalog = Q.catalog ?? catalog;
+  }
   if (!briefs) {
     view.replaceChildren(h("section", { class: "page dispatch" }, h("h1", {}, "Dispatch"), h("p", { class: "quiet" }, loadError || "Loading your briefs…")));
     if (!loadError) {
