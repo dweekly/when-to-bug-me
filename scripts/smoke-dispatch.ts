@@ -70,7 +70,8 @@ for (let i = 0; ; i++) {
 }
 ok("local Worker up on the stand-in, with a throwaway LIVE_TOKEN");
 
-const catalog: Catalog = { servers: [{ name: "bugme", prefix: "mcp__bugme", status: "connected" }], skills: [] };
+// GitHub is only there to be turned off: a command with --disallowedTools must still deliver the brief.
+const catalog: Catalog = { servers: [{ name: "bugme", prefix: "mcp__bugme", status: "connected" }, { name: "GitHub", prefix: "mcp__GitHub", status: "connected" }], skills: [] };
 await owner("/api/me/catalog", catalog);
 const task =
   "Quick demo: write a file hello.txt containing the single word hello. Before writing it, ask with ask_bug_me (wait_minutes 0) whether it should say hello or hi; if the answer is pending, use hello.";
@@ -81,9 +82,10 @@ const { brief } = await owner<{ brief: Brief }>(`/api/me/briefs/${drafted.id}/di
   permission_mode: "acceptEdits",
   estimate_minutes: 5,
   budget_usd: 0.2,
-  tools_off: [],
+  tools_off: ["mcp__GitHub"],
 });
-ok(`brief ${brief.id} drafted and copied (Haiku, low effort, acceptEdits)`);
+if (!buildCommand(brief, catalog).includes("--disallowedTools 'mcp__GitHub'")) fail("the command doesn't turn GitHub off");
+ok(`brief ${brief.id} drafted and copied (Haiku, low effort, acceptEdits, GitHub off)`);
 
 const mcpConfig = JSON.stringify({
   mcpServers: { bugme: { command: "node", args: [resolve("mcp/bugme.mjs")], env: Object.fromEntries([["BUGME_URL", BASE], ["BUGME_TOKEN", OWNER_KEY]]) } },

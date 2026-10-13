@@ -31,6 +31,8 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
+      # The dispatch command test runs the built command under zsh and bash (tests/unit/dispatch.test.ts).
+      - run: sudo apt-get update && sudo apt-get install -y zsh
       - run: npm test
 
       - name: Install gitleaks

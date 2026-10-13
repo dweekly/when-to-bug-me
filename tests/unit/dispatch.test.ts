@@ -171,11 +171,19 @@ describe("the command is one `claude` call, whatever the brief says", () => {
       expect(JSON.parse(out)).toEqual([
         "--model", b.model, "--effort", b.effort, "--permission-mode", b.permission_mode,
         "--disallowedTools", "mcp__GitHub", "--disallowedTools", "mcp__claude_ai_Gmail",
-        briefText(b, CAT),
+        "--", briefText(b, CAT),
       ]);
       expect(() => execFileSync("test", ["-e", canary])).toThrow();
     });
   }
+
+  it("keeps every tool turned off, up to the catalog's size", () => {
+    const many = parseCatalog({ servers: [server("bugme"), ...Array.from({ length: 40 }, (_, i) => server(`tool${i}`))], skills: [] });
+    const all = many.servers.filter((s) => s.prefix !== BUGME_PREFIX).map((s) => s.prefix);
+    expect(parseBriefDraft(draft({ tools_off: all }), many, [], []).tools_off).toEqual(all);
+    const ok = { model: "claude-haiku-5-5", effort: "low", permission_mode: "plan", estimate_minutes: 5, budget_usd: 1, tools_off: all };
+    expect(parseEdits(ok, many).tools_off).toEqual(all);
+  });
 
   it("refuses a tool prefix that slipped past the catalog", () => {
     const b = { ...hostile(), tools_off: ["mcp__x';id;'"] };

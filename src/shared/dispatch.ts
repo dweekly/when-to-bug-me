@@ -28,7 +28,7 @@ export const MAX_ANSWERS_CHARS = 1500;
 export const MAX_SERVERS = 80;
 export const MAX_SKILLS = 120;
 /** Caps on the brief's lists, applied in code (the structured-output schema carries only enums). */
-const CAP = { questions: 3, done: 3, out_of_scope: 4, context: 5, guidance: 4, prerequisites: 4, check_ins: 4, tools: 12, skills: 4 };
+const CAP = { questions: 3, done: 3, out_of_scope: 4, context: 5, guidance: 4, prerequisites: 4, check_ins: 4, tools: MAX_SERVERS, skills: 4 };
 
 /** Bug Me's own MCP server: every owner brief needs it (ask_bug_me, report_to_bug_me), so it is never turned off. */
 export const BUGME_PREFIX = "mcp__bugme";
@@ -202,7 +202,7 @@ export function parseBriefDraft(raw: unknown, c: Catalog, rules: Rule[], facts: 
   if (!headline || !goal) throw new DispatchError("headline and goal are required");
   const prefixes = new Set(c.servers.map((s) => s.prefix));
   const skills = new Set(c.skills);
-  const known = (v: unknown, set: Set<string>, cap: number) => [...new Set(strs(v, 50, 100).filter((x) => set.has(x)))].slice(0, cap);
+  const known = (v: unknown, set: Set<string>, cap: number) => [...new Set(strs(v, MAX_SERVERS, 100).filter((x) => set.has(x)))].slice(0, cap);
   const record = [...rules.map((r) => r.text), ...facts.map((f) => f.text)];
   const guidance = [...new Set(strs(o.guidance, 10, 400).map((q) => verifyQuote(q, record)).filter(Boolean))].slice(0, CAP.guidance);
   const prerequisites = (Array.isArray(o.prerequisites) ? o.prerequisites : [])
@@ -355,7 +355,11 @@ function delimiterFor(text: string): string {
   }
 }
 
-/** The command that starts the session: every argument quoted, the brief inside a quoted heredoc. */
+/**
+ * The command that starts the session: every argument quoted, the brief inside a quoted heredoc. `--`
+ * ends the options: --disallowedTools takes several values and would otherwise swallow the brief as
+ * one more tool name (checked with Claude Code 2.1.296).
+ */
 export function buildCommand(b: Brief, c: Catalog): string {
   const text = briefText(b, c);
   const d = delimiterFor(text);
@@ -364,7 +368,7 @@ export function buildCommand(b: Brief, c: Catalog): string {
     if (!PREFIX_RE.test(p)) throw new DispatchError("a tool prefix failed its pattern");
     args.push("--disallowedTools", shellQuote(p));
   }
-  return `${args.join(" ")} "$(cat <<'${d}'\n${text}\n${d}\n)"`;
+  return `${args.join(" ")} -- "$(cat <<'${d}'\n${text}\n${d}\n)"`;
 }
 
 /** One line for the brief card and the list: stage · ~N min · $X · tripwire. */
