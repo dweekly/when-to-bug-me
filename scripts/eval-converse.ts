@@ -1,10 +1,10 @@
 // The conversation eval (docs/STAGE-6.md): does Bug Me, talking a decision through with Jordan, ask
 // once when it should, stop when it should, answer from the agent's material, hear a rejection or
-// feedback, and follow a correction? Eight scripted conversations, three independent trials each; within
+// feedback, follow a correction, and say it again plainly after a "Huh?" (docs/STAGE-6E.md)? Ten scripted conversations, three independent trials each; within
 // a trial the turns run in order, each on the reply the previous turn produced after `advance`, exactly
 // as the page would. Every expectation was written down before the first run.
 //
-//   npm run eval:converse        # live; uses the keychain item "anthropic-api-key"; about $0.60
+//   npm run eval:converse        # live; uses the keychain item "anthropic-api-key"; about $0.70
 //
 // Designed demonstration checks on fixtures, not an accuracy estimate. Raw outputs go to
 // results/captures/eval-converse-<timestamp>.json.
@@ -15,6 +15,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import recorded from "../fixtures/captures/recorded.json";
 import { EFFORT, MAX_TOKENS, MODEL, PRICE_PER_MTOK } from "../src/shared/constants";
 import { type ConvTurn, type ConverseResult, type Next, advance, sanitizeLedger, unverifiedQuotes } from "../src/shared/converse";
+import { type Script, scriptTurn } from "../src/shared/examples";
 import { modelCacheKey } from "../src/shared/hash";
 import { CONVERSE_PROMPT_VERSION, PROMPT_VERSION, conversePrompt, converseSchema, routePrompt, routeSchema } from "../src/shared/prompts";
 import { enforceSettleInvariant, parseRouteOutput } from "../src/shared/route";
@@ -30,21 +31,52 @@ const facts = read<Fact[]>("fixtures/facts.json");
 const byId = new Map(read<Decision[]>("fixtures/decisions.json").map((d) => [d.id, d]));
 const entries = (recorded as { entries: Record<string, { output: unknown }> }).entries;
 
-/** One turn's check: returns the problems, or none. */
-type Check = (r: ConverseResult, d: Decision) => string[];
+/** One turn's check: returns the problems, or none. `raw` is the model's own answer, before `advance`. */
+type Check = (r: ConverseResult, d: Decision, raw: { reply: string; next: Next }) => string[];
 
 interface Case {
   name: string;
   id: string;
-  turns: { text: string; pick?: string }[];
+  turns: Script["turns"];
   /** One check per turn. */
   checks: Check[];
 }
 
 const has = (cond: boolean, problem: string) => (cond ? [] : [problem]);
 
-// Expectations written before the first run (2026-10-12).
+// Expectations written before the first run (2026-10-12; the two "Huh?" cases 2026-10-13).
 const CASES: Case[] = [
+  {
+    name: "Huh? on the card gets the question again, plainly",
+    id: "reconciliation-path",
+    turns: [{ text: "", huh: true }],
+    checks: [
+      (r, _d, raw) => [
+        ...has(raw.next === "explain", `the model's next was ${raw.next}, expected explain`),
+        ...has(r.reply.length >= 120, "too short to be an explanation"),
+        ...has(/invoice/i.test(r.reply), "doesn't say what happens to invoices"),
+        ...has(r.reply.includes("?"), "doesn't ask the question again"),
+        ...has(!/tax-mapper|subagent/i.test(r.reply), "names the agent's internals"),
+        ...has(r.ledger.choice === "none", `choice ${r.ledger.choice}, expected none`),
+      ],
+    ],
+  },
+  // Rewritten after its first run (2026-10-13): it was "What does T-19 even mean?", which Claude read,
+  // defensibly, as a question about the agent's own term and answered from its material (0/3 as unclear).
+  // T-19 is the agent's word, not Bug Me's, so that run showed a badly chosen case, not a miss.
+  {
+    name: "typed confusion is heard as unclear, not as a question for the agent",
+    id: "reconciliation-path",
+    turns: [{ text: "I don't follow any of this." }],
+    checks: [
+      (r, _d, raw) => [
+        ...has(raw.next === "explain", `the model's next was ${raw.next}, expected explain`),
+        ...has(r.ledger.feedback.some((f) => f.kind === "unclear"), "no unclear feedback"),
+        ...has(!r.ledger.questions.some((q) => q.answer === null), "kept as a question for the agent"),
+        ...has(r.ledger.choice === "none", `choice ${r.ledger.choice}, expected none`),
+      ],
+    ],
+  },
   {
     name: "a bare pick gets a why",
     id: "api-rename",
@@ -145,7 +177,7 @@ async function trial(c: Case, d: Decision, n: number): Promise<{ pass: boolean; 
   let pass = true;
   for (const [i, t] of c.turns.entries()) {
     if (spent > LOCAL_BUDGET_USD) throw new Error(`local budget of $${LOCAL_BUDGET_USD} spent`);
-    turns.push(t.pick ? { who: "jordan", text: t.text, pick: t.pick } : { who: "jordan", text: t.text });
+    turns.push(scriptTurn(t));
     const t0 = Date.now();
     const msg = await client.messages.create({
       model: MODEL,
@@ -160,7 +192,7 @@ async function trial(c: Case, d: Decision, n: number): Promise<{ pass: boolean; 
     const unverified = unverifiedQuotes(got, turns);
     const r = advance(d, turns, got.reply, got.next, sanitizeLedger(got.ledger, d, turns));
     raw.push({ case: c.name, trial: n, turn: i, ms: ms.at(-1), raw: got, after_advance: r });
-    const problems = [...c.checks[i](r, d), ...has((r.reply.match(/\?/g) ?? []).length <= 1, "more than one question in the reply"), ...has(unverified === 0, `${unverified} quote(s) not in Jordan's words`)];
+    const problems = [...c.checks[i](r, d, got), ...has((r.reply.match(/\?/g) ?? []).length <= 1, "more than one question in the reply"), ...has(unverified === 0, `${unverified} quote(s) not in Jordan's words`)];
     if (problems.length) pass = false;
     detail.push(`turn ${i}: ${problems.length ? `BAD ${problems.join("; ")}` : "ok"} · ${r.next}${r.forced ? ` (forced: ${r.forced})` : ""} · "${r.reply}"`);
     turns.push({ who: "bugme", text: r.reply, next: r.next, ...(r.heard ? { heard: r.heard } : {}) });

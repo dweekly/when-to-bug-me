@@ -6,7 +6,7 @@
 // overrides the model, it writes the read-back itself from the verified ledger, so the person never
 // sees a question code has just ruled out.
 
-import { MAX_CONVERSE_QUESTIONS, MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_REASON_CHARS, MAX_REPLY_CHARS, MAX_TRANSCRIPT_CHARS } from "./constants";
+import { MAX_CONVERSE_QUESTIONS, MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_EXPLAIN_CHARS, MAX_HUH, MAX_REASON_CHARS, MAX_REPLY_CHARS, MAX_TRANSCRIPT_CHARS } from "./constants";
 
 /** Longest routed-card reason a request may carry, and longest Bug Me turn (a read-back can quote conditions). */
 const MAX_WHY_HERE_CHARS = 600;
@@ -14,14 +14,18 @@ const MAX_BUG_TURN_CHARS = 3000;
 import { findQuote } from "./parse";
 import type { Decision } from "./types";
 
-/** One of Jordan's turns as sent: the words (may be empty when there is a pick) and the option clicked since the last turn. */
+/** One of Jordan's turns as sent: the words (may be empty when there is a pick) and the option clicked
+ *  since the last turn. `huh` is a press of "Huh?" (docs/STAGE-6E.md): no words, no pick, and a request
+ *  to re-present the last thing Bug Me showed in plainer terms. */
 export interface JordanTurn {
   who: "jordan";
   text: string;
   pick?: string;
+  huh?: true;
 }
 
-/** One of Bug Me's turns, as shown. `next` is what the turn did: asked, read the outcome back, or closed. */
+/** One of Bug Me's turns, as shown. `next` is what the turn did: asked, read the outcome back, closed,
+ *  or re-presented the question in plainer terms ("explain"). */
 export interface BugTurn {
   who: "bugme";
   text: string;
@@ -32,7 +36,7 @@ export interface BugTurn {
 }
 
 export type ConvTurn = JordanTurn | BugTurn;
-export type Next = "ask" | "confirm" | "close";
+export type Next = "ask" | "confirm" | "close" | "explain";
 
 /** Words copied from one of Jordan's turns; `turn` counts Jordan's turns only, from 0. */
 export interface Quote {
@@ -54,8 +58,10 @@ export interface Ledger {
   conditions: Quote[];
   /** Jordan's questions; `answer` is null when the agent's material doesn't say. */
   questions: { quote: Quote; answer: string | null }[];
-  /** What Jordan said about the question itself. */
-  feedback: { quote: Quote; kind: "priority" | "routing" }[];
+  /** What Jordan said about the question itself: more or less urgent than framed ("priority"), it
+   *  should or shouldn't have come to Jordan ("routing"), or Bug Me's translation didn't make sense
+   *  ("unclear", which is about Bug Me, not the decision). */
+  feedback: { quote: Quote; kind: FeedbackKind }[];
   /** Jordan asked Bug Me to stop asking ("just do it"). */
   no_more_questions: boolean;
 }
@@ -86,7 +92,14 @@ export const EMPTY_LEDGER: Ledger = {
   no_more_questions: false,
 };
 
+export type FeedbackKind = "priority" | "routing" | "unclear";
+const FEEDBACK_KINDS: readonly string[] = ["priority", "routing", "unclear"];
+
 export const jordanTurns = (turns: ConvTurn[]): JordanTurn[] => turns.filter((t): t is JordanTurn => t.who === "jordan");
+/** Presses of "Huh?" in the thread. */
+export const huhs = (turns: ConvTurn[]): number => jordanTurns(turns).filter((t) => t.huh).length;
+/** Jordan's turns that count toward MAX_CONVERSE_TURNS: everything but a "Huh?". */
+export const wordTurns = (turns: ConvTurn[]): number => jordanTurns(turns).filter((t) => !t.huh).length;
 export const bugTurns = (turns: ConvTurn[]): BugTurn[] => turns.filter((t): t is BugTurn => t.who === "bugme");
 
 /** Elicitation questions Bug Me has actually asked in this thread. */
@@ -157,16 +170,21 @@ export function sanitizeLedger(raw: unknown, d: Decision, turns: ConvTurn[]): Le
   const feedback = list(o.feedback).flatMap((f) => {
     const quote = quoteIn(js, f);
     const kind = str((f as Record<string, unknown>)?.kind);
-    return quote && (kind === "priority" || kind === "routing") ? [{ quote, kind: kind as "priority" | "routing" }] : [];
+    return quote && FEEDBACK_KINDS.includes(kind) ? [{ quote, kind: kind as FeedbackKind }] : [];
   });
+  // "What does that mean?" is about Bug Me's wording, not a question for the agent or a reason: a clause
+  // marked unclear is dropped from the questions, reasons and conditions (docs/STAGE-6E.md).
+  const unclear = feedback.filter((f) => f.kind === "unclear").map((f) => f.quote);
+  const overlaps = (x: Quote) => unclear.some((u) => u.turn === x.turn && (u.quote.includes(x.quote) || x.quote.includes(u.quote)));
+  const notUnclear = (x: Quote) => !overlaps(x);
   return {
     choice,
     choice_quote: keys.includes(choice) || choice === "other" || choice === "reject" ? quoteIn(js, o.choice_quote) : null,
     course: choice === "other" || choice === "reject" ? course : null,
     action: choice === "other" || choice === "reject" ? str(o.action).trim().split(/\s+/).slice(0, 5).join(" ") : "",
-    why: list(o.why).flatMap((q) => quoteIn(js, q) ?? []),
-    conditions: list(o.conditions).flatMap((q) => quoteIn(js, q) ?? []),
-    questions,
+    why: list(o.why).flatMap((q) => quoteIn(js, q) ?? []).filter(notUnclear),
+    conditions: list(o.conditions).flatMap((q) => quoteIn(js, q) ?? []).filter(notUnclear),
+    questions: questions.filter((q) => notUnclear(q.quote)),
     feedback,
     no_more_questions: o.no_more_questions === true,
   };
@@ -214,6 +232,18 @@ export function readBack(d: Decision, l: Ledger): string {
   return "Want to set this aside for now?";
 }
 
+/** Code's own plainer restatement, for the stand-in and for a "Huh?" the model left unanswered: the
+ *  context's first two sentences, then the choice by its option labels. */
+export function plainly(d: Decision): string {
+  const choice = ` The choice: ${d.options.map((o) => lowerFirst(sentence(o.label))).join(", or ")}.`;
+  // A sentence ends at . ? or ! followed by a space or the end, so "1.2%" stays whole.
+  let ctx = (d.context.match(/[\s\S]*?[.?!]+(?=\s|$)/g) ?? [d.context]).slice(0, 2).join("").trim();
+  // The choice always fits; the context gives way.
+  const room = MAX_EXPLAIN_CHARS - "In plain terms: ".length - choice.length;
+  if (ctx.length > room) ctx = `${ctx.slice(0, Math.max(0, room - 1)).trimEnd()}…`;
+  return `In plain terms: ${ctx}${choice}`;
+}
+
 /** What a read-back commits to: everything that changes what is sent (the choice, the course in
  *  Jordan's words, the conditions, and the questions that would be forwarded to the agent). Any change
  *  to these is a different decision. Reasons are left out: a reason added with a "yes" changes nothing
@@ -223,14 +253,26 @@ export function decisionFingerprint(l: Ledger): string {
   return JSON.stringify([l.choice, l.course?.quote.trim() ?? "", l.conditions.map((c) => c.quote.trim()).sort(), open]);
 }
 
+/** Bug Me's last turn that wasn't an explanation, if only "Huh?" presses and explanations came after
+ *  it (and, when `upTo` is set, before that index): a read-back stays the thing being agreed to. */
+export function standingTurn(turns: ConvTurn[], upTo = turns.length): BugTurn | undefined {
+  for (let i = upTo - 1; i >= 0; i--) {
+    const t = turns[i];
+    if (t.who === "bugme" && t.next !== "explain") return t;
+    if (t.who === "jordan" && !t.huh) return undefined;
+  }
+  return undefined;
+}
+
 /**
  * Whether Jordan's newest turn only agrees with the last read-back: that read-back committed to
  * exactly this decision (same fingerprint), and the turn clicks nothing and asks nothing. "Yes, but
  * only if…", "yes, without the docs note" or a yes with a different click changes the decision, so it
- * is read back again rather than closed.
+ * is read back again rather than closed. A "Huh?" and its explanation in between don't count: the yes
+ * still answers the read-back.
  */
 function agreesOnly(turns: ConvTurn[], ledger: Ledger): boolean {
-  const last = bugTurns(turns).at(-1);
+  const last = standingTurn(turns, turns.length - 1);
   const js = jordanTurns(turns);
   const newest = js.length - 1;
   if (last?.next !== "confirm" || last.heard !== decisionFingerprint(ledger) || js[newest]?.pick) return false;
@@ -245,14 +287,30 @@ function agreesOnly(turns: ConvTurn[], ledger: Ledger): boolean {
  *   otherwise it becomes a fresh read-back;
  * - an "ask" is allowed while fewer than MAX_CONVERSE_QUESTIONS have been asked and Jordan hasn't
  *   said to stop; otherwise it becomes a read-back;
- * - a model read-back is kept as written.
- * The reply is trimmed to MAX_REPLY_CHARS.
+ * - a model read-back is kept as written;
+ * - a "Huh?" is always answered with an explanation (code's own if the model wrote none), and the model
+ *   may explain unprompted only when Jordan's newest words say Bug Me wasn't clear ("unclear" feedback);
+ *   any other "explain" is treated as an "ask".
+ * The reply is trimmed to MAX_REPLY_CHARS (an explanation to MAX_EXPLAIN_CHARS).
  */
 export function advance(d: Decision, turns: ConvTurn[], reply: string, next: Next, ledger: Ledger): ConverseResult {
-  const last = bugTurns(turns).at(-1);
+  const last = standingTurn(turns, turns.length - 1);
   const sendable = outcomeOf(d, ledger).kind !== "set-aside";
-  const clip = (s: string) => (s.length > MAX_REPLY_CHARS ? `${s.slice(0, MAX_REPLY_CHARS - 1).trimEnd()}…` : s);
+  const clip = (s: string, max = MAX_REPLY_CHARS) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
+  const js = jordanTurns(turns);
+  const newest = js.length - 1;
   const confirm = (text: string, forced?: string): ConverseResult => ({ reply: text, next: "confirm", ledger, heard: decisionFingerprint(ledger), ...(forced ? { forced } : {}) });
+  const explain = (forced?: string): ConverseResult => ({ reply: clip(!forced && reply.trim() ? reply.trim() : plainly(d), MAX_EXPLAIN_CHARS), next: "explain", ledger, ...(forced ? { forced } : {}) });
+  const atLimit = wordTurns(turns) >= MAX_CONVERSE_TURNS || js.reduce((n, t) => n + t.text.length, 0) >= MAX_TRANSCRIPT_CHARS - 40;
+  // A press always gets an explanation: the model's when it wrote one, otherwise code's own.
+  if (js[newest]?.huh) return next === "explain" && reply.trim() ? explain() : explain("a Huh? answered with something else");
+  if (next === "explain") {
+    const unclear = ledger.feedback.some((f) => f.kind === "unclear" && f.quote.turn === newest);
+    // At the thread's limit only the read-back is left, so a typed "what?" gets that instead.
+    if (unclear && atLimit) return confirm(readBack(d, ledger), "thread limit");
+    if (unclear) return reply.trim() ? explain() : explain("an empty explanation");
+    next = "ask";
+  }
   if (next === "close") {
     // The page sends nothing on a typed "yes": it lights the decision button, so the reply says so.
     if (agreesOnly(turns, ledger) && sendable) return { reply: "Got it. Press the button to send it.", next: "close", ledger };
@@ -262,8 +320,7 @@ export function advance(d: Decision, turns: ConvTurn[], reply: string, next: Nex
     if (ledger.no_more_questions) return confirm(readBack(d, ledger), "asked to stop asking");
     if (questionsAsked(turns) >= MAX_CONVERSE_QUESTIONS) return confirm(readBack(d, ledger), "question cap");
     // A question Jordan couldn't answer within the thread's limits is never asked.
-    const js = jordanTurns(turns);
-    if (js.length >= MAX_CONVERSE_TURNS || js.reduce((n, t) => n + t.text.length, 0) >= MAX_TRANSCRIPT_CHARS - 40) return confirm(readBack(d, ledger), "thread limit");
+    if (atLimit) return confirm(readBack(d, ledger), "thread limit");
     return { reply: clip(reply.trim()), next: "ask", ledger };
   }
   // A read-back too long to show whole is replaced by code's, never clipped: Jordan confirms only what was shown.
@@ -284,21 +341,37 @@ export interface CloseInputs {
   narration: string;
   /** The why, condition and feedback quotes, whole and in order, within MAX_EVIDENCE_CHARS. */
   evidence: string;
-  /** Feedback about the question itself: a reason to propose guidance even on an expected answer. */
+  /** Feedback about the question itself: a reason to propose guidance even on an expected answer.
+   *  "Unclear" feedback is about Bug Me's translation, not the decision, so it doesn't count. */
   hasFeedback: boolean;
+  /** Times Bug Me's translation missed: "Huh?" presses plus "unclear" feedback (docs/STAGE-6E.md). */
+  unclear: number;
   /** The conversation already asked an elicitation question: "I'm curious: why?" stays quiet. */
   whyAsked: boolean;
   noMoreQuestions: boolean;
 }
 
+/** Times Bug Me's translation missed in a thread: each explanation it had to give, plus any "unclear"
+ *  feedback in the final reading that wasn't answered with one. Counted from the thread itself, so a
+ *  retry adds nothing and a later reading can't drop an earlier miss. */
+export function unclearCount(turns: ConvTurn[], l: Ledger | null): number {
+  const explained = new Set<number>();
+  let j = -1;
+  for (const t of turns) {
+    if (t.who === "jordan") j++;
+    else if (t.next === "explain") explained.add(j);
+  }
+  return explained.size + (l?.feedback.filter((f) => f.kind === "unclear" && !explained.has(f.quote.turn)).length ?? 0);
+}
+
 export function closeInputs(d: Decision, turns: ConvTurn[], l: Ledger): CloseInputs {
-  // Quotes are joined verbatim; one that doesn't end a sentence is followed by "; " so two clauses don't run together.
   // Quotes are joined verbatim; one that doesn't end a sentence is followed by "; " so two clauses don't run together.
   const glue = (a: string, q: string) => (!a ? q : `${a}${/[.!?;:,]$/.test(a) ? " " : "; "}${q}`);
   const join = (qs: Quote[]) => qs.map((q) => q.quote.trim()).reduce(glue, "");
   // Whole quotes, in order, while they fit.
   let evidence = "";
-  for (const q of [...l.why, ...l.conditions, ...l.feedback.map((f) => f.quote)]) {
+  const aboutDecision = l.feedback.filter((f) => f.kind !== "unclear");
+  for (const q of [...l.why, ...l.conditions, ...aboutDecision.map((f) => f.quote)]) {
     const t = q.quote.trim();
     if (!t) continue;
     const next = glue(evidence, t);
@@ -312,7 +385,8 @@ export function closeInputs(d: Decision, turns: ConvTurn[], l: Ledger): CloseInp
     course: l.course?.quote.trim() ?? "",
     narration: jordanTurns(turns).map((t) => t.text.trim()).filter(Boolean).join("\n"),
     evidence,
-    hasFeedback: l.feedback.length > 0,
+    hasFeedback: aboutDecision.length > 0,
+    unclear: unclearCount(turns, l),
     whyAsked: questionsAsked(turns) > 0,
     noMoreQuestions: l.no_more_questions,
   };
@@ -325,6 +399,7 @@ export function transcriptForPrompt(d: Decision, turns: ConvTurn[], first: strin
   return turns
     .map((t) => {
       if (t.who === "bugme") return `Bug Me: ${t.text}`;
+      if (t.huh) return `${first} [turn ${j++}]: (pressed "Huh?": didn't follow the last thing Bug Me showed)`;
       const pick = t.pick ? d.options.find((o) => o.key === t.pick) : undefined;
       const head = `${first} [turn ${j++}]`;
       return `${head}: ${pick ? `(clicked option ${pick.key}, "${pick.label}") ` : ""}${t.text || "(no words)"}`;
@@ -349,12 +424,16 @@ export function parseConverseRequest(b: Record<string, unknown>, d: Decision): {
     const o = (t && typeof t === "object" ? t : {}) as Record<string, unknown>;
     if (typeof o.text !== "string") throw new ConverseError(`turns[${i}].text must be a string`);
     if (o.who === "bugme") {
-      if (o.next !== "ask" && o.next !== "confirm" && o.next !== "close") throw new ConverseError(`turns[${i}].next must be ask, confirm or close`);
+      if (o.next !== "ask" && o.next !== "confirm" && o.next !== "close" && o.next !== "explain") throw new ConverseError(`turns[${i}].next must be ask, confirm, close or explain`);
       if (o.text.length > MAX_BUG_TURN_CHARS) throw new ConverseError(`turns[${i}] is too long`);
       if (o.heard !== undefined && (typeof o.heard !== "string" || o.heard.length > MAX_BUG_TURN_CHARS)) throw new ConverseError(`turns[${i}].heard must be a short string`);
       return o.heard !== undefined ? { who: "bugme", text: o.text, next: o.next, heard: o.heard as string } : { who: "bugme", text: o.text, next: o.next };
     }
     if (o.who !== "jordan") throw new ConverseError(`turns[${i}].who must be jordan or bugme`);
+    if (o.huh !== undefined) {
+      if (o.huh !== true || o.text || o.pick !== undefined) throw new ConverseError(`turns[${i}].huh must be true, with no words and no pick`);
+      return { who: "jordan", text: "", huh: true };
+    }
     if (o.text.length > MAX_REASON_CHARS) throw new ConverseError(`turns[${i}] is longer than ${MAX_REASON_CHARS} characters`);
     if (o.pick !== undefined && (typeof o.pick !== "string" || !keys.includes(o.pick))) throw new ConverseError(`turns[${i}].pick is not an option of this decision`);
     if (!o.text.trim() && !o.pick) throw new ConverseError(`turns[${i}] has neither words nor a pick`);
@@ -362,7 +441,8 @@ export function parseConverseRequest(b: Record<string, unknown>, d: Decision): {
   });
   if (turns.at(-1)!.who !== "jordan") throw new ConverseError("the last turn must be Jordan's");
   const js = jordanTurns(turns);
-  if (js.length > MAX_CONVERSE_TURNS) throw new ConverseError(`a thread holds at most ${MAX_CONVERSE_TURNS} of Jordan's turns`);
+  if (wordTurns(turns) > MAX_CONVERSE_TURNS) throw new ConverseError(`a thread holds at most ${MAX_CONVERSE_TURNS} of Jordan's turns`);
+  if (huhs(turns) > MAX_HUH) throw new ConverseError(`a thread holds at most ${MAX_HUH} presses of "Huh?"`);
   if (js.reduce((n, t) => n + t.text.length, 0) > MAX_TRANSCRIPT_CHARS) throw new ConverseError(`a thread holds at most ${MAX_TRANSCRIPT_CHARS} characters of Jordan's words`);
   return { card: { route, why_here }, turns };
 }

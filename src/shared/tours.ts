@@ -44,7 +44,9 @@ const pick = (key: string) => `#now .opt[data-key="${key}"]`;
 /** One of Jordan's turns in the conversation: say it (or use Jordan's words, the decision's scripted
  *  turn), then Send. Finishes when Bug Me's reply to that turn (the `turn`th) appears. */
 const say = (decision: string, turn: number, title: string, text: string): TourStep => ({
-  target: "#now .thread",
+  // The box, with the popover above it: on a phone a tall thread would otherwise put it over Send.
+  target: "#now .composer",
+  side: "top",
   title,
   text,
   until: { appear: `#now .turns li.bug:not(.typing):nth-child(${turn * 2})` },
@@ -160,7 +162,10 @@ export const TOURS: Tour[] = [
     steps: [
       { go: "#/d/reconciliation-path", target: "#now-q", title: "In your terms", text: "What the decision actually means for customers.", until: "next" },
       { target: "#now details.more", title: "What the agent asked", text: "Open it: “v2 reconciliation path or the T-19 mapping?”", until: { click: "#now details.more summary" } },
-      say("reconciliation-path", 1, "Decide out loud", "Leave past invoices alone, and say why. Then Send. Or use Jordan's words."),
+      // docs/STAGE-6E.md: the press is the turn; the tour moves on when Bug Me has said it again, plainly.
+      { target: "#now .huh-q", title: "Still unclear?", text: "Press Huh? and Bug Me says it again, more plainly.", until: { appear: "#now .turns li.bug.explain" } },
+      { target: "#now .turns li.bug.explain", title: "In plain terms", text: "Said again, plainly. A Huh? also tells Bug Me its translation missed.", until: "next" },
+      say("reconciliation-path", 2, "Decide out loud", "Leave past invoices alone, and say why. Then Send. Or use Jordan's words."),
       decide(),
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
     ],

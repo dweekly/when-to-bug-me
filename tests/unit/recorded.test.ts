@@ -25,7 +25,7 @@ import {
   titlePrompt,
   titleSchema,
 } from "../../src/shared/prompts";
-import { CONVERSATIONS, EXAMPLES } from "../../src/shared/examples";
+import { CONVERSATIONS, EXAMPLES, scriptTurn } from "../../src/shared/examples";
 import { answerParts, guidanceText, parseParseOutput } from "../../src/shared/parse";
 import { enforceSettleInvariant, parseRouteOutput } from "../../src/shared/route";
 import { decisions, facts, persona, rules } from "./helpers";
@@ -117,8 +117,9 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
     modelCacheKey({ model: parts.model ?? MODEL, effort: EFFORT, maxTokens: parts.maxTokens ?? MAX_TOKENS, promptVersion: parts.promptVersion, schema: parts.schema, prompt: parts.prompt });
   const output = (k: string) => (entries[k] as { output: unknown } | undefined)?.output;
 
-  /** Haiku titles dockerfile-format in seven words however often it is asked; its card shows the headline instead. */
-  const UNTITLED = ["dockerfile-format"];
+  /** Decisions whose card shows the headline because the fast model's title never passed the checks.
+   *  dockerfile-format was one until the 2026-10-13 recording, which titled it within the limit. */
+  const UNTITLED: string[] = [];
   it("every decision but the known exception has a recorded emoji and title that pass today's checks", async () => {
     const missing: string[] = [];
     for (const d of decisions) {
@@ -130,14 +131,14 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
   });
 
   for (const s of CONVERSATIONS) {
-    it(`${s.id}: the scripted conversation replays from the recording and follows the script, and its guidance call is recorded`, async () => {
+    it(`${s.id}${s.variant ? ` (${s.variant})` : ""}: the scripted conversation replays from the recording and follows the script, and its guidance call is recorded`, async () => {
       const d = decisions.find((x) => x.id === s.id)!;
       const routed = parseRouteOutput(output(await key({ promptVersion: PROMPT_VERSION, schema: routeSchema(d.options.map((o) => o.key)), prompt: routePrompt(persona, rules, facts, d) })), d);
       const card = { route: enforceSettleInvariant(routed, d, rules, facts).route, why_here: routed.why_here };
       const turns: ConvTurn[] = [];
       let last: ConverseResult | null = null;
       for (const [i, t] of s.turns.entries()) {
-        turns.push(t.pick ? { who: "jordan", text: t.text, pick: t.pick } : { who: "jordan", text: t.text });
+        turns.push(scriptTurn(t));
         const raw = output(await key({ promptVersion: CONVERSE_PROMPT_VERSION, schema: converseSchema(d.options.map((o) => o.key)), prompt: conversePrompt(persona, rules, facts, d, card, turns) })) as { reply: string; next: Next; ledger: unknown } | undefined;
         expect(raw, `turn ${i} is recorded; re-record with \`npm run record\``).toBeDefined();
         expect(unverifiedQuotes(raw, turns), `turn ${i}: quotes not in Jordan's words`).toBe(0);

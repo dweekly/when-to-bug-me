@@ -96,6 +96,11 @@ export const MAX_TRANSCRIPT_CHARS = 2400;
 /** Longest Bug Me reply, in characters: two short sentences. Code trims anything longer. */
 export const MAX_REPLY_CHARS = 300;
 
+/** "Huh?" (docs/STAGE-6E.md): presses per thread, which don't count toward MAX_CONVERSE_TURNS, and the
+ *  longest re-presentation, which carries context and so runs longer than a normal turn. */
+export const MAX_HUH = 2;
+export const MAX_EXPLAIN_CHARS = 700;
+
 /** Most characters of Jordan's words (why, conditions, feedback; whole quotes) given to the guidance call. */
 export const MAX_EVIDENCE_CHARS = 900;
 

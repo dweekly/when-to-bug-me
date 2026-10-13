@@ -1,19 +1,23 @@
 // src/shared/converse.ts and its stand-in: the decision as a conversation (docs/STAGE-6.md). The model
 // proposes; `advance` decides. These pin the rules code enforces whatever the model says.
 import { describe, expect, it } from "vitest";
-import { MAX_CONVERSE_QUESTIONS, MAX_EVIDENCE_CHARS, MAX_REPLY_CHARS } from "../../src/shared/constants";
+import { MAX_CONVERSE_QUESTIONS, MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_EXPLAIN_CHARS, MAX_HUH, MAX_REPLY_CHARS } from "../../src/shared/constants";
 import {
   type ConvTurn,
   EMPTY_LEDGER,
   type Ledger,
+  type Next,
   advance,
   closeInputs,
   decisionFingerprint,
   outcomeOf,
   parseConverseRequest,
+  plainly,
   primaryLabel,
   readBack,
   sanitizeLedger,
+  transcriptForPrompt,
+  unclearCount,
   unverifiedQuotes,
 } from "../../src/shared/converse";
 import { CONVERSATIONS } from "../../src/shared/examples";
@@ -25,7 +29,7 @@ import { decision, decisions, facts, persona, rules } from "./helpers";
 const api = decision("api-rename"); // A: Rename to account_id, B: Keep user_id
 const flight = decision("onsite-flight"); // A: 6:05am flight, B: 9:40am flight
 const j = (text: string, pick?: string): ConvTurn => (pick ? { who: "jordan", text, pick } : { who: "jordan", text });
-const bug = (text: string, next: "ask" | "confirm" | "close", heard?: string): ConvTurn => (heard ? { who: "bugme", text, next, heard } : { who: "bugme", text, next });
+const bug = (text: string, next: Next, heard?: string): ConvTurn => (heard ? { who: "bugme", text, next, heard } : { who: "bugme", text, next });
 const L = (o: Partial<Ledger>): Ledger => ({ ...EMPTY_LEDGER, ...o });
 const q = (turn: number, quote: string) => ({ turn, quote });
 
@@ -287,14 +291,15 @@ describe("the tours' scripted conversations", () => {
   // Whether live Claude follows them is checked on the recording (recorded.test.ts); the stand-in is
   // keyword matching and can't read Jordan's natural phrasing.
   for (const s of CONVERSATIONS) {
-    it(`${s.id}: one expectation per turn, real picks, ending at a read-back`, () => {
+    it(`${s.id}${s.variant ? ` (${s.variant})` : ""}: one expectation per turn, real picks, ending at a read-back`, () => {
       const d = decision(s.id);
       expect(s.expect).toHaveLength(s.turns.length);
       expect(s.expect.at(-1)).toBe("confirm");
       expect(d.options.map((o) => o.key)).toContain(s.choice);
       for (const t of s.turns) {
         if (t.pick) expect(d.options.map((o) => o.key)).toContain(t.pick);
-        expect(t.text.trim() || t.pick).toBeTruthy();
+        expect(t.text.trim() || t.pick || t.huh).toBeTruthy();
+        if (t.huh) expect(t.text).toBe("");
       }
     });
   }
@@ -305,5 +310,119 @@ describe("joining Jordan's quotes", () => {
     const c = closeInputs(api, [j("one page, so people see it; tabs would hide it.")], L({ choice: "B", why: [q(0, "so people see it"), q(0, "tabs would hide it.")] }));
     expect(c.reason).toBe("so people see it; tabs would hide it.");
     expect(c.evidence).toBe("so people see it; tabs would hide it.");
+  });
+});
+
+describe('"Huh?" (docs/STAGE-6E.md)', () => {
+  const huh: ConvTurn = { who: "jordan", text: "", huh: true };
+  const card = { route: "decide", why_here: "Your rule says so." };
+  const wire = (turns: ConvTurn[]) => ({ card, turns });
+
+  it("answers a press with the model's explanation, or code's own when the model did something else", () => {
+    const r = advance(api, [huh], "Plainly: the field is what integrators read. Rename it, or keep it?", "explain", EMPTY_LEDGER);
+    expect(r).toMatchObject({ next: "explain", reply: "Plainly: the field is what integrators read. Rename it, or keep it?" });
+    expect(r.forced).toBeUndefined();
+    for (const next of ["ask", "confirm", "close"] as const) {
+      const o = advance(api, [huh], "Sending that now.", next, EMPTY_LEDGER);
+      expect(o, next).toMatchObject({ next: "explain", reply: plainly(api) });
+      expect(o.forced, next).toBeTruthy();
+    }
+    // Two questions already asked: the cap doesn't stop an explanation, and it isn't counted as one.
+    const capped = [j("", "B"), bug("Why?", "ask"), j("Hmm."), bug("Why that one?", "ask"), huh];
+    expect(advance(api, capped, "In plain terms…", "explain", L({ choice: "B" })).next).toBe("explain");
+  });
+
+  it("writes code's own explanation when the model wrote none, and clips a long one", () => {
+    expect(advance(api, [huh], "  ", "explain", EMPTY_LEDGER).reply).toBe(plainly(api));
+    const long = advance(api, [huh], "x".repeat(MAX_EXPLAIN_CHARS + 50), "explain", EMPTY_LEDGER).reply;
+    expect(long.length).toBe(MAX_EXPLAIN_CHARS);
+    expect(MAX_EXPLAIN_CHARS).toBeGreaterThan(MAX_REPLY_CHARS);
+  });
+
+  it("lets the model explain unprompted only when the newest words say Bug Me wasn't clear", () => {
+    const turns = [j("I don't follow. What's a field?")];
+    const unclear = L({ feedback: [{ quote: q(0, "I don't follow."), kind: "unclear" }] });
+    expect(advance(api, turns, "A field is a name in the response…", "explain", unclear).next).toBe("explain");
+    expect(advance(api, turns, "Which way are you leaning?", "explain", EMPTY_LEDGER).next).toBe("ask");
+    // Once the questions are used up, an unearned explanation becomes a read-back like any other ask.
+    const capped = [j("", "B"), bug("Why?", "ask"), j("Hmm."), bug("Why that one?", "ask"), j("Ok.")];
+    expect(advance(api, capped, "Let me explain…", "explain", L({ choice: "B" })).next).toBe("confirm");
+  });
+
+  it("a yes after an explanation still answers the read-back it explained; a changed decision is read back", () => {
+    const heard = decisionFingerprint(L({ choice: "B" }));
+    const turns = [j("Keep user_id."), bug("So: keep user_id. Right?", "confirm", heard), huh, bug("In plain terms…", "explain"), j("Yes.")];
+    expect(advance(api, turns, "Sending that now.", "close", L({ choice: "B" })).next).toBe("close");
+    expect(advance(api, turns, "Sending that now.", "close", L({ choice: "A" })).next).toBe("confirm");
+    // An explanation with no read-back before it: a yes has nothing to agree to.
+    expect(advance(api, [huh, bug("In plain terms…", "explain"), j("Yes.")], "Sending that now.", "close", L({ choice: "B" })).next).toBe("confirm");
+  });
+
+  it("at the thread's limit, typed confusion gets the read-back, not an explanation", () => {
+    const words = Array.from({ length: MAX_CONVERSE_TURNS - 1 }, (_, i) => [j(i === 0 ? "Keep user_id." : `ok ${i}`), bug("So: keep user_id. Right?", "confirm")]).flat();
+    const turns = [...words, j("I don't follow.")];
+    const l = L({ choice: "B", feedback: [{ quote: q(MAX_CONVERSE_TURNS - 1, "I don't follow."), kind: "unclear" }] });
+    expect(advance(api, turns, "Let me explain…", "explain", l)).toMatchObject({ next: "confirm", forced: "thread limit" });
+  });
+
+  it("a clarification request is feedback, not a question for the agent or a reason", () => {
+    const turns = [j("What does T-19 even mean? Keep it, because customers hate corrections.")];
+    const l = sanitizeLedger(
+      { ...EMPTY_LEDGER, choice: "B", choice_quote: q(0, ""), course: q(0, ""), feedback: [{ turn: 0, quote: "What does T-19 even mean?", kind: "unclear" }], questions: [{ turn: 0, quote: "What does T-19 even mean?", answerable: false, answer: "" }], why: [q(0, "What does T-19 even mean?"), q(0, "because customers hate corrections")] },
+      api,
+      turns,
+    );
+    expect(l.questions).toEqual([]);
+    expect(l.why).toEqual([q(0, "because customers hate corrections")]);
+    expect(outcomeOf(api, l)).toEqual({ kind: "option", key: "B" });
+  });
+
+  it("counts misses from the explanations in the thread, so a later reading can't drop one", () => {
+    const turns = [j("I don't follow."), bug("In plain terms…", "explain"), huh, bug("In plain terms…", "explain"), j("Keep user_id.")];
+    expect(unclearCount(turns, L({ choice: "B" }))).toBe(2);
+    // Unclear feedback that wasn't answered with an explanation still counts.
+    expect(unclearCount([j("Keep it. Your summary made no sense.")], L({ feedback: [{ quote: q(0, "Your summary made no sense."), kind: "unclear" }] }))).toBe(1);
+  });
+
+  it("code's explanation keeps every option even when the context is long", () => {
+    const long = { ...api, context: `${"A very long sentence about the schema migrator ".repeat(30)}. Second.` };
+    const p = plainly(long);
+    expect(p.length).toBeLessThanOrEqual(MAX_EXPLAIN_CHARS);
+    expect(p).toMatch(/The choice: rename to account_id, or keep user_id\.$/);
+  });
+
+  it("checks presses on the way in: no words, no pick, at most MAX_HUH, and outside the turn limit", () => {
+    expect(parseConverseRequest(wire([huh]), api).turns[0]).toEqual(huh);
+    expect(() => parseConverseRequest(wire([{ who: "jordan", text: "hi", huh: true }]), api)).toThrow(/huh/);
+    expect(() => parseConverseRequest(wire([{ who: "jordan", text: "", pick: "A", huh: true }]), api)).toThrow(/huh/);
+    const presses = (n: number): ConvTurn[] => Array.from({ length: n }, (_, i) => [huh, bug("In plain terms…", "explain")]).flat();
+    expect(() => parseConverseRequest(wire([...presses(MAX_HUH), huh]), api)).toThrow(/Huh/);
+    const words = Array.from({ length: MAX_CONVERSE_TURNS }, (_, i) => [j(`turn ${i}`), bug("Hm?", "ask")]).flat();
+    expect(() => parseConverseRequest(wire([...presses(MAX_HUH), ...words.slice(0, -1)]), api)).not.toThrow();
+    expect(() => parseConverseRequest(wire([bug("x", "explain"), j("a")]), api)).not.toThrow();
+  });
+
+  it("counts translation misses apart from feedback about the decision", () => {
+    const turns = [huh, bug("In plain terms…", "explain"), j("Still makes no sense. Keep user_id, it wasn't urgent.")];
+    const l = L({ choice: "B", feedback: [{ quote: q(1, "Still makes no sense."), kind: "unclear" }] });
+    const ci = closeInputs(api, turns, l);
+    expect(ci.unclear).toBe(2);
+    expect(ci.hasFeedback).toBe(false);
+    expect(ci.evidence).not.toContain("makes no sense");
+    const both = closeInputs(api, turns, L({ ...l, feedback: [...l.feedback, { quote: q(1, "it wasn't urgent."), kind: "priority" }] }));
+    expect(both.hasFeedback).toBe(true);
+    expect(both.evidence).toContain("it wasn't urgent.");
+    expect(sanitizeLedger({ ...EMPTY_LEDGER, choice_quote: q(0, ""), course: q(0, ""), feedback: [{ turn: 1, quote: "Still makes no sense.", kind: "unclear" }] }, api, turns).feedback).toHaveLength(1);
+  });
+
+  it("shows the model a press as a press", () => {
+    expect(transcriptForPrompt(api, [huh], "Jordan")).toBe('Jordan [turn 0]: (pressed "Huh?": didn\'t follow the last thing Bug Me showed)');
+  });
+
+  it("the stand-in explains a press and typed confusion", () => {
+    expect(fakeConverse(api, [huh])).toMatchObject({ next: "explain", reply: plainly(api) });
+    expect(fakeConverse(api, [j("I don't follow.")]).next).toBe("explain");
+    expect(plainly(api)).toMatch(/^In plain terms: .+ The choice: rename to account_id, or keep user_id\.$/);
+    expect(plainly(decision("reconciliation-path"))).toContain("(about 1.5% of invoices, mostly by a few cents).");
   });
 });

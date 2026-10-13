@@ -12,7 +12,7 @@ export const PROMPT_VERSION = "2026-10-09.6";
 /** The think-out-loud parse prompt has its own version, so changing it leaves every other recording valid. */
 export const PARSE_PROMPT_VERSION = "2026-10-12.1";
 /** The conversation prompt (docs/STAGE-6.md) and the title prompt, each versioned on its own. */
-export const CONVERSE_PROMPT_VERSION = "2026-10-12.2";
+export const CONVERSE_PROMPT_VERSION = "2026-10-13.1";
 export const TITLE_PROMPT_VERSION = "2026-10-12.2";
 
 function head(p: Persona): string {
@@ -346,16 +346,17 @@ export function conversePrompt(p: Persona, rules: Rule[], facts: Fact[], d: Deci
 An agent brought ${n} a decision. Bug Me opened the conversation by showing ${n} the briefing, why it came to ${n}, the question and the options. ${n} is now talking it through with you, typing or speaking, in turns. Your job on every turn: read the whole conversation, write down what you heard (the ledger), and write Bug Me's next turn.
 
 How Bug Me talks:
-- At most two short, plain sentences, and at most one question. No agent jargon or internal identifiers.
+- At most two short, plain sentences (an explanation, below, may run longer), and at most one question. No agent jargon or internal identifiers.
 - Never say which option you expect ${n} to pick, never argue for an option, and never add anything ${n} did not say.
 - Don't raise conflicts with ${n}'s rules or standing facts: Bug Me checks the answer against ${n}'s record separately, after ${n} confirms.
 - Persist a little, but don't nag. If ${n} chose (by clicking or in words) but gave no reason, ask lightly why, once. Don't ask about minor details. Bug Me has asked ${asked} of at most ${MAX_CONVERSE_QUESTIONS} questions in this conversation.
 - If ${n} asks a question, answer it using only the agent's material below. If the material doesn't say, say plainly that you don't know and will ask the agent. If ${n} has already chosen and said why, answer in a few words and read back in the same reply; don't ask whether the answer changes their mind.
 - If ${n} says to stop asking ("just do it", "no more questions"), stop: read back.
 - Once you know the choice and why (or ${n} declined to say), read the outcome back in one sentence that names the choice and any conditions, ending with "Right?". That is next "confirm". The read-back uses only ${n}'s choice and ${n}'s own words: no details, plans or reasons ${n} did not say.
-- If Bug Me's last turn was a read-back and ${n} agreed, next is "close" and the reply is a few words ("Sending that now."). If ${n} corrected it, update the ledger and read back again.
+- If Bug Me's last turn was a read-back and ${n} agreed, next is "close" and the reply is a few words ("Sending that now."). An explanation in between doesn't change that: a yes after it still answers the read-back. If ${n} corrected it, update the ledger and read back again.
 - If ${n} wants neither option but a different course, that is choice "other". If ${n} rejects the question itself or its framing, that is choice "reject". Either way, quote ${n}'s words for it in course.
 - next is "ask" when Bug Me's reply asks ${n} something it still needs, such as which way they lean or why.
+- If ${n} pressed "Huh?" or says Bug Me isn't making sense ("I don't follow", "what does that even mean?"), Bug Me's translation missed: re-present the last thing Bug Me showed (the briefing and question, or Bug Me's last turn) in plain, everyday English. Say what is going on, what each option would actually do, define any term ${n} might not know, and end by asking the question again, simply. Restating the agent's material is the point, but add nothing it doesn't say; if it doesn't say what an option would do, say so plainly. Up to five short sentences; still don't lean toward an option. That is next "explain". Don't apologize at length. Asking what Bug Me meant is feedback of kind "unclear", not a question for the agent and not a reason: don't also list it under questions, why or conditions.
 
 The ledger, always your reading of the whole conversation so far (a later correction replaces what it corrects):
 - choice: the option key ${n} has settled on, "other", "reject", or "none" if not yet. "(clicked option X)" means ${n} clicked X; words in the same turn that say otherwise win.
@@ -364,7 +365,7 @@ The ledger, always your reading of the whole conversation so far (a later correc
 - action: for "other" or "reject", an imperative of at most five words naming what will happen ("Test both with customers"); otherwise "".
 - why: ${n}'s reasons. conditions: caveats or extra instructions that go with the choice ("as long as…", "but note…").
 - questions: ${n}'s questions, each with answerable (true only when the material below answers it) and answer (your answer, or "").
-- feedback: what ${n} said about the question itself, each with kind "priority" (more or less urgent than it was framed) or "routing" (it should or shouldn't have come to ${n}).
+- feedback: what ${n} said about the question itself, each with kind "priority" (more or less urgent than it was framed), "routing" (it should or shouldn't have come to ${n}) or "unclear" (Bug Me's wording didn't make sense to ${n}). A "Huh?" press has no words, so it is never quoted.
 - no_more_questions: true when ${n} asked Bug Me to stop asking.
 Every quote is copied exactly, character for character, from one of ${n}'s turns, with that turn's number from the conversation below. Mark whole clauses, not single words.
 
@@ -395,7 +396,7 @@ export function converseSchema(keys: string[]) {
     required: ["reply", "next", "ledger"],
     properties: {
       reply: { type: "string" },
-      next: { type: "string", enum: ["ask", "confirm", "close"] },
+      next: { type: "string", enum: ["ask", "confirm", "close", "explain"] },
       ledger: {
         type: "object",
         additionalProperties: false,
@@ -422,7 +423,7 @@ export function converseSchema(keys: string[]) {
               type: "object",
               additionalProperties: false,
               required: ["turn", "quote", "kind"],
-              properties: { turn: { type: "integer" }, quote: { type: "string" }, kind: { type: "string", enum: ["priority", "routing"] } },
+              properties: { turn: { type: "integer" }, quote: { type: "string" }, kind: { type: "string", enum: ["priority", "routing", "unclear"] } },
             },
           },
           no_more_questions: { type: "boolean" },

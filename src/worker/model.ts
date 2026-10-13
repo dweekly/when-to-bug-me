@@ -228,7 +228,7 @@ export async function converseFor(
     if (!raw || typeof raw !== "object") throw new Error("not an object");
     const o = raw as Record<string, unknown>;
     const next = o.next;
-    if (next !== "ask" && next !== "confirm" && next !== "close") throw new Error("next is not ask, confirm or close");
+    if (next !== "ask" && next !== "confirm" && next !== "close" && next !== "explain") throw new Error("next is not ask, confirm, close or explain");
     return advance(d, turns, typeof o.reply === "string" ? o.reply : "", next as Next, sanitizeLedger(o.ledger, d, turns));
   };
   if (env.FAKE_MODEL) return { out: finish(fakeConverse(d, turns)), source: "code" };

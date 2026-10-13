@@ -3,7 +3,7 @@
 // returns the same raw shape the model does, so the Worker checks it with the same code (sanitizeLedger,
 // advance) as a live answer.
 
-import { type ConvTurn, type Next, bugTurns, jordanTurns } from "./converse";
+import { type ConvTurn, type FeedbackKind, type Next, bugTurns, jordanTurns, plainly, standingTurn } from "./converse";
 import { fakeParse } from "./parse";
 import type { Decision } from "./types";
 
@@ -15,9 +15,10 @@ const NO_MORE = /\b(just do it|no more questions|stop asking|skip it|don't ask)\
 const AFFIRM = /^\s*(yes|yep|yeah|right|correct|send it|sounds good|do it)[.!]*\s*$/i;
 const REJECT = /\b(wrong question|why are we\b[^.?!]*\bat all|shouldn't even be (?:asking|deciding))/i;
 const NEITHER = /^\s*neither\b[,.;:—-]?\s*/i;
-const FEEDBACK: [RegExp, "priority" | "routing"][] = [
+const FEEDBACK: [RegExp, FeedbackKind][] = [
   [/\b(shouldn't have come to me|should have come to me|you could have decided|didn't need me)\b/i, "routing"],
   [/\b(not urgent|more urgent|less urgent|could have waited)\b/i, "priority"],
+  [/\b(i don't follow|don't understand|what does (?:that|this|it) (?:even )?mean|makes no sense|doesn't make (?:any )?sense)\b/i, "unclear"],
 ];
 
 const sentences = (text: string) => (text.match(/[^.?!]+[.?!]*/g) ?? []).map((s) => s.trim()).filter(Boolean);
@@ -30,7 +31,7 @@ export function fakeConverse(d: Decision, turns: ConvTurn[]): { reply: string; n
   let why: RawQuote[] = [];
   let conditions: RawQuote[] = [];
   const questions: (RawQuote & { answerable: boolean; answer: string })[] = [];
-  const feedback: (RawQuote & { kind: "priority" | "routing" })[] = [];
+  const feedback: (RawQuote & { kind: FeedbackKind })[] = [];
   let noMore = false;
   js.forEach((t, i) => {
     // "Actually…" starts over: the earlier reasons and conditions no longer apply.
@@ -81,10 +82,12 @@ export function fakeConverse(d: Decision, turns: ConvTurn[]): { reply: string; n
     no_more_questions: noMore,
   };
   const latest = js.at(-1);
-  const lastBug = bugTurns(turns).at(-1);
+  // A yes answers the last read-back, even with a "Huh?" and its explanation in between.
+  const lastBug = standingTurn(turns, turns.length - 1);
   const asked = bugTurns(turns).filter((t) => t.next === "ask").length;
   const decided = d.options.some((o) => o.key === choice) || ((choice === "other" || choice === "reject") && course.quote);
   // The reply is left empty for a read-back: advance writes it from the checked ledger.
+  if (latest?.huh || feedback.some((f) => f.kind === "unclear" && f.turn === js.length - 1)) return { reply: plainly(d), next: "explain", ledger };
   if (latest && !latest.pick && AFFIRM.test(latest.text) && lastBug?.next === "confirm") return { reply: "Sending that now.", next: "close", ledger };
   if (latest && questions.some((q) => q.turn === js.length - 1) && !decided) return { reply: "I don't know; I'll ask the agent. Which way are you leaning?", next: "ask", ledger };
   if (decided && d.options.some((o) => o.key === choice) && !why.length && !noMore && asked === 0) return { reply: "Why that one?", next: "ask", ledger };
