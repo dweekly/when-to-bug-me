@@ -130,6 +130,26 @@ Three recorded examples:
 
 The first carries a synthetic report, labeled synthetic like everything else: done at 38 minutes vs. 30, asked once, scope as briefed. A Dispatch demo in the Demos menu walks through it.
 
+## As built
+
+- **The recorded demo briefs read like briefs** (Opus 5.5, 2026-10-13, $0.11 for the three):
+  - the dashboard demo is a prototype, with eight tools turned off;
+  - the support tickets are high sensitivity and low urgency, so code says run locally;
+  - the PagerDuty hookup asks up front for the integration key and for which releases should page, and gives three check-ins.
+
+  Claude picked Sonnet 5.5 for all three; Jordan has no rule about models.
+- **`--` before the brief.** `--disallowedTools` takes several values, so without `--` it swallowed the opening prompt as tool names. Codex found it, and Claude Code 2.1.296 confirmed it ("Permission deny rule "Reply" matches no known tool"). `smoke:dispatch` now turns a tool off, so the real-CLI gate covers that path.
+- **The person's own words go to the session.** The brief summarizes the task; the opening prompt also carries the task and any answers verbatim, trimmed but with their whitespace intact.
+- **Real sessions behave.** In `smoke:dispatch`, a Haiku session started from a generated command:
+  - asked once through `ask_bug_me` with the brief's id;
+  - wrote its one file;
+  - reported back, about $0.01 a run.
+
+  Twice, with the stand-in's vague "runs from one command" check, it reported "partial" and said why, instead of claiming done.
+- **The first request after a session's run can hit a dropped connection** on the local Worker. One retry succeeds, which says the Worker was alive (seen every run on 2026-10-13, never twice in a row).
+- **The Dispatch demo** ("Send work out at the right size") runs start to finish on the recorded run at desktop and phone widths. Its first popover sits above the box, because on a phone it covered Draft brief.
+- **Spend:** about $0.17 in all (the recording, plus about a dozen cent-sized CLI checks).
+
 ## Gates
 
 ```bash

@@ -228,9 +228,9 @@ async function factAndReroutes(d: Decision, choice: string, evidence: string): P
 async function main(): Promise<void> {
   await routeAll(decisions.map((d) => d.id), rules, facts, "default");
   await titlesAll();
-  // Dispatch (docs/STAGE-8.md): each demo task as the Worker sees it (whitespace collapsed).
+  // Dispatch (docs/STAGE-8.md): each demo task as the Worker sees it (trimmed).
   for (const x of DISPATCH_EXAMPLES) {
-    const task = x.task.replace(/\s+/g, " ").trim();
+    const task = x.task.trim();
     const raw = await ask(`dispatch ${x.id}`, dispatchPrompt(persona, rules, facts, task, "", catalog), dispatchSchema(catalog), (o) => parseBriefDraft(o, catalog, rules, facts), DISPATCH_PROMPT_VERSION);
     if (!raw) continue;
     const b = parseBriefDraft(raw, catalog, rules, facts);

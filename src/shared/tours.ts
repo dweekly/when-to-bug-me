@@ -197,6 +197,8 @@ export const TOURS: Tour[] = [
       {
         go: "#/dispatch",
         target: ".dispatch-new",
+        // Above the box: on a phone, below it would cover Draft brief.
+        side: "top",
         title: "Say what you want done",
         text: "Say it or type it, the way you'd tell a colleague. Then Draft brief.",
         until: { click: "#draft-brief" },

@@ -167,7 +167,7 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
 describe("the Dispatch demo's recorded briefs (docs/STAGE-8.md)", () => {
   const catalog = parseCatalog(catalogJson);
   const brief = async (task: string) => {
-    const t = task.replace(/\s+/g, " ").trim();
+    const t = task.trim();
     const k = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion: DISPATCH_PROMPT_VERSION, schema: dispatchSchema(catalog), prompt: dispatchPrompt(persona, rules, facts, t, "", catalog) });
     const e = entries[k] as { output: unknown } | undefined;
     return e ? parseBriefDraft(e.output, catalog, rules, facts) : null;
