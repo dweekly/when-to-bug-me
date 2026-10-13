@@ -1,0 +1,125 @@
+// Stage 8 (docs/STAGE-8.md): Dispatch on the stand-in server. A task becomes a brief; Copy command
+// waits for every prerequisite; edits rebuild the command; questions lead to a redraft; the public
+// demo shows a labeled synthetic report; and on /me, Copy stores the fields as copied and starts the
+// clock, and a session's report shows on the brief.
+import { type Page, expect, test } from "@playwright/test";
+import { DISPATCH_EXAMPLES } from "../../src/shared/dispatchExamples";
+import { freshPage } from "./helpers";
+
+const LIVE_KEY = process.env.BUGME_E2E_LIVE_TOKEN!;
+const bearer = { authorization: `Bearer ${LIVE_KEY}` };
+
+test.beforeEach(async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await freshPage(page);
+  await page.evaluate("localStorage.removeItem('bugme.dispatch.v1')");
+});
+
+async function draftExample(page: Page, id: string): Promise<void> {
+  await page.goto("/app#/dispatch");
+  await page.locator(`.demo-chip[data-example="${id}"]`).click();
+  await expect(page.locator("#dispatch-task")).toHaveValue(DISPATCH_EXAMPLES.find((x) => x.id === id)!.task);
+  await page.locator("#draft-brief").click();
+  await expect(page.locator("#brief")).toBeVisible();
+}
+
+test("a task becomes a brief; Copy command waits for every prerequisite", async ({ page }) => {
+  await draftExample(page, "pagerduty");
+  await expect(page.locator("#brief .brief-size")).toHaveText(/~90 min · \$6\.00 · stop at 180 min/);
+  const copy = page.locator("#copy-command");
+  await expect(copy).toBeDisabled();
+  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Tick the 2 prerequisites to copy the command.");
+  // PagerDuty is needed and not connected: code made it the first prerequisite.
+  const boxes = page.locator("#brief .brief-prereqs input");
+  await expect(page.locator("#brief .brief-prereqs li").first()).toContainText("Connect PagerDuty");
+  await boxes.nth(0).check();
+  await expect(copy).toBeDisabled();
+  await boxes.nth(1).check();
+  await expect(copy).toBeEnabled();
+  await copy.click();
+  const copied = (await page.evaluate("navigator.clipboard.readText()")) as string;
+  expect(copied).toMatch(/^claude --model 'claude-opus-5-5' --effort 'medium' --permission-mode 'auto' "\$\(cat <<'BRIEF'\n/);
+  expect(copied).toContain("report_to_bug_me");
+});
+
+test("editing the setup rebuilds the command and the size line", async ({ page }) => {
+  await draftExample(page, "billing-complaints");
+  await page.locator("#brief-cmd summary").click();
+  const cmd = page.locator("#brief-cmd code");
+  await expect(cmd).toContainText("--disallowedTools 'mcp__Slack'");
+  await page.getByLabel("Model").selectOption("claude-sonnet-5-5");
+  await page.getByLabel("Effort").selectOption("high");
+  await expect(cmd).toContainText("--model 'claude-sonnet-5-5' --effort 'high'");
+  await page.getByLabel("Estimate in minutes").fill("45");
+  await expect(page.locator("#brief .brief-size")).toContainText("~45 min");
+  await expect(page.locator("#tripwire")).toContainText("Stops to ask at 90 min");
+  await expect(cmd).toContainText("At 90 minutes (2× the estimate)");
+  // A struck-through tool turns back on; the list offers it again.
+  await page.getByRole("button", { name: "Slack is off; turn it back on" }).click();
+  await expect(cmd).not.toContainText("mcp__Slack");
+  await page.getByLabel("Turn off another tool").selectOption("mcp__Slack");
+  await expect(cmd).toContainText("--disallowedTools 'mcp__Slack'");
+});
+
+test("sensitive and not urgent: Bug Me recommends running locally, and the cloud command is the second choice", async ({ page }) => {
+  await draftExample(page, "billing-complaints");
+  await expect(page.locator("#brief .brief-where")).toContainText("Run locally.");
+  await expect(page.locator("#copy-brief")).toHaveClass(/primary/);
+  await expect(page.locator("#copy-command")).toHaveText("Run in the cloud anyway");
+});
+
+test("a short task gets questions; answering them redrafts the brief", async ({ page }) => {
+  await page.goto("/app#/dispatch");
+  await page.locator("#dispatch-task").fill("Make a status page");
+  await page.locator("#draft-brief").click();
+  await expect(page.locator("#brief .brief-qs li")).toHaveText(["Who is this for, and by when?"]);
+  await page.locator("#dispatch-answers").fill("For customers, by Friday.");
+  await page.locator("#redraft").click();
+  await expect(page.locator("#brief .brief-qs")).toHaveCount(0);
+  await expect(page.locator(".briefs li")).toHaveCount(1); // the public redraft replaced the draft it answered
+});
+
+test("the public demo shows a labeled synthetic report after Copy command, and briefs survive a reload", async ({ page }) => {
+  await draftExample(page, "usage-demo");
+  await page.locator("#copy-command").click();
+  await expect(page.locator(".brief-report h3")).toHaveText("How it went · synthetic");
+  await expect(page.locator(".brief-outcome")).toContainText("38 min since copied (estimate 30) · asked you once · cost not reported");
+  await page.reload();
+  await expect(page.locator(".briefs li")).toHaveCount(1);
+  await expect(page.locator(".briefs li")).toContainText("done");
+});
+
+test("on /me: Copy stores the fields as copied, and the session's report shows on the brief", async ({ page, request }) => {
+  const cat = await request.post("/api/me/catalog", {
+    headers: bearer,
+    data: { servers: [{ name: "bugme", prefix: "mcp__bugme", status: "connected" }, { name: "GitHub", prefix: "mcp__GitHub", status: "connected" }], skills: [] },
+  });
+  expect(cat.ok(), await cat.text()).toBe(true);
+  await page.goto(`/me#k=${encodeURIComponent(LIVE_KEY)}`);
+  await page.goto("/me#/dispatch");
+  await expect(page.locator(".demo-chip")).toHaveCount(0); // no demo tasks on the real queue
+  await expect(page.locator(".dispatch")).toContainText("Describe the task, not the sensitive data");
+  await page.locator("#dispatch-task").fill("Quick demo: tidy the README's install section for new contributors.");
+  await page.locator("#draft-brief").click();
+  await expect(page.locator("#brief")).toBeVisible();
+  const id = (await page.locator(".briefs li.current a").getAttribute("href"))!.split("/").pop()!;
+  await page.getByLabel("Model").selectOption("claude-haiku-5-5");
+  const stored = page.waitForResponse((r) => r.url().endsWith(`/api/me/briefs/${id}/dispatched`) && r.ok());
+  await page.locator("#copy-command").click();
+  await stored;
+  const rep = await request.post(`/api/me/briefs/${id}/report`, { headers: bearer, data: { outcome: "stopped at tripwire", scope: "bigger", summary: "The install steps differ per OS; stopped to ask." } });
+  expect(rep.ok(), await rep.text()).toBe(true);
+  const briefs = (await (await request.get("/api/me/briefs", { headers: bearer })).json()) as { briefs: { id: string; model: string; dispatched_at?: string }[] };
+  const b = briefs.briefs.find((x) => x.id === id)!;
+  expect(b.model).toBe("claude-haiku-5-5");
+  expect(b.dispatched_at).toBeTruthy();
+  await page.reload();
+  await page.locator(`.briefs a[href="#/dispatch/${id}"]`).click();
+  await expect(page.locator(".brief-outcome")).toContainText("stopped at tripwire");
+  await expect(page.locator(".brief-outcome")).toContainText("cost not reported · scope bigger");
+});
+
+test("on a phone, the brief fits the width @narrow", async ({ page }) => {
+  await draftExample(page, "pagerduty");
+  expect(await page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")).toBeLessThanOrEqual(0);
+});

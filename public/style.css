@@ -422,3 +422,64 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 
 /* The owner's live queue (docs/STAGE-7.md): the header says it is real. */
 .live-label { color: var(--glow); border-color: var(--glow); }
+
+/* ---------- Dispatch (docs/STAGE-8.md) ----------
+   A task box like the conversation's, the brief as a definition list (label column, then the value),
+   the setup as plain selects and number boxes. Turned-off tools are struck through; the one accent
+   stays on what the person does (Draft, Copy). */
+.dispatch .dispatch-new { margin: 18px 0 8px; }
+.dispatch .think-msg { margin: 0 auto 0 0; color: var(--ink-2); font-size: 14px; }
+.demo-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0; }
+.demo-chips .quiet { font-size: 14px; }
+.demo-chip { border: 1px solid var(--line); background: var(--night-2); color: var(--ink-2); border-radius: 999px; padding: 4px 12px; font: 600 12px/1.6 var(--mono); cursor: pointer; }
+.demo-chip:hover { color: var(--ink); border-color: var(--ink-3); }
+.small { font-size: 13.5px; }
+.brief { margin: 28px 0 8px; padding: 20px 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--night-2); }
+.brief header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; }
+.brief h2 { margin: 0; font: 600 22px/1.3 var(--display); }
+.brief header .turn-src { grid-row: 1; grid-column: 2; }
+.brief-size { grid-column: 1 / -1; margin: 4px 0 0; font: 13px var(--mono); color: var(--ink-2); }
+.brief-qs { margin: 16px 0 0; padding: 12px 14px; border-left: 2px solid var(--glow); background: var(--night); border-radius: 0 10px 10px 0; }
+.brief-qs p { margin: 0 0 6px; font-weight: 700; }
+.brief-qs ol { margin: 0 0 10px; padding-left: 20px; }
+.brief-qs .row { display: flex; justify-content: flex-end; margin-top: 8px; }
+.brief-grid { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 14px 18px; margin: 18px 0 0; }
+.brief-grid dt { font: 600 12px/1.9 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.brief-grid dd { margin: 0; min-width: 0; }
+.brief-why { display: block; font-size: 14.5px; margin-top: 2px; }
+.brief-list { margin: 0; padding-left: 18px; }
+.brief-list.oos { list-style: none; padding-left: 0; }
+.brief-list.oos li::before { content: "✕ "; color: var(--ink-3); }
+.brief-setup { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.brief-setup select, .brief-setup input { font: 14px var(--body); color: var(--ink); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.brief-setup input { width: 5.5em; }
+.brief-setup label { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); font-size: 14px; }
+.brief-where { margin: 8px 0 0; font-size: 14.5px; }
+.brief-where .glyph { color: var(--ink); }
+.brief-tools p { margin: 0 0 6px; }
+.brief-tools select { font: 14px var(--body); color: var(--ink-2); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; max-width: 100%; }
+.tool-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.tool-chip { border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 999px; padding: 3px 11px; font-size: 13.5px; cursor: pointer; }
+.tool-chip:hover { color: var(--ink); border-color: var(--ink-3); }
+.brief blockquote { margin: 0 0 6px; padding-left: 10px; border-left: 2px solid var(--line); color: var(--ink); font-size: 15px; }
+.brief-prereqs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.brief-prereqs label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; cursor: pointer; }
+.brief-prereqs input { margin-top: 5px; accent-color: var(--glow); width: 16px; height: 16px; }
+.brief-actions { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; }
+.brief-cmd { margin: 12px 0 0; }
+.brief-cmd summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
+.brief-cmd pre { margin: 8px 0 0; padding: 10px 12px; background: var(--night); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; max-height: 22em; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.brief-report { margin: 18px 0 0; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 10px; }
+.brief-report h3 { margin: 0 0 4px; font: 600 12px/1.9 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.brief-report p { margin: 4px 0 0; }
+.brief-outcome { color: var(--ink-2); font-size: 14.5px; }
+.brief-outcome strong { color: var(--ink); }
+.briefs { list-style: none; margin: 0; padding: 0; }
+.briefs li { display: grid; gap: 2px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.briefs li.current a { color: var(--ink); font-weight: 700; }
+.brief-row-meta { font: 12.5px var(--mono); color: var(--ink-3); }
+@media (max-width: 560px) {
+  .brief { padding: 16px 14px; margin-left: -4px; margin-right: -4px; }
+  .brief-grid { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .brief-grid dd { margin-bottom: 12px; }
+}

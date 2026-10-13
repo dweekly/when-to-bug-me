@@ -258,11 +258,11 @@ export function finishBrief(d: BriefDraft, c: Catalog, meta: { id: string; task:
   const auto: { what: string; why: string }[] = [];
   if (meta.owner) {
     const bugme = byPrefix.get(BUGME_PREFIX);
-    if (bugme?.status !== "connected") auto.push({ what: "Connect Bug Me's MCP server", why: bugme ? `It's ${bugme.status}; the session asks and reports through it.` : "It isn't in your synced catalog; the session asks and reports through it." });
+    if (bugme?.status !== "connected") auto.push({ what: "Connect Bug Me's MCP server", why: bugme ? `It isn't connected (${bugme.status}); the session asks and reports through it.` : "It isn't in your synced catalog; the session asks and reports through it." });
   }
   for (const p of d.tools_needed) {
     const s = byPrefix.get(p);
-    if (s && s.status !== "connected") auto.push({ what: `Connect ${s.name}`, why: `The task needs it, and it's ${s.status}.` });
+    if (s && s.status !== "connected") auto.push({ what: `Connect ${s.name}`, why: `The task needs it, and it isn't connected (${s.status}).` });
   }
   const seen = new Set(auto.map((a) => a.what.toLowerCase()));
   const prerequisites = [...auto, ...d.prerequisites.filter((p) => !seen.has(p.what.toLowerCase()))];
