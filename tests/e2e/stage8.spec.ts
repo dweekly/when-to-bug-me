@@ -4,7 +4,7 @@
 // clock, and a session's report shows on the brief.
 import { type Page, expect, test } from "@playwright/test";
 import { DISPATCH_EXAMPLES } from "../../src/shared/dispatchExamples";
-import { freshPage } from "./helpers";
+import { freshPage, hold } from "./helpers";
 
 const LIVE_KEY = process.env.BUGME_E2E_LIVE_TOKEN!;
 const bearer = { authorization: `Bearer ${LIVE_KEY}` };
@@ -117,6 +117,48 @@ test("on /me: Copy stores the fields as copied, and the session's report shows o
   await page.locator(`.briefs a[href="#/dispatch/${id}"]`).click();
   await expect(page.locator(".brief-outcome")).toContainText("stopped at tripwire");
   await expect(page.locator(".brief-outcome")).toContainText("cost not reported · scope bigger");
+});
+
+test("words typed while a brief is drafting stay in the box", async ({ page }) => {
+  await page.goto("/app#/dispatch");
+  await page.locator("#dispatch-task").fill("Make a status page for customers by Friday please");
+  const release = await hold(page, "/api/dispatch");
+  await page.locator("#draft-brief").click();
+  await expect(page.locator("#draft-brief")).toHaveText("Sizing it…");
+  await page.locator("#dispatch-task").fill("And a second thing");
+  release();
+  await expect(page.locator("#brief")).toBeVisible();
+  await expect(page.locator("#dispatch-task")).toHaveValue("And a second thing");
+});
+
+test("each brief keeps its own answers", async ({ page }) => {
+  await page.goto("/app#/dispatch");
+  for (const t of ["Make a status page", "Make a launch page"]) {
+    await page.locator("#dispatch-task").fill(t);
+    await page.locator("#draft-brief").click();
+    await expect(page.locator("#brief h2")).toHaveText(t);
+  }
+  await page.locator("#dispatch-answers").fill("For the launch, by Monday.");
+  await page.locator(".briefs a", { hasText: "Make a status page" }).click();
+  await expect(page.locator("#brief h2")).toHaveText("Make a status page");
+  await expect(page.locator("#dispatch-answers")).toHaveValue("");
+  await page.locator(".briefs a", { hasText: "Make a launch page" }).click();
+  await expect(page.locator("#dispatch-answers")).toHaveValue("For the launch, by Monday.");
+});
+
+test("a budget of zero counts; an estimate under a minute holds Copy until it's fixed", async ({ page }) => {
+  await draftExample(page, "usage-demo");
+  await page.getByLabel("Budget in dollars").fill("0");
+  await expect(page.locator("#brief .brief-size")).toContainText("$0.00");
+  await page.getByLabel("Estimate in minutes").fill("0.1");
+  await expect(page.getByLabel("Estimate in minutes")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#copy-command")).toBeDisabled();
+  await expect(page.locator("#copy-brief")).toBeDisabled();
+  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Fix the time or money first.");
+  await expect(page.locator("#brief .brief-size")).toContainText("~30 min"); // the last good value stands
+  await page.getByLabel("Estimate in minutes").fill("20");
+  await expect(page.locator("#copy-command")).toBeEnabled();
+  await expect(page.locator("#brief .brief-size")).toContainText("~20 min");
 });
 
 test("on a phone, the brief fits the width @narrow", async ({ page }) => {

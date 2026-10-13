@@ -25,7 +25,7 @@ import { $, announce, h } from "./dom";
 import { go, hrefFor } from "./router";
 import { Q, S } from "./state";
 import { tourAfterRender } from "./tour";
-import { setVoiceTarget } from "./voice";
+import { drainVoice, setVoiceTarget } from "./voice";
 
 /** Where the public site keeps its briefs: this browser only, separate from the morning. */
 const PUBLIC_KEY = "bugme.dispatch.v1";
@@ -37,8 +37,13 @@ let briefs: Shown[] | null = null;
 let catalog: Catalog = { servers: [], skills: [] };
 let loadError = "";
 let openId: string | undefined;
-/** The boxes' text and the request in flight, kept outside the DOM so a re-render never wipes them. */
-const draft = { task: "", answers: "", busy: false, error: "" };
+/** The task box's text, the request in flight ("new", or the id of the brief being redrafted) and its
+ *  error, kept outside the DOM so a re-render never wipes them. */
+const draft = { task: "", busy: "", error: "" };
+/** Answers to a brief's questions, per brief. */
+const answers = new Map<string, string>();
+/** Per brief, the setup fields whose typed value isn't valid: Copy waits until they are. */
+const invalid = new Map<string, Set<string>>();
 /** Prerequisites ticked, per brief, in this page only. */
 const ticked = new Map<string, Set<number>>();
 let actionMsg = "";
@@ -114,7 +119,7 @@ export function renderDispatchView(view: HTMLElement, id?: string): void {
     key: `dispatch:${box}:${id ?? ""}`,
     el: () => document.getElementById(box) as HTMLTextAreaElement | null,
     write: (t) => {
-      if (box === "dispatch-answers") draft.answers = t;
+      if (box === "dispatch-answers" && id) answers.set(id, t);
       else draft.task = t;
     },
   });
@@ -125,11 +130,11 @@ function fit(ta: HTMLTextAreaElement): void {
   ta.style.height = `${ta.scrollHeight}px`;
 }
 
-function textBox(id: string, label: string, placeholder: string, key: "task" | "answers"): HTMLElement {
+function textBox(id: string, label: string, placeholder: string, get: () => string, set: (v: string) => void): HTMLElement {
   const ta = h("textarea", { id, rows: "1", "aria-label": label, placeholder }) as HTMLTextAreaElement;
-  ta.value = draft[key];
+  ta.value = get();
   ta.addEventListener("input", () => {
-    draft[key] = ta.value;
+    set(ta.value);
     fit(ta);
   });
   return h("div", { class: "think-field composer" }, ta);
@@ -161,47 +166,49 @@ function composer(): HTMLElement {
   return h(
     "div",
     { class: "dispatch-new" },
-    textBox("dispatch-task", "What should a session do?", "What should a session do?", "task"),
+    textBox("dispatch-task", "What should a session do?", "What should a session do?", () => draft.task, (v) => (draft.task = v)),
     chips,
     Q.owner ? h("p", { class: "quiet small" }, "Describe the task, not the sensitive data: drafting is a cloud call.") : null,
     h(
       "div",
       { class: "think-actions" },
       h("p", { class: "think-msg", role: "status" }, draft.error),
-      h("button", { type: "button", class: "primary", id: "draft-brief", disabled: draft.busy, onclick: () => void draftBrief() }, draft.busy && !draft.answers ? "Sizing it…" : "Draft brief"),
+      h("button", { type: "button", class: "primary", id: "draft-brief", disabled: Boolean(draft.busy), onclick: () => void draftBrief() }, draft.busy === "new" ? "Sizing it…" : "Draft brief"),
     ),
   );
 }
 
 async function draftBrief(redraft?: Shown): Promise<void> {
-  const task = redraft ? redraft.task : draft.task.trim();
-  if (!task) {
-    draft.error = "Say or type what the session should do.";
-    return paint();
-  }
-  const answers = redraft ? draft.answers.trim() : "";
-  if (redraft && !answers) {
-    draft.error = "Answer one of the questions first.";
-    return paint();
-  }
-  draft.busy = true;
+  if (draft.busy) return;
+  draft.busy = redraft?.id ?? "new";
   draft.error = "";
   paint();
+  // A phrase still being heard belongs to this request: let it land before reading the box.
+  await drainVoice();
+  const task = redraft ? redraft.task : draft.task.trim();
+  const said = redraft ? (answers.get(redraft.id) ?? "").trim() : "";
+  const problem = !task ? "Say or type what the session should do." : redraft && !said ? "Answer one of the questions first." : "";
+  if (problem) {
+    draft.busy = "";
+    draft.error = problem;
+    return paint();
+  }
   try {
-    const r = await api<{ brief: Brief; source: Source }>("/api/dispatch", { task, ...(answers ? { answers } : {}), rules: S.rules, facts: S.facts });
+    const r = await api<{ brief: Brief; source: Source }>("/api/dispatch", { task, ...(said ? { answers: said } : {}), rules: S.rules, facts: S.facts });
     const b: Shown = { ...r.brief, source: r.source };
     // A redrafted public brief replaces the one it answered; the owner's queue keeps both.
     briefs = [b, ...briefs!.filter((x) => Q.owner || x.id !== redraft?.id)];
-    draft.task = redraft ? draft.task : "";
-    draft.answers = "";
+    // Clear only what was sent: words typed or spoken while it was drafting stay.
+    if (!redraft && draft.task.trim() === task) draft.task = "";
+    if (redraft && (answers.get(redraft.id) ?? "").trim() === said) answers.delete(redraft.id);
     savePublic();
-    draft.busy = false;
+    draft.busy = "";
     go({ view: "dispatch", id: b.id });
     announce(`Brief drafted: ${b.headline}.`);
   } catch (e) {
     const err = e as Error & { unavailable?: boolean };
     draft.error = err.unavailable ? `Bug Me couldn't draft this one (${err.message}).${Q.owner ? "" : " The three demo tasks work without live calls."}` : `Couldn't draft it: ${err.message}`;
-    draft.busy = false;
+    draft.busy = "";
     paint();
   }
 }
@@ -228,11 +235,23 @@ function select<T extends string>(label: string, value: T, options: readonly { v
   return s;
 }
 
-function numberInput(label: string, value: number, step: string, onChange: (v: number) => void): HTMLElement {
-  const i = h("input", { type: "number", min: "0", step, value: String(value), "aria-label": label, inputmode: "decimal" }) as HTMLInputElement;
+/**
+ * A setup number. A value outside the field's range (the same ranges the Worker accepts) is marked,
+ * keeps the last good value in the brief, and holds Copy until it's fixed.
+ */
+function numberInput(b: Shown, field: string, label: string, value: number, step: string, ok: (v: number) => boolean, onChange: (v: number) => void): HTMLElement {
+  const bad = invalid.get(b.id) ?? new Set<string>();
+  invalid.set(b.id, bad);
+  const i = h("input", { type: "number", min: "0", step, value: String(value), "aria-label": label, inputmode: "decimal", "aria-invalid": bad.has(field) ? "true" : "false" }) as HTMLInputElement;
   i.addEventListener("input", () => {
     const v = Number(i.value);
-    if (Number.isFinite(v) && v > 0) onChange(v);
+    const good = i.value.trim() !== "" && Number.isFinite(v) && ok(v);
+    i.setAttribute("aria-invalid", good ? "false" : "true");
+    if (good) {
+      bad.delete(field);
+      onChange(v);
+    } else bad.add(field);
+    refreshLive(b);
   });
   return i;
 }
@@ -246,6 +265,21 @@ function refreshLive(b: Shown): void {
   if (trip) trip.textContent = tripwireText(b);
   const cmd = document.querySelector("#brief-cmd code");
   if (cmd) cmd.textContent = buildCommand(b, catalog);
+  const { ready, message } = copyState(b);
+  const copyCmd = document.getElementById("copy-command") as HTMLButtonElement | null;
+  const copyBrief = document.getElementById("copy-brief") as HTMLButtonElement | null;
+  if (copyCmd) copyCmd.disabled = !ready;
+  if (copyBrief) copyBrief.disabled = Boolean(invalid.get(b.id)?.size);
+  const msg = document.querySelector("#brief .brief-actions .think-msg");
+  if (msg) msg.textContent = actionMsg || message;
+}
+
+/** Whether Copy command may run, and if not, what's in the way. */
+function copyState(b: Shown): { ready: boolean; message: string } {
+  if (invalid.get(b.id)?.size) return { ready: false, message: "Fix the time or money first." };
+  const left = b.prerequisites.length - (ticked.get(b.id)?.size ?? 0);
+  if (left > 0) return { ready: false, message: `Tick ${left === 1 ? "the prerequisite" : `the ${left} prerequisites`} to copy the command.` };
+  return { ready: true, message: "" };
 }
 
 const tripwireText = (b: Shown) => `Stops to ask at ${tripwireMinutes(b)} min (${TRIPWIRE_MULTIPLE}× the estimate). The dollars are a guide: a session can't see its own spend.`;
@@ -253,7 +287,7 @@ const tripwireText = (b: Shown) => `Stops to ask at ${tripwireMinutes(b)} min ($
 function briefCard(b: Shown): HTMLElement {
   const ticks = ticked.get(b.id) ?? new Set<number>();
   ticked.set(b.id, ticks);
-  const ready = b.prerequisites.every((_, i) => ticks.has(i));
+  const { ready, message } = copyState(b);
   const local = b.where === "local";
 
   const questions = b.questions.length
@@ -262,8 +296,8 @@ function briefCard(b: Shown): HTMLElement {
         { class: "brief-qs" },
         h("p", {}, "These would change the brief:"),
         h("ol", {}, ...b.questions.map((q) => h("li", {}, q))),
-        textBox("dispatch-answers", "Your answers", "Answer any of them…", "answers"),
-        h("div", { class: "row" }, h("button", { type: "button", class: "ghost", id: "redraft", disabled: draft.busy, onclick: () => void draftBrief(b) }, draft.busy && draft.answers ? "Redrafting…" : "Redraft")),
+        textBox("dispatch-answers", "Your answers", "Answer any of them…", () => answers.get(b.id) ?? "", (v) => answers.set(b.id, v)),
+        h("div", { class: "row" }, h("button", { type: "button", class: "ghost", id: "redraft", disabled: Boolean(draft.busy), onclick: () => void draftBrief(b) }, draft.busy === b.id ? "Redrafting…" : "Redraft")),
       )
     : null;
 
@@ -281,8 +315,8 @@ function briefCard(b: Shown): HTMLElement {
   const time = h(
     "div",
     { class: "brief-setup" },
-    h("label", {}, numberInput("Estimate in minutes", b.estimate_minutes, "5", (v) => ((b.estimate_minutes = Math.round(v)), refreshLive(b))), " min"),
-    h("label", {}, "$", numberInput("Budget in dollars", b.budget_usd, "0.5", (v) => ((b.budget_usd = Math.round(v * 100) / 100), refreshLive(b)))),
+    h("label", {}, numberInput(b, "minutes", "Estimate in minutes", b.estimate_minutes, "5", (v) => v >= 1 && v <= 60 * 24 * 7, (v) => (b.estimate_minutes = Math.round(v))), " min"),
+    h("label", {}, "$", numberInput(b, "dollars", "Budget in dollars", b.budget_usd, "0.5", (v) => v >= 0 && v <= 10_000, (v) => (b.budget_usd = Math.round(v * 100) / 100))),
   );
 
   // Tools: the ones it needs, the ones turned off (each a toggle back on), and a list to turn more off.
@@ -346,13 +380,12 @@ function briefCard(b: Shown): HTMLElement {
       )
     : h("p", { class: "quiet" }, "Nothing; it can start now.");
 
-  const left = b.prerequisites.length - ticks.size;
   const copyCmd = h(
     "button",
     { type: "button", class: local ? "ghost" : "primary", id: "copy-command", disabled: !ready, onclick: () => void copy(b, "command") },
     local ? "Run in the cloud anyway" : "Copy command",
   );
-  const copyBrief = h("button", { type: "button", class: local ? "primary" : "ghost", id: "copy-brief", onclick: () => void copy(b, "brief") }, "Copy brief");
+  const copyBrief = h("button", { type: "button", class: local ? "primary" : "ghost", id: "copy-brief", disabled: Boolean(invalid.get(b.id)?.size), onclick: () => void copy(b, "brief") }, "Copy brief");
 
   return h(
     "article",
@@ -381,7 +414,7 @@ function briefCard(b: Shown): HTMLElement {
     h(
       "div",
       { class: "think-actions brief-actions" },
-      h("p", { class: "think-msg", role: "status" }, actionMsg || (ready ? "" : `Tick ${left === 1 ? "the prerequisite" : `the ${left} prerequisites`} to copy the command.`)),
+      h("p", { class: "think-msg", role: "status" }, actionMsg || message),
       copyBrief,
       copyCmd,
     ),
