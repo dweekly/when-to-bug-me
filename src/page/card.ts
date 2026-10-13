@@ -222,7 +222,9 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
   const script = CONVERSATIONS.find((c) => c.id === d.id);
   // DEMO REPLY fills the box with Jordan's scripted words for this turn (recorded, so they replay for free).
   const demo =
-    script && Q.mode !== "live"
+    // Offered on live servers too: Jordan's scripted words replay the recording, so they cost nothing.
+    // Never on the owner's page, whose decisions are real.
+    script && !Q.owner
       ? h(
           "button",
           {
@@ -531,7 +533,7 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
 export function exampleButton(d: Decision, ta: HTMLTextAreaElement): Child {
   // DEMO REPLY, as in the conversation box: Jordan's recorded reason for the option chosen.
   const ex = EXAMPLES.find((e) => e.id === d.id && (!F?.choice || e.choice === F.choice));
-  if (!ex || Q.mode === "live") return null;
+  if (!ex || Q.owner) return null;
   return h(
     "button",
     {

@@ -342,7 +342,7 @@ function offerRestart(r: Running, outcome: "failed" | "no-guidance"): void {
     element: "#view",
     popover: {
       title: failed ? "That reason couldn't be checked" : "No guidance from that one",
-      description: `${why} Your answer is kept. Start the tour again (and use Jordan's words), or end it and keep exploring.`,
+      description: `${why} Your answer is kept. Start the demo again (and press DEMO REPLY), or end it and keep exploring.`,
       showButtons: ["next", "close"],
       nextBtnText: "Start again",
       onNextClick: () => begin(r.tour),

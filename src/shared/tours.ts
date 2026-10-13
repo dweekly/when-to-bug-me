@@ -77,8 +77,8 @@ export const TOURS: Tour[] = [
       { target: "#agenda", title: "Then, in order", text: "Every waiting question in the order to work it. ● a real decision, ◐ a quick check.", until: "next" },
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have booked the cheap 6:05am itself. Code stopped it: $212 and only partly refundable.", until: "next" },
       { target: "#now .viz", title: "See it, don't read it", text: "A picture of the trade-off: the 6:05 lands before the 10:00 start. Each option lists its pros, cons and cost.", until: "next" },
-      say("onsite-flight", 1, "Talk to Bug Me", "Say it the way you'd say it to a colleague: take the 9:40. Then Send. Or use Jordan's words."),
-      say("onsite-flight", 2, "One light question", "A bare pick earns one question: why? Answer it, or use Jordan's words."),
+      say("onsite-flight", 1, "Talk to Bug Me", "Say it the way you'd say it to a colleague: take the 9:40. Then Send. Or press DEMO REPLY."),
+      say("onsite-flight", 2, "One light question", "A bare pick earns one question: why? Answer it, or press DEMO REPLY."),
       decide("Bug Me read it back. The button is the decision itself, and its guess is still sealed: press it."),
       { target: "#now .followup.push", optional: true, title: "Pushback, from your own rules", text: "Your travel rule says cheapest. Bug Me asks once. Say this one's an exception.", until: { click: "#now .followup.push .primary" } },
       { target: "#now .followup", title: "A reason becomes guidance", text: "Now you see what the agent and Bug Me would have picked. Keep your reason (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
@@ -97,8 +97,8 @@ export const TOURS: Tour[] = [
     path: [{ decision: "onsite-flight", choice: "B", narration: true, reason: "example", keep: true }],
     steps: [
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have settled this; code brought it to you: it costs $212 and is only partly refundable.", until: "next" },
-      say("onsite-flight", 1, "Say no", "Take the 9:40, then Send. Or use Jordan's words."),
-      say("onsite-flight", 2, "Say why", "Bug Me asks why, once. Answer it, or use Jordan's words."),
+      say("onsite-flight", 1, "Say no", "Take the 9:40, then Send. Or press DEMO REPLY."),
+      say("onsite-flight", 2, "Say why", "Bug Me asks why, once. Answer it, or press DEMO REPLY."),
       decide("Bug Me's guess stays sealed until you decide."),
       { target: "#now .followup.push", optional: true, title: "Pushback, from your own rules", text: "Your travel rule says cheapest. Bug Me asks once. Say this one's an exception.", until: { click: "#now .followup.push .primary" } },
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
@@ -115,7 +115,7 @@ export const TOURS: Tour[] = [
     steps: [
       { go: "#/d/api-rename", target: "#now .why", title: "Why it's yours", text: "Your written rule says public API changes are yours.", until: "next" },
       { target: "#now .options", title: "Each option, whole", text: "Each card holds its own line of the real payload, its pros and its cons.", until: "next" },
-      say("api-rename", 1, "Talk it through", "Which way, why, any “but…”, any question, in one go. Then Send. Or use Jordan's words."),
+      say("api-rename", 1, "Talk it through", "Which way, why, any “but…”, any question, in one go. Then Send. Or press DEMO REPLY."),
       { target: "#now .turns", title: "Heard, in your words", text: "Bug Me marks what it heard: the choice, the reasons, the condition, the question. Then it reads the decision back.", until: "next" },
       decide("The reason and the condition go with it, in your words."),
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
@@ -132,7 +132,7 @@ export const TOURS: Tour[] = [
     steps: [
       { go: "#/d/sdk-dependency", target: pick("A"), title: "Add the library", text: "Click it. Clicking picks; nothing goes out yet.", until: { click: pick("A") } },
       { target: "#now .send", title: "Send", text: "Send the click on its own.", until: { appear: "#now .turns li.bug:not(.typing):nth-child(2)" } },
-      say("sdk-dependency", 2, "Just do it", "A bare click earns one question. Tell Bug Me to just do it, or use Jordan's words."),
+      say("sdk-dependency", 2, "Just do it", "A bare click earns one question. Tell Bug Me to just do it, or press DEMO REPLY."),
       decide("Bug Me checks your record before it goes out."),
       { target: "#now .followup.push", title: "Your own words", text: "It quotes what you told it last week. Change your answer.", until: { click: "#now .followup.push .ghost" } },
       { target: "#now .followup", title: "Pushback, rationed", text: "At most twice a session, and only with your own record.", until: "next" },
@@ -147,7 +147,7 @@ export const TOURS: Tour[] = [
     path: [{ decision: "settings-redesign", choice: "B", narration: true, keep: true }],
     steps: [
       { go: "#/d/settings-redesign", target: "#now .options", title: "Both built", text: "Click around in each. They're real prototypes, not screenshots.", until: "next" },
-      say("settings-redesign", 1, "Teach it back", "Pick one and say what happens next on that page, then Send. Or use Jordan's words."),
+      say("settings-redesign", 1, "Teach it back", "Pick one and say what happens next on that page, then Send. Or press DEMO REPLY."),
       decide(),
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
     ],
@@ -165,7 +165,7 @@ export const TOURS: Tour[] = [
       // docs/STAGE-6E.md: the press is the turn; the tour moves on when Bug Me has said it again, plainly.
       { target: "#now .huh-row .huh", title: "Still unclear?", text: "Press Huh? and Bug Me says it again, more plainly.", until: { appear: "#now .turns li.bug.explain" } },
       { target: "#now .turns li.bug.explain", title: "In plain terms", text: "Said again, plainly. A Huh? also tells Bug Me its translation missed.", until: "next" },
-      say("reconciliation-path", 2, "Decide out loud", "Leave past invoices alone, and say why. Then Send. Or use Jordan's words."),
+      say("reconciliation-path", 2, "Decide out loud", "Leave past invoices alone, and say why. Then Send. Or press DEMO REPLY."),
       decide(),
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
     ],
