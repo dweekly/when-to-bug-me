@@ -7,6 +7,7 @@
 import { MAX_CONVERSE_QUESTIONS, MAX_TITLE_WORDS } from "./constants";
 import { type ConvTurn, questionsAsked, transcriptForPrompt } from "./converse";
 import type { Decision, Fact, Persona, RouteKind, Rule } from "./types";
+import { type Catalog, DISPATCH_MODELS, TRIPWIRE_MULTIPLE } from "./dispatch";
 
 export const PROMPT_VERSION = "2026-10-09.6";
 /** The think-out-loud parse prompt has its own version, so changing it leaves every other recording valid. */
@@ -14,6 +15,8 @@ export const PARSE_PROMPT_VERSION = "2026-10-12.1";
 /** The conversation prompt (docs/STAGE-6.md) and the title prompt, each versioned on its own. */
 export const CONVERSE_PROMPT_VERSION = "2026-10-13.2";
 export const TITLE_PROMPT_VERSION = "2026-10-13.2";
+/** The dispatch prompt (docs/STAGE-8.md), versioned on its own. */
+export const DISPATCH_PROMPT_VERSION = "2026-10-13.1";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -466,4 +469,49 @@ export function titleSchema(keys: string[]) {
       labels: { type: "object", additionalProperties: false, required: keys, properties: Object.fromEntries(keys.map((k) => [k, { type: "string" }])) },
     },
   } as const;
+}
+
+/**
+ * Dispatch (docs/STAGE-8.md): turn a rough task into a brief that sets the work up at the right size.
+ * The catalog lists only names and statuses, never commands or credentials.
+ */
+export function dispatchPrompt(p: Persona, rules: Rule[], facts: Fact[], task: string, answers: string, c: Catalog): string {
+  const n = p.first_name;
+  const servers = c.servers.map((s) => `- ${s.prefix} (${s.name}; ${s.status})`).join("\n") || "(none listed)";
+  const skills = c.skills.join(", ") || "(none listed)";
+  return `You are Bug Me, a chief of staff that sits between one person and their fleet of AI agents. ${head(p)}
+
+${n} wants to hand a piece of work to a Claude Code session. Before it starts, write the brief that sets it up at the right size. Agents tend to rabbit-hole: a quick demo turns into an over-engineered production system. The brief prevents that by making the size, the limits and the stopping point explicit, and by asking ${n} up front for anything the session would otherwise stop for later.
+
+${guidance(p, rules, facts)}
+
+=== What the session can use ===
+Models: ${DISPATCH_MODELS.map((m) => `${m.id} (${m.label})`).join(", ")}. Opus is the most capable and slowest; Haiku is fast and cheap for mechanical work. Follow ${n}'s rules about models where they have any.
+Effort: low, medium, high, xhigh, max. Higher thinks longer; match it to how hard the reasoning is, not how big the task is.
+Permission modes: plan (it plans before changing anything), manual (it asks before each action), acceptEdits (it edits files freely and asks before commands), auto (it works on its own, with a safety check on risky actions).
+MCP servers (tool prefix, name, status):
+${servers}
+Skills: ${skills}
+
+=== The task, in ${n}'s words ===
+${task}
+${answers ? `\n=== ${n}'s answers to your earlier questions ===\n${answers}\n` : ""}
+=== Write the brief ===
+- headline: the task in at most 8 words.
+- goal: one sentence on what the work produces. why: one sentence on what it is for, so the session can tell whether a different approach would also serve.
+- questions: only questions whose answer would change this brief (the size, the stage, what's in scope, a prerequisite). At most 3. Leave it empty if the task is clear enough; still fill in the rest of the brief with your best reading.
+- stage: prototype (something running to react to, fast; hardcoded values are fine), mvp (real use, crude inside) or product (reliable and maintained). Pick the smallest stage that serves the goal; words like "quick", "demo", "try" or "for Thursday" mean prototype.
+- done: up to 3 checks that say the work is finished, each something the session can actually check.
+- out_of_scope: up to 4 things a capable agent would be tempted to add that this stage doesn't need (tests beyond one smoke run, auth, configuration options, abstractions, a production deploy). Name the specific temptations of this task.
+- estimate_minutes: a realistic wall-clock estimate for a Claude Code session at that stage. The session stops and checks in at ${TRIPWIRE_MULTIPLE}× this.
+- budget_usd: the model spend this is worth.
+- model, effort, permission_mode: the cheapest setup that does the job well. Riskier or more sensitive work gets a more careful permission mode.
+- sensitivity: high if the session will read personal, customer, health, financial or private-communication data, or credentials; medium if internal-only code or documents; low otherwise. urgency: high if it is needed today, low if it can wait a day or more. Give each a short reason.
+- tools_off: servers in the list above this task has no business touching; turning them off keeps the session focused and keeps data where it belongs. tools_needed: servers it must have. skills: skills worth loading, if any. Use only names from the lists.
+- context: up to 5 pointers the session should read or know first (files, documents, earlier decisions), as ${n} described them. Don't invent paths.
+- guidance: ${n}'s rules or facts above that bear on this task, each copied exactly as written.
+- prerequisites: up to 4 things ${n} must do before the session starts, so it doesn't stop midway: credentials or API tokens to hand over, accounts or permissions to grant, decisions only ${n} can make. Each with why. Leave it empty if there are none.
+- check_ins: up to 4 decisions the session must bring back to ${n} rather than make itself, from ${n}'s rules and the task.
+
+Write in plain words ${n} would use. Reply with the JSON object only.`;
 }

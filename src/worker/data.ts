@@ -5,6 +5,8 @@ import decisionsJson from "../../fixtures/decisions.json";
 import factsJson from "../../fixtures/facts.json";
 import personaJson from "../../fixtures/persona.json";
 import rulesJson from "../../fixtures/rules.json";
+import catalogJson from "../../fixtures/catalog.json";
+import { type Catalog, parseCatalog } from "../shared/dispatch";
 import type { Decision, Fact, Persona, Rule } from "../shared/types";
 
 export const persona = personaJson as Persona;
@@ -34,3 +36,6 @@ export function publicDecision(d: Decision) {
     work: d.work,
   };
 }
+
+/** Jordan's synthetic tools and skills, for the public Dispatch demo (docs/STAGE-8.md). */
+export const publicCatalog: Catalog = parseCatalog(catalogJson);

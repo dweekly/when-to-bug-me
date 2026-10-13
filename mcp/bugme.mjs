@@ -7,12 +7,18 @@
 //   BUGME_URL    where Bug Me runs, such as https://bugme.weekly.org
 //   the token    from the macOS keychain (service "bugme-live"), or BUGME_TOKEN when set (tests)
 //
+// Dispatch (docs/STAGE-8.md): `node mcp/bugme.mjs sync-catalog` sends the names and statuses of this
+// machine's MCP servers and skills (never commands, env or URLs), so briefs can turn tools on and off.
+//
 // Register it once (the keychain step prompts for the token):
 //   security add-generic-password -s bugme-live -a "$USER" -w
 //   claude mcp add bugme --scope user -e BUGME_URL=https://bugme.weekly.org -- node ~/dev/when-to-bug-me/mcp/bugme.mjs
 
 import { execFileSync } from "node:child_process";
-import { basename } from "node:path";
+import { readdirSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { createInterface } from "node:readline";
 
 const POLL_MS = 3000;
@@ -119,8 +125,26 @@ const TOOLS = [
         recommended: { type: "string", description: "The label of the option you recommend, if any." },
         context: { type: "string", description: "What David needs to know to decide: what the work is, why this came up, what changes for users under each option." },
         project: { type: "string", description: "The project this is for. Defaults to the name of the working directory." },
+        brief: { type: "string", description: 'The Bug Me brief this session was started from ("b-…"), if its opening prompt named one.' },
         session: { type: "string", description: "A short label for this session, such as what it is working on." },
         wait_minutes: { type: "number", description: `How long to wait for David before returning "pending" (default ${DEFAULT_WAIT_MIN}, at most ${MAX_WAIT_MIN}).` },
+      },
+    },
+  },
+  {
+    name: "report_to_bug_me",
+    description:
+      'If this session was started from a Bug Me brief (its opening prompt names one, "b-…"), call this when you finish or stop: the outcome, whether the scope stayed as briefed, and a two-sentence summary. Call it again if you resume and finish later.',
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["brief", "outcome", "scope", "summary"],
+      properties: {
+        brief: { type: "string", description: 'The brief id from your opening prompt ("b-…").' },
+        outcome: { type: "string", enum: ["done", "stopped at tripwire", "partial", "abandoned"] },
+        scope: { type: "string", enum: ["as briefed", "smaller", "bigger"], description: "Compared with the brief's done-when and out-of-scope lists." },
+        summary: { type: "string", description: "Two sentences: what you built or found, and anything left." },
+        cost_usd: { type: "number", description: "Only if you actually know it; leave it out otherwise." },
       },
     },
   },
@@ -151,8 +175,14 @@ async function runTool(name, args, requestId) {
       context: args.context,
       project: args.project || project,
       session: args.session || `Claude Code in ${project}`,
+      ...(args.brief ? { brief: args.brief } : {}),
     }, ASK_TIMEOUT_MS);
     return waitFor(first, args.wait_minutes ?? DEFAULT_WAIT_MIN, requestId);
+  }
+  if (name === "report_to_bug_me") {
+    if (!/^b-[a-z0-9]{10}$/.test(String(args.brief ?? ""))) throw new Error("brief must look like b-xxxxxxxxxx");
+    const { outcome, scope, summary, cost_usd } = args;
+    return call("POST", `/api/me/briefs/${args.brief}/report`, { outcome, scope, summary, ...(typeof cost_usd === "number" ? { cost_usd } : {}) });
   }
   if (name === "check_bug_me") {
     if (!/^t-[a-z0-9]{1,32}$/.test(String(args.ticket ?? ""))) throw new Error("ticket must look like t-xxxxxxxx");
@@ -197,14 +227,83 @@ async function handle(msg) {
   }
 }
 
-const rl = createInterface({ input: process.stdin });
-rl.on("line", (line) => {
-  if (!line.trim()) return;
-  let msg;
-  try {
-    msg = JSON.parse(line);
-  } catch {
-    return send({ id: null, error: { code: -32700, message: "parse error" } });
+/** Claude Code's tool prefix for a server name (docs/STAGE-8.md). The Worker checks it against the name. */
+const toolPrefix = (name) => `mcp__${name.replace(/[^A-Za-z0-9_-]/g, "_")}`;
+
+const STATUS = [
+  [/connected/i, "connected"],
+  [/needs auth/i, "needs authentication"],
+  [/not configured/i, "not configured"],
+];
+
+/**
+ * The names and statuses `claude mcp list` prints ("name: target - ✔ Connected"). Only the name and the
+ * status are kept; the target (a command or URL) is dropped here and never sent.
+ */
+export function parseMcpList(out) {
+  const servers = [];
+  for (const line of out.split("\n")) {
+    const sep = line.indexOf(": ");
+    const dash = line.lastIndexOf(" - ");
+    if (sep <= 0 || dash < sep) continue;
+    const name = line.slice(0, sep).trim();
+    const status = STATUS.find(([re]) => re.test(line.slice(dash + 3)))?.[1] ?? "failed";
+    if (!name || name.length > 80 || servers.some((s) => s.prefix === toolPrefix(name))) continue;
+    servers.push({ name, prefix: toolPrefix(name), status });
   }
-  void handle(msg);
-});
+  // Connected servers first, so a long list keeps the usable ones.
+  return servers.sort((a, b) => (a.status === "connected" ? 0 : 1) - (b.status === "connected" ? 0 : 1)).slice(0, 80);
+}
+
+/** Skill names: each directory under ~/.claude/skills (to three levels) that holds a SKILL.md. */
+function skillNames(root = join(homedir(), ".claude", "skills"), depth = 0) {
+  let names = [];
+  let entries = [];
+  try {
+    entries = readdirSync(root);
+  } catch {
+    return names;
+  }
+  if (entries.includes("SKILL.md")) names.push(basename(root));
+  if (depth < 3) for (const e of entries) {
+    const p = join(root, e);
+    try {
+      if (statSync(p).isDirectory()) names = names.concat(skillNames(p, depth + 1));
+    } catch {}
+  }
+  return [...new Set(names)].filter((n) => /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/.test(n)).slice(0, 120);
+}
+
+async function syncCatalog() {
+  process.stderr.write("Reading `claude mcp list` (it checks each server, so this takes a moment)…\n");
+  const out = execFileSync("claude", ["mcp", "list"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 180_000 });
+  const catalog = { servers: parseMcpList(out), skills: skillNames() };
+  const r = await call("POST", "/api/me/catalog", catalog);
+  process.stdout.write(`Synced ${r.servers} MCP servers and ${r.skills} skills to Bug Me.\n`);
+}
+
+function startServer() {
+  const rl = createInterface({ input: process.stdin });
+  rl.on("line", (line) => {
+    if (!line.trim()) return;
+    let msg;
+    try {
+      msg = JSON.parse(line);
+    } catch {
+      return send({ id: null, error: { code: -32700, message: "parse error" } });
+    }
+    void handle(msg);
+  });
+}
+
+// Run only when started directly, so tests can import parseMcpList.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  if (process.argv[2] === "sync-catalog") {
+    syncCatalog().catch((e) => {
+      process.stderr.write(`sync-catalog failed: ${e instanceof Error ? e.message : String(e)}\n`);
+      process.exit(1);
+    });
+  } else {
+    startServer();
+  }
+}
