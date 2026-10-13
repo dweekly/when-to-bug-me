@@ -480,5 +480,5 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .brief-grid dd { margin-bottom: 12px; }
 }
 .dispatch-thread { margin-top: 18px; }
-.turn.bug .turn-qs { grid-column: 2; margin: 4px 0 0; padding-left: 20px; font-size: 17px; line-height: 1.6; }
+.turn.bug .turn-qs { grid-column: 2; margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.6; }
 @media (max-width: 560px) { .turn.bug .turn-qs { grid-column: 1; } }

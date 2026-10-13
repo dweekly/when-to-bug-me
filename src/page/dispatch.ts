@@ -105,7 +105,6 @@ export function renderDispatchView(view: HTMLElement, id?: string): void {
       "section",
       { class: "page dispatch" },
       h("h1", {}, "Dispatch"),
-      h("p", { class: "quiet" }, "Say what you want done. Bug Me sizes it and sets it up before a session starts."),
       composer(),
       open ? conversation(open) : null,
       open ? briefCard(open) : null,
@@ -147,7 +146,6 @@ function composer(): HTMLElement {
     : h(
         "div",
         { class: "demo-chips" },
-        h("span", { class: "quiet" }, "Try:"),
         ...DISPATCH_EXAMPLES.map((x) =>
           h(
             "button",
@@ -167,7 +165,7 @@ function composer(): HTMLElement {
   return h(
     "div",
     { class: "dispatch-new" },
-    textBox("dispatch-task", "What should a session do?", "What should a session do?", () => draft.task, (v) => (draft.task = v)),
+    textBox("dispatch-task", "What do you want done?", "What do you want done?", () => draft.task, (v) => (draft.task = v)),
     chips,
     Q.owner ? h("p", { class: "quiet small" }, "Describe the task, not the sensitive data: drafting is a cloud call.") : null,
     h(
@@ -233,7 +231,7 @@ function conversation(b: Shown): HTMLElement | null {
       h("li", { class: "turn mine" }, h("p", {}, b.task)),
       b.answers ? h("li", { class: "turn mine" }, h("p", {}, b.answers)) : null,
       b.questions.length
-        ? h("li", { class: "turn bug" }, face(), h("p", {}, "Before I size this:"), h("ol", { class: "turn-qs" }, ...b.questions.map((q) => h("li", {}, q))))
+        ? h("li", { class: "turn bug" }, face(), h("ol", { class: "turn-qs" }, ...b.questions.map((q) => h("li", {}, q))))
         : null,
     ),
     b.questions.length ? textBox("dispatch-answers", "Your answers", "Answer any of them…", () => answers.get(b.id) ?? "", (v) => answers.set(b.id, v)) : null,
@@ -241,7 +239,6 @@ function conversation(b: Shown): HTMLElement | null {
       ? h(
           "div",
           { class: "think-actions" },
-          h("p", { class: "think-msg quiet" }, "Until then, the brief below is my best reading."),
           h("button", { type: "button", class: "primary", id: "redraft", disabled: Boolean(draft.busy), onclick: () => void draftBrief(b) }, draft.busy === b.id ? "Resizing…" : "Send"),
         )
       : null,
