@@ -196,6 +196,14 @@ describe("the command is one `claude` call, whatever the brief says", () => {
     expect(t).toMatch(/report_to_bug_me with brief "b-abcdefghij"/);
     expect(t).toMatch(/A guide only/);
   });
+
+  it("the opening prompt carries the person's own words, exactly", () => {
+    const d = parseBriefDraft(draft(), CAT, [], []);
+    const task = 'Write banner.txt containing exactly "hello  world".\nThen stop.';
+    const t = briefText(finishBrief(d, CAT, { id: "b-abcdefghij", task, answers: "For  me,\nby Friday.", now: new Date(), owner: true }), CAT);
+    expect(t).toContain(task);
+    expect(t).toContain("For  me,\nby Friday.");
+  });
 });
 
 describe("the owner's drafts are never stored outside the owner's queue", () => {
