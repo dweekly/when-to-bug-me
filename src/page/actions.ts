@@ -12,6 +12,7 @@ import {
   type GlowEvent,
   type Guess,
   hasBasis,
+  alreadyKept,
   keptFact,
   withFact,
   moodAfter,
@@ -30,6 +31,7 @@ import { announce } from "./dom";
 import { go } from "./router";
 import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, log, newFlow, save, setF, talking } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
+import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext } from "./live";
 
 export function glowEvent(e: GlowEvent): void {
   S.glow = nextGlow(S.glow, e);
@@ -245,16 +247,17 @@ export async function confirmThread(flow: Flow, d: Decision, route: RouteKind): 
   flow.narration = n;
   const o = ci.outcome;
   if (o.kind === "set-aside") return startPunt(flow);
-  if (o.kind === "ask-agent") return sendQuestionToAgent(flow, d, o.questions);
-  if (o.kind === "other" || o.kind === "rejected") return chooseOutside(flow, d, route, o.kind, ci.course, n);
-  flow.choice = o.key;
-  threadCard(flow, d);
+  // Claimed before any await (on /me each of these waits for the asking session), so a second press does nothing.
   sending.add(flow);
   try {
+    if (o.kind === "ask-agent") return await sendQuestionToAgent(flow, d, o.questions);
+    if (o.kind === "other" || o.kind === "rejected") return await chooseOutside(flow, d, route, o.kind, ci.course, n);
+    flow.choice = o.key;
+    threadCard(flow, d);
     await answer(flow, d, route, n);
   } finally {
     sending.delete(flow);
-    // A failed answer returns to the conversation: the decision button comes back, ready to press again.
+    // A failed answer (or, on /me, a delivery that failed) returns to the conversation: the decision button comes back, ready to press again.
     if (flow.phase === "choose") repaint(flow);
   }
 }
@@ -266,6 +269,27 @@ export interface Narration {
   unparsed: boolean;
 }
 
+/**
+ * Live queue only (docs/STAGE-7.md): deliver an outcome to the asking session and say whether it got
+ * there. On failure the card says why, in `message` (decision buttons) or `error` (a panel's own
+ * text box), and stays where it was for another press. Always true off /me.
+ */
+async function delivered(flow: Flow, id: string, d: Delivery, where: "message" | "error" = "message"): Promise<boolean> {
+  if (!OWNER_PAGE) return true;
+  try {
+    await deliver(id, d);
+    return true;
+  } catch (e) {
+    if (where === "error") flow.error = deliveryProblem(e);
+    else {
+      if (flow.phase === "busy") flow.phase = "choose";
+      flow.message = deliveryProblem(e);
+    }
+    if (showing(flow)) renderNow();
+    return false;
+  }
+}
+
 const threadOf = (flow: Flow): Thread | undefined => (flow.ledger ? { turns: flow.turns, ledger: flow.ledger } : undefined);
 
 /**
@@ -273,7 +297,7 @@ const threadOf = (flow: Flow): Thread | undefined => (flow.ledger ? { turns: flo
  * words, and told to the agent (simulated). Bug Me's sealed guess stays sealed: it only ever guessed
  * among the listed options. A why or feedback can still become guidance.
  */
-export function chooseOutside(flow: Flow, d: Decision, route: RouteKind, kind: "other" | "rejected", course: string, n: Narration): void {
+export async function chooseOutside(flow: Flow, d: Decision, route: RouteKind, kind: "other" | "rejected", course: string, n: Narration): Promise<void> {
   const basis = flow.basis.trim();
   const conditions = flow.conditions.trim();
   const first = Q.persona.first_name;
@@ -281,6 +305,8 @@ export function chooseOutside(flow: Flow, d: Decision, route: RouteKind, kind: "
     kind === "other"
       ? `${first} chose neither option. Instead: ${course}${conditions ? ` Conditions: ${conditions}` : ""}`
       : `${first} rejected the question as asked: ${course}${conditions ? ` Conditions: ${conditions}` : ""}`;
+  // Live queue only (docs/STAGE-7.md): the asking session hears it now, or nothing is recorded and the card stays open.
+  if (!(await delivered(flow, d.id, { outcome: kind, course, reason: basis, conditions, instruction: send_down }))) return;
   const thread = threadOf(flow);
   S.answered[d.id] = { initial: kind, final: kind, other: course, outcome: kind, basis, guess: [], route, pushback: null, send_down, marks: [], narration: n.narration, narrationMarks: n.narrationMarks, ...(conditions ? { conditions } : {}), ...(thread ? { thread } : {}) };
   log("answer", { id: d.id, route, initial: kind, final: kind, outcome: kind, other: course, basis, conditions: conditions || undefined, narration: n.narration, guess_before_answer: null, source: isCardLike(S.cards[d.id]) ? (S.cards[d.id] as Card).source : null, thread });
@@ -297,16 +323,20 @@ export function chooseOutside(flow: Flow, d: Decision, route: RouteKind, kind: "
 const isCardLike = (c: unknown): boolean => Boolean(c) && typeof c === "object" && "source" in (c as object);
 
 /** Questions the agent's material didn't answer go back to the asking agent, and the decision waits. */
-export function sendQuestionToAgent(flow: Flow, d: Decision, questions: string[]): void {
+export async function sendQuestionToAgent(flow: Flow, d: Decision, questions: string[]): Promise<void> {
   const question = questions.join(" ").replace(/\s+/g, " ").trim();
   const punt: Punt = { id: d.id, kind: "info", reason: question, at: new Date().toISOString(), instruction: puntInstruction("info", question, Q.persona.first_name) };
+  // Live queue only: the session is told what to find out, and the ticket is set aside (so it can be resumed).
+  if (!(await delivered(flow, d.id, { outcome: "set-aside", kind: "info", reason: punt.reason, instruction: punt.instruction }))) return;
   S.punts[d.id] = punt;
   log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: "ask", thread: threadOf(flow) });
   glowEvent({ kind: "punted" });
+  const here = showing(flow); // on /me the person may have moved on while the session was being told
   delete S.flows[d.id];
   announce(`Set aside. The agent was asked: ${punt.instruction}`);
   window.dispatchEvent(new CustomEvent("bugme:set-aside", { detail: { id: d.id } }));
-  next();
+  if (here) next();
+  else save();
 }
 
 export async function answer(flow: Flow, d: Decision, route: RouteKind, n: Narration): Promise<void> {
@@ -358,7 +388,6 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     return;
   }
   if (!alive(s0, flow)) return;
-  flow.guess = r.guess;
   const basis = flow.basis.trim();
   // The person's "but…" phrases travel with the answer to the agent, verbatim. Words that couldn't be
   // read go down whole, labeled as such, so nothing they said is lost.
@@ -369,6 +398,11 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     conditions ? `Conditions from ${Q.persona.first_name}: ${conditions}` : "",
     n?.unparsed ? `${Q.persona.first_name}'s words, as said: “${n.narration}”` : "",
   ].filter(Boolean).join(" ");
+  // Live queue only: the asking session hears it now, or nothing is recorded (and the guess stays hidden)
+  // and the card stays open for another press.
+  if (!(await delivered(flow, d.id, { outcome: "option", choice, reason: basis, conditions, instruction: send_down }))) return;
+  if (!alive(s0, flow)) return;
+  flow.guess = r.guess;
   flow.send_down = send_down;
   S.answered[d.id] = {
     initial: flow.initial ?? choice,
@@ -435,7 +469,22 @@ export function recordLateReason(d: Decision, basis: string): void {
   glowEvent({ kind: "answered", route: a.route, basis: substantiveBasis(basis), againstRecommendation: a.final !== d.recommended });
 }
 
+/** Flows with a late reason out (the why panel's button): a second press does nothing. */
+const whySending = new WeakSet<Flow>();
+
 export async function propose(flow: Flow, d: Decision): Promise<void> {
+  // Only the why panel's own press needs claiming; from finalize, the answer's claim already covers it.
+  if (flow.phase !== "why") return proposeNow(flow, d);
+  if (whySending.has(flow)) return;
+  whySending.add(flow);
+  try {
+    await proposeNow(flow, d);
+  } finally {
+    whySending.delete(flow);
+  }
+}
+
+async function proposeNow(flow: Flow, d: Decision): Promise<void> {
   const s0 = S;
   const phase0 = flow.phase;
   await drainVoice(); // the last words of a spoken reason belong to it
@@ -456,7 +505,17 @@ export async function propose(flow: Flow, d: Decision): Promise<void> {
     return;
   }
   flow.error = "";
-  if (basis && S.answered[d.id]?.outcome !== "other" && S.answered[d.id]?.outcome !== "rejected") recordLateReason(d, basis);
+  if (basis && S.answered[d.id]?.outcome !== "other" && S.answered[d.id]?.outcome !== "rejected") {
+    // Live queue only: a reason given after the answer joins what the asking session has; if it can't, the why stays open.
+    if (phase0 === "why" && flow.choice && !(await delivered(flow, d.id, { outcome: "option", choice: flow.choice, reason: basis, update: true }, "error"))) return;
+    if (!alive(s0, flow)) return;
+    recordLateReason(d, basis);
+    // Skipped while the reason was on its way: the session has it (and so does the record), but no guidance is proposed.
+    if (flow.phase !== phase0) {
+      save();
+      return;
+    }
+  }
   flow.phase = "busy";
   flow.message = "Turning that into guidance…";
   save();
@@ -498,22 +557,63 @@ export function guidanceProblem(text: string, adding: "rule" | "fact" | null): s
 }
 
 export async function keepFact(flow: Flow, d: Decision, text: string, p: FactOutput & { reroute: string[] }): Promise<void> {
+  if (sending.has(flow)) return; // a second press while the first is saving
+  sending.add(flow);
+  try {
+    await keepFactNow(flow, d, text, p);
+  } finally {
+    sending.delete(flow);
+    if (flow.phase === "proposal" && showing(flow)) renderNow();
+  }
+}
+
+async function keepFactNow(flow: Flow, d: Decision, text: string, p: FactOutput & { reroute: string[] }): Promise<void> {
   const t = text.replace(/\s+/g, " ").trim();
-  const problem = guidanceProblem(t, p.kind === "add" ? "fact" : null);
+  const label = d.options.find((o) => o.key === flow.choice)?.label ?? "";
+  // Live queue only: the guidance is saved on the server first (if it isn't, it isn't kept), then added
+  // to the session's answer. A retry after a failed update finds it already saved and only updates;
+  // it adds nothing, so the cap on facts doesn't apply to it.
+  const already = OWNER_PAGE ? alreadyKept(S.facts, p, t, label) : undefined;
+  const problem = guidanceProblem(t, p.kind === "add" && !already ? "fact" : null);
   if (problem) {
     flow.error = problem;
     if (showing(flow)) renderNow();
     return;
   }
   flow.error = "";
-  const label = d.options.find((o) => o.key === flow.choice)?.label ?? "";
-  const fact = keptFact(S.facts, p, t, label);
-  S.facts = withFact(S.facts, fact);
-  S.newFacts.push(fact.id);
-  S.version++;
+  const fact = already ?? keptFact(S.facts, p, t, label);
+  if (OWNER_PAGE && !already) {
+    try {
+      await saveContext(S.rules, withFact(S.facts, fact));
+    } catch (e) {
+      flow.error = `Couldn't save that guidance (${(e as Error).message}). Press Keep it again to retry.`;
+      if (showing(flow)) renderNow();
+      return;
+    }
+  }
+  if (!already) {
+    S.facts = withFact(S.facts, fact);
+    S.newFacts.push(fact.id);
+    S.version++;
+    save();
+  }
+  if (OWNER_PAGE) {
+    const a = S.answered[d.id];
+    const update: Delivery = a?.outcome === "other" || a?.outcome === "rejected" ? { outcome: a.outcome, course: a.other, guidance: t, update: true } : { outcome: "option", choice: flow.choice!, guidance: t, update: true };
+    try {
+      await deliver(d.id, update);
+    } catch (e) {
+      flow.error = /has changed/.test((e as Error).message)
+        ? `The guidance is saved for future asks, but ${deliveryProblem(e).charAt(0).toLowerCase()}${deliveryProblem(e).slice(1)}`
+        : `The guidance is saved, but couldn't be added to the asking session's answer (${(e as Error).message}). Press Keep it again to retry.`;
+      if (showing(flow)) renderNow();
+      return;
+    }
+  }
+  // A retry that got through finishes like a first press: recorded, and the waiting decisions it affects re-checked.
   log("guidance_kept", { id: d.id, fact, edited: t !== p.text });
   glowEvent({ kind: "guidance_kept" });
-  done(flow, `Kept. Every agent now gets: “${t}”`);
+  done(flow, OWNER_PAGE ? `Kept for future asks: “${t}”` : `Kept. Every agent now gets: “${t}”`);
   const s0 = S;
   const changed = await reroute(p.reroute, `because you told me: “${t.replace(/[.\s]+$/, "")}”`);
   if (!alive(s0, flow)) return;
@@ -557,6 +657,17 @@ export function next(): void {
  * what to gather (simulated). It comes back only when the person resumes it.
  */
 export async function setAside(flow: Flow, d: Decision): Promise<void> {
+  if (sending.has(flow)) return; // a second press while the first is telling the session
+  sending.add(flow);
+  try {
+    await setAsideNow(flow, d);
+  } finally {
+    sending.delete(flow);
+    if (flow.phase === "punting" && showing(flow)) renderNow();
+  }
+}
+
+async function setAsideNow(flow: Flow, d: Decision): Promise<void> {
   const s0 = S;
   await drainVoice(); // a reason still being spoken goes with it
   // Left the card while the phrase finished: the set-aside is not made, and Next must not pull them back.
@@ -574,20 +685,47 @@ export async function setAside(flow: Flow, d: Decision): Promise<void> {
     at: new Date().toISOString(),
     instruction: puntInstruction(flow.puntKind!, flow.puntReason, Q.persona.first_name),
   };
+  // Live queue only: the session is told now, or the panel stays open with the reason for another press.
+  if (!(await delivered(flow, d.id, { outcome: "set-aside", kind: punt.kind, reason: punt.reason, instruction: punt.instruction }, "error"))) return;
+  if (!alive(s0, flow)) return;
   S.punts[d.id] = punt;
   log("punt", { id: d.id, reason_kind: punt.kind, reason: punt.reason, instruction: punt.instruction, from_phase: flow.puntFrom, thread: threadOf(flow) });
   glowEvent({ kind: "punted" });
   // The answer in progress is dropped: nothing was final, and the guess was never revealed.
+  const here = showing(flow); // on /me the person may have moved on while the session was being told
   delete S.flows[d.id];
   announce(`Set aside. The agent was asked: ${punt.instruction}`);
   window.dispatchEvent(new CustomEvent("bugme:set-aside", { detail: { id: d.id } }));
-  next();
+  if (here) next();
+  else save();
 }
 
 /** Bring a set-aside decision back to active work; its history stays with it. */
-export function resume(id: string): void {
+/** Tickets with a Resume out (live queue only): a second press does nothing. */
+const resuming = new Set<string>();
+
+export async function resume(id: string): Promise<void> {
+  if (resuming.has(id)) return;
+  resuming.add(id);
+  try {
+    await resumeNow(id);
+  } finally {
+    resuming.delete(id);
+  }
+}
+
+async function resumeNow(id: string): Promise<void> {
   const punt = S.punts[id];
   if (!punt) return;
+  // Live queue only: the session is told the decision is back with the owner; if that fails, nothing changes.
+  if (OWNER_PAGE) {
+    try {
+      await deliver(id, { outcome: "resumed" });
+    } catch (e) {
+      announce(deliveryProblem(e));
+      return;
+    }
+  }
   (S.puntHistory[id] ??= []).push(punt);
   delete S.punts[id];
   // A decision the person set aside stays theirs: even if a re-route says it could now be settled,
@@ -598,7 +736,29 @@ export function resume(id: string): void {
   startSession(id);
 }
 
-export function undo(id: string): void {
+/** Tickets with an Undo out (live queue only): a second press does nothing. */
+const undoing = new Set<string>();
+
+export async function undo(id: string): Promise<void> {
+  if (undoing.has(id) || S.reopened.includes(id)) return;
+  undoing.add(id);
+  try {
+    await undoNow(id);
+  } finally {
+    undoing.delete(id);
+  }
+}
+
+async function undoNow(id: string): Promise<void> {
+  // Live queue only: the session is told to hold off; if that fails, nothing changes.
+  if (OWNER_PAGE) {
+    try {
+      await deliver(id, { outcome: "reopened" });
+    } catch (e) {
+      announce(deliveryProblem(e));
+      return;
+    }
+  }
   S.reopened.push(id);
   log("undo", { id });
   S.changes[id] = "You undid Bug Me's call, so it's back with you.";
@@ -622,8 +782,19 @@ export async function editRule(id: string, text: string): Promise<void> {
     renderRules();
     return;
   }
+  const rules = S.rules.map((r) => (r.id === id ? { ...r, text: t } : r));
+  // Live queue only: the server holds the owner's rules; the edit is kept only once it has it.
+  if (OWNER_PAGE) {
+    try {
+      await saveContext(rules, S.facts);
+    } catch (e) {
+      setRuleDraft({ id, text, error: `Couldn't save that rule (${(e as Error).message}). Try again.`, focus: true });
+      renderRules();
+      return;
+    }
+  }
   setRuleDraft(null);
-  S.rules = S.rules.map((r) => (r.id === id ? { ...r, text: t } : r));
+  S.rules = rules;
   S.version++;
   log("rule_edited", { rule: id, from: old.text, to: t });
   glowEvent({ kind: "rule_edited" });

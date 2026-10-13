@@ -96,17 +96,15 @@ Answered tickets leave the queue. Rules and facts come from the queue on every l
 
 `/api/me/route` also saves the new card. If a re-route now settles an open ticket, the ticket is answered by the rule, and the asking session gets it on its next check.
 
-### Delivery back
+### Delivery back: send on press
 
-`src/page/live.ts` holds `deliver(id, payload)`, which posts to `/api/me/resolve`. A few one-line hooks in `src/page/actions.ts` call it:
-- after `finalize`, with the choice, reason, conditions and send-down instruction;
-- after `chooseOther`, and after the rejected path when stage 6c adds it, with the course;
-- after `sendQuestionToAgent`, with the open questions;
-- after `setAside`, with the reason and instruction;
-- after a kept guidance or a reason given late, as an update;
-- after `undo` of a settled ticket, which reopens it.
+David's decision (2026-10-12), after the second review of the first page design found that its browser outbox and local reconciliation lost or reversed state across tabs, devices and reloads: send on press.
 
-`resolve` merges updates, so a reason given after the answer still reaches the session on its next check.
+- **The server is the source of truth.** On every load of `/me`, the queue, the rules and facts, the cards and the set-aside list come from `/api/me/queue` and replace what the browser saved. The browser keeps only drafts, and the follow-ups of answers it made itself in the last day.
+- **Every outcome is delivered when it is pressed**, with an awaited call to `/api/me/resolve` before anything is recorded on the page. This covers the decision button, "other" and a rejected question, the Skip panel, asking the agent (sent as a set-aside, so it can be resumed), a late reason, kept guidance, Undo and Resume. If the call fails, the card says so ("Couldn't reach the asking session… press again to retry"), stays open, and the hidden guess stays hidden. There is no outbox.
+- **Rule and fact edits are saved on the server first**, and kept on the page only once it has them.
+- The hooks are in `src/page/actions.ts` (`confirmThread`, `finalize`, `chooseOutside`, `sendQuestionToAgent`, `setAside`, `propose`, `keepFact`, `editRule`, `undo`, `resume`). Each is one awaited call through `delivered()` or `saveContext()`, marked "Live queue only".
+- On `/me`, the card says "Saved for the asking session" instead of "Sent down … (simulated)", and kept guidance says "Kept for future asks".
 
 ### David's persona and starting rules
 

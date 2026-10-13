@@ -7,6 +7,7 @@ import { GLOW_START, type Guess, type Mood } from "../shared/lifecycle";
 import type { Punt, PuntKind } from "../shared/punt";
 import type { BugTurn, JordanTurn, Ledger } from "../shared/converse";
 import type { Card, Decision, Fact, FactOutput, Mark, Persona, RouteKind, Rule, Source } from "../shared/types";
+import { OWNER_PAGE } from "./livemode";
 
 export type Unavailable = { id: string; unavailable: string };
 export type AnyCard = Card | Unavailable;
@@ -21,6 +22,12 @@ export interface Queue {
   live_available: boolean;
   mode: "fake" | "live" | "recorded";
   turnstile_site_key: string | null;
+  /** The owner's live queue (docs/STAGE-7.md), not the simulation. */
+  owner?: boolean;
+  /** On /me: what is set aside, from the server. */
+  aside?: { id: string; kind: string; reason: string; instruction: string; at: string }[];
+  /** On /me: answered in the last day, for this browser's own follow-ups. */
+  answered?: { decision: Decision; card: Card }[];
 }
 
 export interface Answer {
@@ -100,7 +107,8 @@ export interface State {
 /** Bumped whenever a saved morning can no longer be read faithfully, and the old one starts fresh:
  *  v2 when thinking out loud replaced stage 3's drafts; v3 when stage 5 rebuilt the morning (a saved
  *  answer or set-aside could name a question that no longer exists). */
-export const STORE_KEY = "bugme.state.v4";
+// The owner's live queue keeps its own drafts, apart from the simulation's (docs/STAGE-7.md).
+export const STORE_KEY = OWNER_PAGE ? "bugme.live.v1" : "bugme.state.v4";
 const OLD_STORE_KEYS = ["bugme.state.v1", "bugme.state.v2", "bugme.state.v3"];
 export let Q: Queue;
 export let S: State;

@@ -235,6 +235,11 @@ export interface Resolution {
   outcome: TicketAnswer["outcome"];
   /** For set-aside: the kind of reason, from the page's Skip panel. */
   kind?: string;
+  /**
+   * A follow-up (a late reason, kept guidance): it adds to the answer it names (outcome and choice)
+   * and is refused if the ticket's answer has since changed, so it can never reverse a newer answer.
+   */
+  update?: boolean;
   choice?: string;
   course?: string;
   reason?: string;
@@ -266,6 +271,7 @@ export function parseResolution(raw: unknown, d: Decision): Resolution {
   opt("instruction", 1200);
   opt("guidance", 600);
   opt("kind", 20);
+  if (b.update === true) r.update = true;
   if ((outcome === "other" || outcome === "rejected") && !r.course) throw new AskError("course is required for other and rejected");
   if (Array.isArray(b.questions)) r.questions = b.questions.map((q) => str(q).slice(0, MAX_REASON_CHARS)).filter(Boolean).slice(0, 8);
   return r;
@@ -352,6 +358,7 @@ export class LiveQueue {
     if (!t) throw new AskError("unknown ticket");
     const label = r.choice ? t.decision.options.find((o) => o.key === r.choice)?.label : undefined;
     const prev = t.answer && t.answer.outcome === r.outcome && t.answer.by === "owner" && t.answer.choice === r.choice ? t.answer : undefined;
+    if (r.update && (!prev || t.status !== STATUS_OF[r.outcome])) throw new AskError("the answer this adds to has changed");
     const fresh: TicketAnswer = { outcome: r.outcome, by: "owner", at: now.toISOString() };
     const next: TicketAnswer = { ...(prev ?? fresh), at: now.toISOString() };
     for (const [k, v] of Object.entries({ choice: r.choice, label, course: r.course, reason: r.reason, conditions: r.conditions, questions: r.questions, instruction: r.instruction, guidance: r.guidance })) {

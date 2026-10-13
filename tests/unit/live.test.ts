@@ -124,6 +124,19 @@ describe("the ticket lifecycle", () => {
     expect(reply(t)).toMatchObject({ choice: "A", instruction: "Deploy now.", reason: "It's been on staging a week.", guidance: "Friday deploys are fine when staging has soaked a week." });
   });
 
+  it("a follow-up (a late reason, guidance) is refused once the answer it belongs to has changed", async () => {
+    const q = new LiveQueue(mapKV());
+    const d = decisionFromAsk(ASK, "t-follow");
+    await q.add(d, cardFor(d.id, "decide"), "", 0);
+    await q.resolve(d.id, parseResolution({ outcome: "option", choice: "A" }, d)); // this browser
+    await q.resolve(d.id, parseResolution({ outcome: "option", choice: "B" }, d)); // another device, later
+    await expect(q.resolve(d.id, parseResolution({ outcome: "option", choice: "A", reason: "late", update: true }, d))).rejects.toThrow(/changed/);
+    expect(reply((await q.get(d.id))!)).toMatchObject({ choice: "B" });
+    expect(reply((await q.get(d.id))!).reason).toBeUndefined();
+    // A follow-up to the answer that stands still adds to it.
+    expect(reply(await q.resolve(d.id, parseResolution({ outcome: "option", choice: "B", reason: "still B", update: true }, d)))).toMatchObject({ choice: "B", reason: "still B" });
+  });
+
   it("a changed choice replaces the earlier answer rather than mixing them", async () => {
     const q = new LiveQueue(mapKV());
     const d = decisionFromAsk(ASK, "t-change");

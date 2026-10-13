@@ -3,7 +3,7 @@
 // re-route can't interleave. The logic is in live.ts; this only adapts the object's storage to it.
 
 import { DurableObject } from "cloudflare:workers";
-import { type KV, LiveQueue, type Resolution, type Ticket } from "./live";
+import { AskError, type KV, LiveQueue, type Resolution, type Ticket } from "./live";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
 
 export class OwnerQueue extends DurableObject {
@@ -50,7 +50,13 @@ export class OwnerQueue extends DurableObject {
     return this.q().reroute(id, card, instruction, rev);
   }
 
-  async resolve(id: string, r: Resolution): Promise<Ticket> {
-    return this.q().resolve(id, r);
+  /** A refusal (an unknown ticket, a follow-up whose answer changed) comes back as a value: an error's class doesn't survive the RPC. */
+  async resolve(id: string, r: Resolution): Promise<{ ticket: Ticket } | { refused: string }> {
+    try {
+      return { ticket: await this.q().resolve(id, r) };
+    } catch (e) {
+      if (e instanceof AskError) return { refused: e.message };
+      throw e;
+    }
   }
 }
