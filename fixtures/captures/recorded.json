@@ -7067,6 +7067,232 @@
         "output": 1088
       },
       "ms": 11841
+    },
+    "a6f5e842190500fc51a09da9e81de7f226cd8d65b415201fe99607e62956f5d5": {
+      "label": "dispatch usage-demo",
+      "output": {
+        "headline": "Clickable usage dashboard demo for Thursday",
+        "goal": "A running clickable demo of the three sketched usage charts, on a preview link.",
+        "why": "Let the team react to the charts at Thursday's review.",
+        "questions": [
+          "Where are last week's chart sketches: Figma, a doc, or a whiteboard photo?"
+        ],
+        "stage": "prototype",
+        "done": [
+          "Three charts render with sample data",
+          "Preview link opens and clicks work",
+          "Branch pushed, not main"
+        ],
+        "out_of_scope": [
+          "Real usage data pipeline",
+          "Auth or user accounts",
+          "Filters and config options",
+          "Production deploy"
+        ],
+        "estimate_minutes": 60,
+        "budget_usd": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "low",
+        "permission_mode": "acceptEdits",
+        "sensitivity": "low",
+        "sensitivity_reason": "Hardcoded sample data, no customer data needed.",
+        "urgency": "medium",
+        "urgency_reason": "Needed by Thursday, not today.",
+        "tools_off": [
+          "mcp__Sentry",
+          "mcp__Datadog",
+          "mcp__Slack",
+          "mcp__Gmail",
+          "mcp__Google_Calendar",
+          "mcp__PagerDuty",
+          "mcp__Zendesk",
+          "mcp__Linear"
+        ],
+        "tools_needed": [
+          "mcp__GitHub",
+          "mcp__Figma"
+        ],
+        "skills": [
+          "frontend-design"
+        ],
+        "context": [
+          "The three charts sketched last week",
+          "Thursday's review is the audience: internal team"
+        ],
+        "guidance": [
+          "Never push to main; work on a branch with a preview.",
+          "Outages and bad weeks stay in any chart that leaves the team, with a note if needed.",
+          "If a task runs past twice its time budget, stop and check in with me.",
+          "Never delete or merge customer data without asking me."
+        ],
+        "prerequisites": [
+          {
+            "what": "Share link to last week's sketches",
+            "why": "Session must build exactly those three charts."
+          }
+        ],
+        "check_ins": [
+          "Using any real customer usage data",
+          "Changing the sketched chart designs",
+          "Sharing the demo outside the team"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-13T23:25:21.630Z",
+      "usage": {
+        "input": 4146,
+        "output": 647
+      },
+      "ms": 6689
+    },
+    "a38682e1f23db22a8da9fdb4b097b73698a9cee37d76f34a13963e05d740be00": {
+      "label": "dispatch billing-complaints",
+      "output": {
+        "headline": "Group last quarter's billing complaints",
+        "goal": "A summary of last quarter's billing support tickets, grouped by what went wrong.",
+        "why": "Show which billing problems hurt customers most, informing the provider move.",
+        "questions": [],
+        "stage": "prototype",
+        "done": [
+          "Every billing ticket assigned a group",
+          "Counts and examples per group",
+          "Short summary shared with Jordan"
+        ],
+        "out_of_scope": [
+          "Automated recurring report",
+          "Dashboards or charts tooling",
+          "Replying to customers",
+          "Editing Zendesk tickets"
+        ],
+        "estimate_minutes": 45,
+        "budget_usd": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "permission_mode": "plan",
+        "sensitivity": "high",
+        "sensitivity_reason": "Reads customer support tickets with personal and billing details.",
+        "urgency": "low",
+        "urgency_reason": "Any time this week.",
+        "tools_off": [
+          "mcp__GitHub",
+          "mcp__Sentry",
+          "mcp__Datadog",
+          "mcp__Slack",
+          "mcp__Gmail",
+          "mcp__Google_Calendar",
+          "mcp__Figma",
+          "mcp__PagerDuty",
+          "mcp__Linear"
+        ],
+        "tools_needed": [
+          "mcp__Zendesk",
+          "mcp__bugme"
+        ],
+        "skills": [
+          "data-analysis"
+        ],
+        "context": [
+          "Support tickets live in Zendesk",
+          "Billing project: moving invoicing to a new payments provider"
+        ],
+        "guidance": [
+          "In billing, correctness beats speed: Jordan would rather slip the cutover than risk a wrong invoice.",
+          "Outages and bad weeks stay in any chart that leaves the team, with a note if needed.",
+          "Prefers a short written summary to a meeting when either would do.",
+          "If a task runs past twice its time budget, stop and check in with me."
+        ],
+        "prerequisites": [],
+        "check_ins": [
+          "Before sharing beyond Jordan",
+          "Any customer data leaving Zendesk"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-13T23:25:27.886Z",
+      "usage": {
+        "input": 4146,
+        "output": 616
+      },
+      "ms": 6255
+    },
+    "17722dfb44d5ccc474f8b4bbe3a275d4bff9f44517cdd41ee8a7706d60e068fb": {
+      "label": "dispatch pagerduty",
+      "output": {
+        "headline": "Release bot pages on-call on failure",
+        "goal": "Failed releases trigger a PagerDuty page to the current on-call engineer.",
+        "why": "So broken releases get human attention fast, not silence.",
+        "questions": [
+          "Which PagerDuty service and escalation policy should release failures page?"
+        ],
+        "stage": "mvp",
+        "done": [
+          "Forced failed release triggers PagerDuty incident",
+          "Successful release sends no page",
+          "Change on a branch with preview"
+        ],
+        "out_of_scope": [
+          "Auto-resolve on retry",
+          "Slack notification duplication",
+          "Severity routing rules",
+          "Config options per repo"
+        ],
+        "estimate_minutes": 60,
+        "budget_usd": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "permission_mode": "acceptEdits",
+        "sensitivity": "medium",
+        "sensitivity_reason": "Handles a PagerDuty integration key; internal tooling only.",
+        "urgency": "low",
+        "urgency_reason": "Nice-to-have alerting; no stated deadline.",
+        "tools_off": [
+          "mcp__Gmail",
+          "mcp__Google_Calendar",
+          "mcp__Figma",
+          "mcp__Zendesk",
+          "mcp__Sentry",
+          "mcp__Datadog",
+          "mcp__Linear",
+          "mcp__Slack"
+        ],
+        "tools_needed": [
+          "mcp__GitHub",
+          "mcp__PagerDuty"
+        ],
+        "skills": [],
+        "context": [
+          "The release bot's code and its current failure handling",
+          "Platform project: CI and team housekeeping"
+        ],
+        "guidance": [
+          "Access and security changes are always mine.",
+          "Never push to main; work on a branch with a preview.",
+          "If a task runs past twice its time budget, stop and check in with me.",
+          "Anything that spends more than $100 a month, or commits us to a contract, comes to me."
+        ],
+        "prerequisites": [
+          {
+            "what": "Authenticate the PagerDuty MCP server",
+            "why": "It currently needs authentication; session can't reach PagerDuty."
+          },
+          {
+            "what": "Provide PagerDuty integration key securely",
+            "why": "Bot needs it to send events; secrets are Jordan's call."
+          }
+        ],
+        "check_ins": [
+          "Adding secrets or access grants",
+          "Any paid PagerDuty plan change",
+          "Merging the branch to main"
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-13T23:25:34.636Z",
+      "usage": {
+        "input": 4133,
+        "output": 706
+      },
+      "ms": 6750
     }
   }
 }

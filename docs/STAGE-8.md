@@ -153,6 +153,18 @@ The first carries a synthetic report, labeled synthetic like everything else: do
 - **Review decisions (David, 2026-10-13):**
   - #36 (engine): merge after the round-2 fixes, with no third round;
   - #37 (page): Codex escalated after round 2 with three bugs, all fixed (answers across redrafts, the Safari clipboard, the save overwriting edits); merge, then plan stage 9.
+- **The card, redesigned** (David, 2026-10-13: "way way too verbose", the bold white text was hard to read, the repeated ✕ hurt scanning).
+  - One prompt: "What do you want done?".
+  - The card reads top to bottom:
+    - the title and a line of chips (stage, time with its stopping point, money, cloud or local);
+    - the goal;
+    - checks;
+    - what's out, as one muted line;
+    - "You first" (the one block in the accent);
+    - what comes back to you.
+  - Model, effort, mode, time, money, tools, the quoted rules, the source label and the command sit behind Details.
+  - Text is regular weight in muted ink, and color is only on icons.
+  - The prompt (2026-10-13.2) asks for sticky-note-length items, and code drops a prerequisite that repeats connecting a server already listed. Re-recorded for $0.09.
 - **Next (stage 9):** a local runner reached over localhost or Tailscale.
   - It starts the session itself, reads the tools live and makes the worktree.
   - "Walk me through it" on each prerequisite: at least step-by-step instructions, at best a Claude session that drives Chrome with the person.

@@ -25,13 +25,14 @@ async function draftExample(page: Page, id: string): Promise<void> {
 
 test("a task becomes a brief; Copy command waits for every prerequisite", async ({ page }) => {
   await draftExample(page, "pagerduty");
-  await expect(page.locator("#brief .brief-size")).toHaveText(/~90 min · \$6\.00 · stop at 180 min/);
+  await expect(page.locator("#brief .brief-meta")).toContainText("1h 30m · asks at 3h");
+  await expect(page.locator("#brief .brief-meta")).toContainText("$6");
   const copy = page.locator("#copy-command");
   await expect(copy).toBeDisabled();
-  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Tick the 2 prerequisites to copy the command.");
+  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Tick 2 first.");
   // PagerDuty is needed and not connected: code made it the first prerequisite.
-  const boxes = page.locator("#brief .brief-prereqs input");
-  await expect(page.locator("#brief .brief-prereqs li").first()).toContainText("Connect PagerDuty");
+  const boxes = page.locator("#brief .brief-you input");
+  await expect(page.locator("#brief .brief-you li").first()).toContainText("Connect PagerDuty");
   await boxes.nth(0).check();
   await expect(copy).toBeDisabled();
   await boxes.nth(1).check();
@@ -44,15 +45,14 @@ test("a task becomes a brief; Copy command waits for every prerequisite", async 
 
 test("editing the setup rebuilds the command and the size line", async ({ page }) => {
   await draftExample(page, "billing-complaints");
-  await page.locator("#brief-cmd summary").click();
+  await page.locator("#brief .brief-more summary").click();
   const cmd = page.locator("#brief-cmd code");
   await expect(cmd).toContainText("--disallowedTools 'mcp__Slack'");
   await page.getByLabel("Model").selectOption("claude-sonnet-5-5");
   await page.getByLabel("Effort").selectOption("high");
   await expect(cmd).toContainText("--model 'claude-sonnet-5-5' --effort 'high'");
   await page.getByLabel("Estimate in minutes").fill("45");
-  await expect(page.locator("#brief .brief-size")).toContainText("~45 min");
-  await expect(page.locator("#tripwire")).toContainText("Stops to ask at 90 min");
+  await expect(page.locator("#brief .brief-meta")).toContainText("45m · asks at 1h 30m");
   await expect(cmd).toContainText("At 90 minutes (2× the estimate)");
   // A struck-through tool turns back on; the list offers it again.
   await page.getByRole("button", { name: "Slack is off; turn it back on" }).click();
@@ -63,9 +63,9 @@ test("editing the setup rebuilds the command and the size line", async ({ page }
 
 test("sensitive and not urgent: Bug Me recommends running locally, and the cloud command is the second choice", async ({ page }) => {
   await draftExample(page, "billing-complaints");
-  await expect(page.locator("#brief .brief-where")).toContainText("Run locally.");
+  await expect(page.locator("#brief .meta-chip.local")).toHaveText("🔒local");
   await expect(page.locator("#copy-brief")).toHaveClass(/primary/);
-  await expect(page.locator("#copy-command")).toHaveText("Run in the cloud anyway");
+  await expect(page.locator("#copy-command")).toHaveText("Run in cloud anyway");
 });
 
 test("a short task gets questions; answering them redrafts the brief", async ({ page }) => {
@@ -86,8 +86,8 @@ test("a short task gets questions; answering them redrafts the brief", async ({ 
 test("the public demo shows a labeled synthetic report after Copy command, and briefs survive a reload", async ({ page }) => {
   await draftExample(page, "usage-demo");
   await page.locator("#copy-command").click();
-  await expect(page.locator(".brief-report h3")).toHaveText("How it went · synthetic");
-  await expect(page.locator(".brief-outcome")).toContainText("38 min since copied (estimate 30) · asked you once · cost not reported");
+  await expect(page.locator(".brief-outcome")).toContainText("done · 38m of ~30m · asked once");
+  await expect(page.locator(".brief-outcome .meta-chip")).toHaveText("synthetic");
   await page.reload();
   await expect(page.locator(".briefs li")).toHaveCount(1);
   await expect(page.locator(".briefs li")).toContainText("done");
@@ -107,6 +107,7 @@ test("on /me: Copy stores the fields as copied, and the session's report shows o
   await page.locator("#draft-brief").click();
   await expect(page.locator("#brief")).toBeVisible();
   const id = (await page.locator(".briefs li.current a").getAttribute("href"))!.split("/").pop()!;
+  await page.locator("#brief .brief-more summary").click();
   await page.getByLabel("Model").selectOption("claude-haiku-5-5");
   const stored = page.waitForResponse((r) => r.url().endsWith(`/api/me/briefs/${id}/dispatched`) && r.ok());
   await page.locator("#copy-command").click();
@@ -120,7 +121,7 @@ test("on /me: Copy stores the fields as copied, and the session's report shows o
   await page.reload();
   await page.locator(`.briefs a[href="#/dispatch/${id}"]`).click();
   await expect(page.locator(".brief-outcome")).toContainText("stopped at tripwire");
-  await expect(page.locator(".brief-outcome")).toContainText("cost not reported · scope bigger");
+  await expect(page.locator(".brief-outcome")).toContainText("no asks · scope bigger");
 });
 
 test("words typed while a brief is drafting stay in the box", async ({ page }) => {
@@ -152,17 +153,18 @@ test("each brief keeps its own answers", async ({ page }) => {
 
 test("a budget of zero counts; an estimate under a minute holds Copy until it's fixed", async ({ page }) => {
   await draftExample(page, "usage-demo");
+  await page.locator("#brief .brief-more summary").click();
   await page.getByLabel("Budget in dollars").fill("0");
-  await expect(page.locator("#brief .brief-size")).toContainText("$0.00");
+  await expect(page.locator("#brief .brief-meta")).toContainText("$0");
   await page.getByLabel("Estimate in minutes").fill("0.1");
   await expect(page.getByLabel("Estimate in minutes")).toHaveAttribute("aria-invalid", "true");
   await expect(page.locator("#copy-command")).toBeDisabled();
   await expect(page.locator("#copy-brief")).toBeDisabled();
-  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Fix the time or money first.");
-  await expect(page.locator("#brief .brief-size")).toContainText("~30 min"); // the last good value stands
+  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Fix the time or $ first.");
+  await expect(page.locator("#brief .brief-meta")).toContainText("30m · asks at 1h"); // the last good value stands
   await page.getByLabel("Estimate in minutes").fill("20");
   await expect(page.locator("#copy-command")).toBeEnabled();
-  await expect(page.locator("#brief .brief-size")).toContainText("~20 min");
+  await expect(page.locator("#brief .brief-meta")).toContainText("20m · asks at 40m");
 });
 
 test("on a phone, the brief fits the width @narrow", async ({ page }) => {

@@ -14,6 +14,8 @@ import {
   TRIPWIRE_MULTIPLE,
   briefText,
   buildCommand,
+  duration,
+  money,
   sizeLine,
   tripwireMinutes,
 } from "../shared/dispatch";
@@ -44,6 +46,8 @@ const draft = { task: "", busy: "", error: "" };
 const answers = new Map<string, string>();
 /** Per brief, the setup fields whose typed value isn't valid: Copy waits until they are. */
 const invalid = new Map<string, Set<string>>();
+/** Briefs whose Details are open. */
+const openDetails = new Set<string>();
 /** Prerequisites ticked, per brief, in this page only. */
 const ticked = new Map<string, Set<number>>();
 let actionMsg = "";
@@ -258,8 +262,6 @@ function briefRow(b: Shown, current: boolean): HTMLElement {
 // ---------- One brief ----------
 
 const nameOf = (prefix: string) => catalog.servers.find((s) => s.prefix === prefix)?.name ?? prefix.replace(/^mcp__/, "");
-const list = (xs: string[], cls = "") => h("ul", { class: `brief-list ${cls}` }, ...xs.map((x) => h("li", {}, x)));
-const row = (label: string, ...body: (Node | string | null)[]) => [h("dt", {}, label), h("dd", {}, ...body)];
 
 function select<T extends string>(label: string, value: T, options: readonly { v: T; t: string }[], onChange: (v: T) => void): HTMLElement {
   const s = h("select", { "aria-label": label }, ...options.map((o) => h("option", { value: o.v, selected: o.v === value }, o.t))) as HTMLSelectElement;
@@ -288,13 +290,11 @@ function numberInput(b: Shown, field: string, label: string, value: number, step
   return i;
 }
 
-/** After an edit: the size line, the tripwire and the command follow without redrawing the inputs. */
+/** After an edit: the meta line, the tripwire and the command follow without redrawing the inputs. */
 function refreshLive(b: Shown): void {
   savePublic();
-  const size = document.querySelector("#brief .brief-size");
-  if (size) size.textContent = sizeLine(b);
-  const trip = document.getElementById("tripwire");
-  if (trip) trip.textContent = tripwireText(b);
+  const meta = document.querySelector("#brief .brief-meta");
+  if (meta) meta.replaceWith(metaLine(b));
   const cmd = document.querySelector("#brief-cmd code");
   if (cmd) cmd.textContent = buildCommand(b, catalog);
   const { ready, message } = copyState(b);
@@ -308,13 +308,84 @@ function refreshLive(b: Shown): void {
 
 /** Whether Copy command may run, and if not, what's in the way. */
 function copyState(b: Shown): { ready: boolean; message: string } {
-  if (invalid.get(b.id)?.size) return { ready: false, message: "Fix the time or money first." };
+  if (invalid.get(b.id)?.size) return { ready: false, message: "Fix the time or $ first." };
   const left = b.prerequisites.length - (ticked.get(b.id)?.size ?? 0);
-  if (left > 0) return { ready: false, message: `Tick ${left === 1 ? "the prerequisite" : `the ${left} prerequisites`} to copy the command.` };
+  if (left > 0) return { ready: false, message: `Tick ${left} first.` };
   return { ready: true, message: "" };
 }
 
-const tripwireText = (b: Shown) => `Stops to ask at ${tripwireMinutes(b)} min (${TRIPWIRE_MULTIPLE}× the estimate). The dollars are a guide: a session can't see its own spend.`;
+const STAGE_ICON: Record<Brief["stage"], string> = { prototype: "◔", mvp: "◑", product: "●" };
+const chip = (icon: string, text: string, title: string, cls = "") => h("span", { class: `meta-chip ${cls}`, title }, h("span", { class: "ico", "aria-hidden": "true" }, icon), text);
+
+/** Stage, time with its stopping point, money, and where it runs: one line of chips. */
+function metaLine(b: Shown): HTMLElement {
+  return h(
+    "p",
+    { class: "brief-meta" },
+    chip(STAGE_ICON[b.stage], b.stage === "mvp" ? "MVP" : b.stage, "Stage: build to this and no further"),
+    chip("⏱", `${duration(b.estimate_minutes)} · asks at ${duration(tripwireMinutes(b))}`, `Estimate; the session stops to ask at ${TRIPWIRE_MULTIPLE}×`),
+    chip("$", money(b.budget_usd).slice(1), "Model spend it's worth (a guide: a session can't see its spend)"),
+    b.where === "local" ? chip("🔒", "local", b.where_reason, "local") : chip("☁", "cloud", "Runs in the cloud"),
+  );
+}
+
+/** Model, effort, mode, time, money, tools, the rules it quotes, the source and the command. */
+function details(b: Shown): HTMLElement {
+  const setup = h(
+    "div",
+    { class: "brief-setup" },
+    select("Model", b.model, DISPATCH_MODELS.map((m) => ({ v: m.id, t: m.label })), (v) => ((b.model = v), refreshLive(b))),
+    select("Effort", b.effort, EFFORTS.map((e) => ({ v: e, t: `${e} effort` })), (v) => ((b.effort = v), refreshLive(b))),
+    select("Permission mode", b.permission_mode, PERMISSION_MODES.map((m) => ({ v: m, t: m })), (v) => ((b.permission_mode = v), refreshLive(b))),
+    h("label", {}, numberInput(b, "minutes", "Estimate in minutes", b.estimate_minutes, "5", (v) => v >= 1 && v <= 60 * 24 * 7, (v) => (b.estimate_minutes = Math.round(v))), " min"),
+    h("label", {}, "$", numberInput(b, "dollars", "Budget in dollars", b.budget_usd, "0.5", (v) => v >= 0 && v <= 10_000, (v) => (b.budget_usd = Math.round(v * 100) / 100))),
+  );
+  const offers = catalog.servers.filter((s) => s.prefix !== BUGME_PREFIX && !b.tools_off.includes(s.prefix) && !b.tools_needed.includes(s.prefix));
+  const tools = h(
+    "div",
+    { class: "tool-chips" },
+    ...b.tools_needed.map((p) => h("span", { class: "tool-chip on", title: "Needed" }, nameOf(p))),
+    ...b.tools_off.map((p) =>
+      h(
+        "button",
+        {
+          type: "button",
+          class: "tool-chip off",
+          "aria-label": `${nameOf(p)} is off; turn it back on`,
+          onclick: () => {
+            b.tools_off = b.tools_off.filter((x) => x !== p);
+            savePublic();
+            paint();
+          },
+        },
+        nameOf(p),
+      ),
+    ),
+    offers.length
+      ? select("Turn off another tool", "", [{ v: "", t: "Turn off…" }, ...offers.map((s) => ({ v: s.prefix, t: s.name }))], (v) => {
+          if (!v) return;
+          b.tools_off = [...b.tools_off, v];
+          savePublic();
+          paint();
+        })
+      : null,
+  );
+  // A redraw (a tool toggled) keeps Details open if it was.
+  const more = h("details", { class: "brief-more", open: openDetails.has(b.id) });
+  more.addEventListener("toggle", () => ((more as HTMLDetailsElement).open ? openDetails.add(b.id) : openDetails.delete(b.id)));
+  const parts: (HTMLElement | null)[] = [
+    h("summary", {}, "Details"),
+    setup,
+    b.where_reason ? h("p", { class: "quiet small" }, b.where_reason) : null,
+    tools,
+    b.skills.length ? h("p", { class: "quiet small" }, `Skills: ${b.skills.join(", ")}`) : null,
+    ...b.guidance.map((g) => h("blockquote", {}, g)),
+    h("pre", { id: "brief-cmd" }, h("code", {}, buildCommand(b, catalog))),
+    h("p", { class: "quiet small" }, [b.source ? SOURCE_LABEL[b.source] : "", Q.owner ? "" : "Illustration: Jordan's tools are made up."].filter(Boolean).join(" · ")),
+  ];
+  more.append(...parts.filter((x): x is HTMLElement => x !== null));
+  return more;
+}
 
 function briefCard(b: Shown): HTMLElement {
   const ticks = ticked.get(b.id) ?? new Set<number>();
@@ -322,127 +393,50 @@ function briefCard(b: Shown): HTMLElement {
   const { ready, message } = copyState(b);
   const local = b.where === "local";
 
-  const runsOn = h(
-    "div",
-    { class: "brief-setup" },
-    select("Model", b.model, DISPATCH_MODELS.map((m) => ({ v: m.id, t: m.label })), (v) => ((b.model = v), refreshLive(b))),
-    select("Effort", b.effort, EFFORTS.map((e) => ({ v: e, t: `${e} effort` })), (v) => ((b.effort = v), refreshLive(b))),
-    select("Permission mode", b.permission_mode, PERMISSION_MODES.map((m) => ({ v: m, t: m })), (v) => ((b.permission_mode = v), refreshLive(b))),
-  );
-  const where = local
-    ? h("p", { class: "brief-where local" }, h("span", { class: "glyph", "aria-hidden": "true" }, "◐ "), "Run locally. ", h("span", { class: "quiet" }, b.where_reason))
-    : h("p", { class: "brief-where quiet" }, b.where_reason || "Runs in the cloud.");
-
-  const time = h(
-    "div",
-    { class: "brief-setup" },
-    h("label", {}, numberInput(b, "minutes", "Estimate in minutes", b.estimate_minutes, "5", (v) => v >= 1 && v <= 60 * 24 * 7, (v) => (b.estimate_minutes = Math.round(v))), " min"),
-    h("label", {}, "$", numberInput(b, "dollars", "Budget in dollars", b.budget_usd, "0.5", (v) => v >= 0 && v <= 10_000, (v) => (b.budget_usd = Math.round(v * 100) / 100))),
-  );
-
-  // Tools: the ones it needs, the ones turned off (each a toggle back on), and a list to turn more off.
-  const offers = catalog.servers.filter((s) => s.prefix !== BUGME_PREFIX && !b.tools_off.includes(s.prefix) && !b.tools_needed.includes(s.prefix));
-  const addOff = offers.length
-    ? select(
-        "Turn off another tool",
-        "",
-        [{ v: "", t: "Turn off…" }, ...offers.map((s) => ({ v: s.prefix, t: s.name }))],
-        (v) => {
-          if (!v) return;
-          b.tools_off = [...b.tools_off, v];
-          savePublic();
-          paint();
-        },
+  const youFirst = b.prerequisites.length
+    ? h(
+        "section",
+        { class: "brief-you", "aria-label": "You first" },
+        h("h3", {}, "You first"),
+        h(
+          "ul",
+          {},
+          ...b.prerequisites.map((p, i) => {
+            const box = h("input", { type: "checkbox", checked: ticks.has(i) }) as HTMLInputElement;
+            box.addEventListener("change", () => {
+              if (box.checked) ticks.add(i);
+              else ticks.delete(i);
+              paint();
+            });
+            return h("li", {}, h("label", { title: p.why }, box, h("span", {}, p.what)));
+          }),
+        ),
       )
     : null;
-  const tools = h(
-    "div",
-    { class: "brief-tools" },
-    b.tools_needed.length ? h("p", {}, "Needs ", b.tools_needed.map(nameOf).join(", ")) : null,
-    b.tools_off.length
-      ? h(
-          "div",
-          { class: "tool-chips", "aria-label": "Turned off" },
-          ...b.tools_off.map((p) =>
-            h(
-              "button",
-              {
-                type: "button",
-                class: "tool-chip",
-                "aria-label": `${nameOf(p)} is off; turn it back on`,
-                onclick: () => {
-                  b.tools_off = b.tools_off.filter((x) => x !== p);
-                  savePublic();
-                  paint();
-                },
-              },
-              h("s", {}, nameOf(p)),
-            ),
-          ),
-        )
-      : h("p", { class: "quiet" }, "Nothing turned off."),
-    addOff,
-    b.skills.length ? h("p", { class: "quiet" }, `Load: ${b.skills.join(", ")}`) : null,
-  );
-
-  const prereqs = b.prerequisites.length
-    ? h(
-        "ul",
-        { class: "brief-prereqs" },
-        ...b.prerequisites.map((p, i) => {
-          const box = h("input", { type: "checkbox", checked: ticks.has(i) }) as HTMLInputElement;
-          box.addEventListener("change", () => {
-            if (box.checked) ticks.add(i);
-            else ticks.delete(i);
-            paint();
-          });
-          return h("li", {}, h("label", {}, box, h("span", {}, h("strong", {}, p.what), p.why ? h("span", { class: "quiet" }, ` ${p.why}`) : null)));
-        }),
-      )
-    : h("p", { class: "quiet" }, "Nothing; it can start now.");
 
   const copyCmd = h(
     "button",
     { type: "button", class: local ? "ghost" : "primary", id: "copy-command", disabled: !ready, onclick: () => void copy(b, "command") },
-    local ? "Run in the cloud anyway" : "Copy command",
+    local ? "Run in cloud anyway" : "Copy command",
   );
   const copyBrief = h("button", { type: "button", class: local ? "primary" : "ghost", id: "copy-brief", disabled: Boolean(invalid.get(b.id)?.size), onclick: () => void copy(b, "brief") }, "Copy brief");
 
   return h(
     "article",
     { class: "brief", id: "brief", "aria-labelledby": "brief-h" },
-    h(
-      "header",
-      {},
-      h("h2", { id: "brief-h" }, b.headline),
-      h("p", { class: "brief-size" }, sizeLine(b)),
-      b.source ? h("span", { class: "turn-src" }, SOURCE_LABEL[b.source]) : null,
-    ),
-    h(
-      "dl",
-      { class: "brief-grid" },
-      ...row("Goal", b.goal, b.why ? h("span", { class: "quiet brief-why" }, b.why) : null),
-      ...(b.done.length ? row("Done when", list(b.done)) : []),
-      ...(b.out_of_scope.length ? row("Not this time", list(b.out_of_scope, "oos")) : []),
-      ...row("Runs on", runsOn, where),
-      ...row("Time", time, h("p", { class: "quiet small", id: "tripwire" }, tripwireText(b))),
-      ...row("Tools", tools),
-      ...(b.guidance.length ? row("Your rules", ...b.guidance.map((g) => h("blockquote", {}, g))) : []),
-      ...row("Before it starts", prereqs),
-      ...(b.check_ins.length ? row("Comes back to you", list(b.check_ins)) : []),
-    ),
-    h(
-      "div",
-      { class: "think-actions brief-actions" },
-      h("p", { class: "think-msg", role: "status" }, actionMsg || message),
-      copyBrief,
-      copyCmd,
-    ),
-    Q.owner ? null : h("p", { class: "quiet small" }, "Illustration: Jordan's tools are made up, and only your own Bug Me can hear back from a session."),
-    h("details", { class: "brief-cmd", id: "brief-cmd" }, h("summary", {}, "The command"), h("pre", {}, h("code", {}, buildCommand(b, catalog)))),
+    h("header", {}, h("h2", { id: "brief-h" }, b.headline), metaLine(b)),
+    h("p", { class: "brief-goal" }, b.goal),
+    b.done.length ? h("ul", { class: "brief-done", "aria-label": "Done when" }, ...b.done.map((x) => h("li", {}, x))) : null,
+    b.out_of_scope.length ? h("p", { class: "brief-skip", title: "Not this time" }, h("span", { class: "ico", "aria-label": "Not this time" }, "⊘"), b.out_of_scope.join(" · ")) : null,
+    youFirst,
+    b.check_ins.length ? h("p", { class: "brief-asks", title: "Comes back to you" }, h("span", { class: "ico", "aria-label": "Asks you before" }, "↩"), b.check_ins.join(" · ")) : null,
+    h("div", { class: "think-actions brief-actions" }, h("p", { class: "think-msg", role: "status" }, actionMsg || message), copyBrief, copyCmd),
+    details(b),
     report(b),
   );
 }
+
+const OUTCOME_ICON: Record<string, string> = { done: "✓", "stopped at tripwire": "⏹", partial: "◐", abandoned: "✕" };
 
 function report(b: Shown): HTMLElement | null {
   const r = b.report;
@@ -451,18 +445,22 @@ function report(b: Shown): HTMLElement | null {
   const since = synthetic ? synthetic.minutes : b.dispatched_at ? Math.max(0, Math.round((Date.parse(r.at) - Date.parse(b.dispatched_at)) / 60_000)) : null;
   const asks = synthetic ? synthetic.asks : (b.asks ?? 0);
   const facts = [
-    since === null ? null : `${since} min since copied (estimate ${b.estimate_minutes})`,
-    `asked you ${asks === 0 ? "nothing" : asks === 1 ? "once" : `${asks} times`}`,
-    r.cost_usd === undefined ? "cost not reported" : `$${r.cost_usd.toFixed(2)}`,
-    `scope ${r.scope}`,
+    since === null ? null : `${duration(since)} of ~${duration(b.estimate_minutes)}`,
+    asks === 0 ? "no asks" : asks === 1 ? "asked once" : `asked ${asks}×`,
+    r.cost_usd === undefined ? null : money(r.cost_usd),
+    r.scope === "as briefed" ? null : `scope ${r.scope}`,
   ].filter(Boolean);
   return h(
     "section",
-    { class: "brief-report", "aria-label": "How it went" },
-    h("h3", {}, synthetic ? "How it went · synthetic" : "How it went"),
-    synthetic ? h("p", { class: "quiet small" }, "In real use, the session sends this back when it finishes or stops.") : null,
-    h("p", { class: "brief-outcome" }, h("strong", {}, r.outcome), " · ", facts.join(" · ")),
-    h("p", {}, r.summary),
+    { class: `brief-report ${r.outcome === "done" ? "ok" : "warn"}`, "aria-label": "How it went" },
+    h(
+      "p",
+      { class: "brief-outcome" },
+      h("span", { class: "ico", "aria-hidden": "true" }, OUTCOME_ICON[r.outcome] ?? "•"),
+      `${r.outcome} · ${facts.join(" · ")}`,
+      synthetic ? h("span", { class: "meta-chip", title: "In real use, the session sends this back when it finishes or stops." }, "synthetic") : null,
+    ),
+    h("p", { class: "quiet" }, r.summary),
   );
 }
 
@@ -484,9 +482,9 @@ async function copy(b: Shown, what: "command" | "brief"): Promise<void> {
       b.dispatched_at = (await saved).brief.dispatched_at;
       await wrote;
     } else await navigator.clipboard.writeText(text);
-    actionMsg = what === "command" ? "Copied. Paste it in a terminal, in the folder where the work should happen." : "Brief copied.";
+    actionMsg = "Copied.";
   } catch (e) {
-    actionMsg = `Couldn't copy it (${(e as Error).message}). Open "The command" below and copy it from there.`;
+    actionMsg = `Couldn't copy (${(e as Error).message}). It's under Details.`;
   }
   if (!Q.owner && what === "command" && !b.report) {
     // The public demo shows what a session would send back, labeled synthetic.

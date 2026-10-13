@@ -13,6 +13,9 @@
   --glow: #ffd84d;
   --glow-ink: #1a1500;
   --glow-soft: rgba(255, 216, 77, 0.14);
+  /* Icon tints only (Dispatch): done, and not this time. Text stays ink. */
+  --ok: #7fd3a8;
+  --stop: #f2998c;
   --radius: 14px;
   --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
@@ -424,60 +427,60 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .live-label { color: var(--glow); border-color: var(--glow); }
 
 /* ---------- Dispatch (docs/STAGE-8.md) ----------
-   A task box like the conversation's, the brief as a definition list (label column, then the value),
-   the setup as plain selects and number boxes. Turned-off tools are struck through; the one accent
-   stays on what the person does (Draft, Copy). */
+   Scannable, not read: a title, a line of chips, the goal, checks, one line of what's out, and the one
+   block that needs the person (in the accent). Text stays regular weight in muted ink; color goes on
+   icons. Model, effort, tools and the command wait behind Details. */
 .dispatch .dispatch-new { margin: 18px 0 8px; }
 .dispatch .think-msg { margin: 0 auto 0 0; color: var(--ink-2); font-size: 14px; }
 .demo-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0; }
-.demo-chips .quiet { font-size: 14px; }
 .demo-chip { border: 1px solid var(--line); background: var(--night-2); color: var(--ink-2); border-radius: 999px; padding: 4px 12px; font: 600 12px/1.6 var(--mono); cursor: pointer; }
 .demo-chip:hover { color: var(--ink); border-color: var(--ink-3); }
 .small { font-size: 13.5px; }
-.brief { margin: 28px 0 8px; padding: 20px 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--night-2); }
-.brief header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; }
-.brief h2 { margin: 0; font: 600 22px/1.3 var(--display); }
-.brief header .turn-src { grid-row: 1; grid-column: 2; }
-.brief-size { grid-column: 1 / -1; margin: 4px 0 0; font: 13px var(--mono); color: var(--ink-2); }
-.brief-grid { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 14px 18px; margin: 18px 0 0; }
-.brief-grid dt { font: 600 12px/1.9 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
-.brief-grid dd { margin: 0; min-width: 0; }
-.brief-why { display: block; font-size: 14.5px; margin-top: 2px; }
-.brief-list { margin: 0; padding-left: 18px; }
-.brief-list.oos { list-style: none; padding-left: 0; }
-.brief-list.oos li::before { content: "✕ "; color: var(--ink-3); }
-.brief-setup { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
-.brief-setup select, .brief-setup input { font: 14px var(--body); color: var(--ink); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.brief { margin: 24px 0 8px; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--night-2); }
+.brief h2 { margin: 0; font: 500 21px/1.3 var(--display); color: var(--ink); }
+.brief-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.meta-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; background: var(--night-3); color: var(--ink-2); font: 12.5px/1.7 var(--mono); }
+.meta-chip .ico { color: var(--ink-3); }
+.meta-chip.local .ico { color: var(--ok); }
+.brief-goal { margin: 14px 0 8px; font-size: 16.5px; line-height: 1.5; color: var(--ink); }
+.brief-done { list-style: none; margin: 0 0 8px; padding: 0; color: var(--ink-2); font-size: 15px; line-height: 1.7; }
+.brief-done li::before { content: "✓"; color: var(--ok); margin-right: 8px; }
+.brief-skip, .brief-asks { display: flex; gap: 8px; margin: 6px 0 0; color: var(--ink-3); font-size: 14.5px; line-height: 1.6; }
+.brief-skip .ico { color: var(--stop); }
+.brief-asks .ico { color: var(--ink-2); }
+.brief-you { margin: 14px 0 0; padding: 10px 12px; border-left: 2px solid var(--glow); background: var(--night); border-radius: 0 10px 10px 0; }
+.brief-you h3 { margin: 0 0 4px; font: 600 11.5px/1.8 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--glow); }
+.brief-you ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.brief-you label { display: flex; gap: 10px; align-items: baseline; cursor: pointer; color: var(--ink); font-size: 15px; }
+.brief-you input { accent-color: var(--glow); width: 15px; height: 15px; transform: translateY(2px); }
+.brief-actions { margin-top: 16px; }
+.brief-more { margin: 12px 0 0; border-top: 1px solid var(--line); padding-top: 10px; }
+.brief-more summary { cursor: pointer; color: var(--ink-3); font-size: 14px; }
+.brief-more[open] summary { margin-bottom: 10px; }
+.brief-setup { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 8px; }
+.brief-setup select, .brief-setup input, .tool-chips select { font: 14px var(--body); color: var(--ink); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; max-width: 100%; }
 .brief-setup input { width: 5.5em; }
 .brief-setup label { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); font-size: 14px; }
-.brief-where { margin: 8px 0 0; font-size: 14.5px; }
-.brief-where .glyph { color: var(--ink); }
-.brief-tools p { margin: 0 0 6px; }
-.brief-tools select { font: 14px var(--body); color: var(--ink-2); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; max-width: 100%; }
-.tool-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
-.tool-chip { border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 999px; padding: 3px 11px; font-size: 13.5px; cursor: pointer; }
-.tool-chip:hover { color: var(--ink); border-color: var(--ink-3); }
-.brief blockquote { margin: 0 0 6px; padding-left: 10px; border-left: 2px solid var(--line); color: var(--ink); font-size: 15px; }
-.brief-prereqs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.brief-prereqs label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; cursor: pointer; }
-.brief-prereqs input { margin-top: 5px; accent-color: var(--glow); width: 16px; height: 16px; }
-.brief-actions { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; }
-.brief-cmd { margin: 12px 0 0; }
-.brief-cmd summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
-.brief-cmd pre { margin: 8px 0 0; padding: 10px 12px; background: var(--night); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; max-height: 22em; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.brief-report { margin: 18px 0 0; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 10px; }
-.brief-report h3 { margin: 0 0 4px; font: 600 12px/1.9 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
-.brief-report p { margin: 4px 0 0; }
-.brief-outcome { color: var(--ink-2); font-size: 14.5px; }
-.brief-outcome strong { color: var(--ink); }
+.tool-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.tool-chip { border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+.tool-chip.on { border-color: var(--ok); color: var(--ink); }
+.tool-chip.off { color: var(--ink-3); text-decoration: line-through; cursor: pointer; }
+.tool-chip.off:hover { color: var(--ink-2); border-color: var(--ink-3); }
+.brief blockquote { margin: 6px 0; padding-left: 10px; border-left: 2px solid var(--line); color: var(--ink-2); font-size: 14px; }
+#brief-cmd { margin: 10px 0 6px; padding: 10px 12px; background: var(--night); border: 1px solid var(--line); border-radius: 8px; max-height: 18em; overflow: auto; font: 12px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-2); }
+.brief-report { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--night); }
+.brief-report p { margin: 2px 0; font-size: 14.5px; }
+.brief-outcome { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--ink); }
+.brief-report.ok .ico { color: var(--ok); }
+.brief-report.warn .ico { color: var(--stop); }
 .briefs { list-style: none; margin: 0; padding: 0; }
-.briefs li { display: grid; gap: 2px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
-.briefs li.current a { color: var(--ink); font-weight: 700; }
-.brief-row-meta { font: 12.5px var(--mono); color: var(--ink-3); }
+.briefs li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.briefs li a { color: var(--ink-2); text-decoration: none; }
+.briefs li.current a { color: var(--ink); }
+.brief-row-meta { flex: none; font: 12px var(--mono); color: var(--ink-3); }
 @media (max-width: 560px) {
-  .brief { padding: 16px 14px; margin-left: -4px; margin-right: -4px; }
-  .brief-grid { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .brief-grid dd { margin-bottom: 12px; }
+  .brief { padding: 14px 14px; margin-left: -4px; margin-right: -4px; }
+  .briefs li { flex-direction: column; gap: 2px; }
 }
 .dispatch-thread { margin-top: 18px; }
 .turn.bug .turn-qs { grid-column: 2; margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.6; }

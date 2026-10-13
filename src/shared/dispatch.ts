@@ -265,7 +265,10 @@ export function finishBrief(d: BriefDraft, c: Catalog, meta: { id: string; task:
     if (s && s.status !== "connected") auto.push({ what: `Connect ${s.name}`, why: `The task needs it, and it isn't connected (${s.status}).` });
   }
   const seen = new Set(auto.map((a) => a.what.toLowerCase()));
-  const prerequisites = [...auto, ...d.prerequisites.filter((p) => !seen.has(p.what.toLowerCase()))];
+  // The model often says the same thing in its own words ("Authenticate the PagerDuty MCP server").
+  const connecting = (p: { what: string }) =>
+    /\b(connect|authenticat\w*|log ?in|sign ?in)\b/i.test(p.what) && d.tools_needed.some((t) => auto.some((a) => a.what === `Connect ${byPrefix.get(t)?.name}`) && p.what.toLowerCase().includes((byPrefix.get(t)?.name ?? "\u0000").toLowerCase()));
+  const prerequisites = [...auto, ...d.prerequisites.filter((p) => !seen.has(p.what.toLowerCase()) && !connecting(p))];
   const check_ins = w.checkIn && !d.check_ins.includes(w.checkIn) ? [w.checkIn, ...d.check_ins] : d.check_ins;
   return {
     ...d,
@@ -318,7 +321,6 @@ export function parseReport(raw: unknown, now = new Date()): Report {
 }
 
 export const tripwireMinutes = (b: Pick<Brief, "estimate_minutes">) => b.estimate_minutes * TRIPWIRE_MULTIPLE;
-const modelLabel = (id: string) => DISPATCH_MODELS.find((m) => m.id === id)?.label ?? id;
 const bullets = (xs: string[]) => xs.map((x) => `- ${x}`).join("\n");
 
 /** The session's opening prompt: everything it needs to work at the briefed size, and to come back when it isn't. */
@@ -373,9 +375,19 @@ export function buildCommand(b: Brief, c: Catalog): string {
   return `${args.join(" ")} -- "$(cat <<'${d}'\n${text}\n${d}\n)"`;
 }
 
-/** One line for the brief card and the list: stage · ~N min · $X · tripwire. */
-export function sizeLine(b: Brief): string {
-  return `${b.stage} · ~${b.estimate_minutes} min · $${b.budget_usd.toFixed(2)} · stop at ${tripwireMinutes(b)} min`;
+/** "45m", "1h", "1h 30m". */
+export function duration(min: number): string {
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
 }
 
-export const whereLine = (b: Brief) => `${modelLabel(b.model)} · ${b.effort} effort · ${b.permission_mode} · ${b.where === "local" ? "run locally" : "cloud"}`;
+/** "$8", "$1.50". */
+export const money = (usd: number) => (Number.isInteger(usd) ? `$${usd}` : `$${usd.toFixed(2)}`);
+
+/** One short line for the briefs list: ~time · money. */
+export function sizeLine(b: Brief): string {
+  return `~${duration(b.estimate_minutes)} · ${money(b.budget_usd)}`;
+}
+

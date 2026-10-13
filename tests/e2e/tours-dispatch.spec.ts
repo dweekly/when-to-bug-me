@@ -13,11 +13,12 @@ for (const x of DISPATCH_EXAMPLES) {
     await page.goto("/app#/dispatch");
     await page.locator(`.demo-chip[data-example="${x.id}"]`).click();
     await page.locator("#draft-brief").click();
-    await expect(page.locator("#brief header .turn-src")).toHaveText("recorded Claude run");
-    await expect(page.locator("#brief .brief-size")).toBeVisible();
+    await page.locator("#brief .brief-more summary").click();
+    await expect(page.locator("#brief .brief-more")).toContainText("recorded Claude run");
+    await expect(page.locator("#brief .brief-meta")).toBeVisible();
     if (x.id === "billing-complaints") {
-      await expect(page.locator("#brief .brief-where")).toContainText("Run locally.");
-      await expect(page.locator("#copy-command")).toHaveText("Run in the cloud anyway");
+      await expect(page.locator("#brief .meta-chip.local")).toBeVisible();
+      await expect(page.locator("#copy-command")).toHaveText("Run in cloud anyway");
     }
     if (x.id === "pagerduty") await expect(page.locator("#copy-command")).toBeDisabled();
     expect(await page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")).toBeLessThanOrEqual(0);
