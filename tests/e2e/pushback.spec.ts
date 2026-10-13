@@ -16,7 +16,7 @@ test("adding the schema library is pushed back on with F1, and 'Change to' recor
   await expect(push).toContainText("No new runtime dependencies");
   await push.getByRole("button", { name: /^Change to/ }).click();
 
-  await expect(page.locator("#now")).toContainText("Bug Me's guess, hidden until now:");
+  await expect(page.locator("#now .reveal-line")).toBeVisible();
   await expect
     .poll(async () => (await stored(page))?.answered["sdk-dependency"]?.final, { message: "final answer stored" })
     .toBe("B");

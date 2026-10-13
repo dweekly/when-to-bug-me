@@ -25,6 +25,7 @@ export function publicDecision(d: Decision) {
     question: d.question,
     options: d.options,
     recommended: d.recommended,
+    ...(d.no_recommendation ? { no_recommendation: true as const } : {}),
     context: d.context,
     explore: d.explore,
     visual: d.visual,

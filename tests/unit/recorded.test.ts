@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import recorded from "../../fixtures/captures/recorded.json";
 import { EFFORT, MAX_TOKENS, MODEL, TITLE_MAX_TOKENS, TITLE_MODEL } from "../../src/shared/constants";
 import { type ConvTurn, type ConverseResult, type Next, advance, closeInputs, outcomeOf, sanitizeLedger, unverifiedQuotes } from "../../src/shared/converse";
-import { parseTitles } from "../../src/shared/titles";
+import { parseTitles, plainOptions } from "../../src/shared/titles";
 import { modelCacheKey } from "../../src/shared/hash";
 import {
   ASK_SCHEMA,
@@ -118,8 +118,8 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
   const output = (k: string) => (entries[k] as { output: unknown } | undefined)?.output;
 
   /** Decisions whose card shows the headline because the fast model's title never passed the checks.
-   *  dockerfile-format was one until the 2026-10-13 recording, which titled it within the limit. */
-  const UNTITLED: string[] = [];
+   *  tax-mapper-lint ("Fix nine lint warnings in tax scripts", seven words, on every retry 2026-10-13). */
+  const UNTITLED: string[] = ["tax-mapper-lint"];
   it("every decision but the known exception has a recorded emoji and title that pass today's checks", async () => {
     const missing: string[] = [];
     for (const d of decisions) {
@@ -132,9 +132,12 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
 
   for (const s of CONVERSATIONS) {
     it(`${s.id}${s.variant ? ` (${s.variant})` : ""}: the scripted conversation replays from the recording and follows the script, and its guidance call is recorded`, async () => {
-      const d = decisions.find((x) => x.id === s.id)!;
-      const routed = parseRouteOutput(output(await key({ promptVersion: PROMPT_VERSION, schema: routeSchema(d.options.map((o) => o.key)), prompt: routePrompt(persona, rules, facts, d) })), d);
-      const card = { route: enforceSettleInvariant(routed, d, rules, facts).route, why_here: routed.why_here };
+      const agents = decisions.find((x) => x.id === s.id)!;
+      const routed = parseRouteOutput(output(await key({ promptVersion: PROMPT_VERSION, schema: routeSchema(agents.options.map((o) => o.key)), prompt: routePrompt(persona, rules, facts, agents) })), agents);
+      const card = { route: enforceSettleInvariant(routed, agents, rules, facts).route, why_here: routed.why_here };
+      // The conversation runs on the options in Jordan's terms, as the Worker does (docs/STAGE-6F.md).
+      const titled = output(await key({ model: TITLE_MODEL, maxTokens: TITLE_MAX_TOKENS, promptVersion: TITLE_PROMPT_VERSION, schema: titleSchema(agents.options.map((o) => o.key)), prompt: titlePrompt(agents) }));
+      const d = plainOptions(agents, titled === undefined ? undefined : parseTitles(titled, agents).labels);
       const turns: ConvTurn[] = [];
       let last: ConverseResult | null = null;
       for (const [i, t] of s.turns.entries()) {
@@ -150,7 +153,7 @@ describe("stage 6: the recorded conversations and titles (docs/STAGE-6.md)", () 
       const c = closeInputs(d, turns, last!.ledger);
       if (c.evidence) {
         const others = decisions.filter((x) => x.id !== d.id);
-        expect(output(await key({ promptVersion: PROMPT_VERSION, schema: FACT_SCHEMA, prompt: factPrompt(persona, rules, facts, d, s.choice, c.evidence, others) })), "fact").toBeDefined();
+        expect(output(await key({ promptVersion: PROMPT_VERSION, schema: FACT_SCHEMA, prompt: factPrompt(persona, rules, facts, agents, s.choice, c.evidence, others) })), "fact").toBeDefined();
       }
     });
   }

@@ -24,6 +24,8 @@ export interface Option {
   key: string;
   label: string;
   description?: string;
+  /** Set when `label` is the person's terms (titles.ts plainOptions): the agent's own label. */
+  agent_label?: string;
 }
 
 /** One waiting decision from an agent, as the fixtures hold it. */
@@ -39,6 +41,8 @@ export interface Decision {
   question: string;
   options: Option[];
   recommended: string;
+  /** A live ask that named no recommendation: `recommended` is only routing's default, never shown as the agent's pick. */
+  no_recommendation?: true;
   context: string;
   /** A designed partner: one answer on this decision should plausibly change the other. */
   pair?: string;
@@ -175,6 +179,8 @@ export interface Card {
   title?: string;
   /** Per option key, what was done if it was taken, in the past tense. */
   done?: Record<string, string>;
+  /** Per option key, the option in the person's terms (docs/STAGE-6F.md). */
+  labels?: Record<string, string>;
 }
 
 /** What /api/ask returns: an answer from what the agent provided, or what is missing from it. */

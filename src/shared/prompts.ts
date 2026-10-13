@@ -12,8 +12,8 @@ export const PROMPT_VERSION = "2026-10-09.6";
 /** The think-out-loud parse prompt has its own version, so changing it leaves every other recording valid. */
 export const PARSE_PROMPT_VERSION = "2026-10-12.1";
 /** The conversation prompt (docs/STAGE-6.md) and the title prompt, each versioned on its own. */
-export const CONVERSE_PROMPT_VERSION = "2026-10-13.1";
-export const TITLE_PROMPT_VERSION = "2026-10-12.2";
+export const CONVERSE_PROMPT_VERSION = "2026-10-13.2";
+export const TITLE_PROMPT_VERSION = "2026-10-13.2";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -38,7 +38,7 @@ function decisionBlock(d: Decision): string {
   const opts = d.options
     .map(
       (o) =>
-        `${o.key}. ${o.label}${o.key === d.recommended ? " (Recommended)" : ""}${o.description ? ` - ${o.description}` : ""}`,
+        `${o.key}. ${o.label}${o.agent_label ? ` (the agent called it "${o.agent_label}")` : ""}${o.key === d.recommended ? " (Recommended)" : ""}${o.description ? ` - ${o.description}` : ""}`,
     )
     .join("\n");
   return `=== The waiting decision ===\nid: ${d.id}\nProject: ${d.project}\nAsked by: ${d.agent.join(" > ")} (waiting ${d.waiting_minutes} minutes; ${d.unblocks} other agents blocked on it)\nQuestion, exactly as the agent asked it: ${d.question}\nOptions:\n${opts}\nContext from the agent: ${d.context}`;
@@ -347,7 +347,7 @@ An agent brought ${n} a decision. Bug Me opened the conversation by showing ${n}
 
 How Bug Me talks:
 - At most two short, plain sentences (an explanation, below, may run longer), and at most one question. No agent jargon or internal identifiers.
-- Never say which option you expect ${n} to pick, never argue for an option, and never add anything ${n} did not say.
+- Never say which option you expect ${n} to pick or which one the agent recommended (${n} sees that only after deciding), never argue for an option, and never add anything ${n} did not say.
 - Don't raise conflicts with ${n}'s rules or standing facts: Bug Me checks the answer against ${n}'s record separately, after ${n} confirms.
 - Persist a little, but don't nag. If ${n} chose (by clicking or in words) but gave no reason, ask lightly why, once. Don't ask about minor details. Bug Me has asked ${asked} of at most ${MAX_CONVERSE_QUESTIONS} questions in this conversation.
 - If ${n} asks a question, answer it using only the agent's material below. If the material doesn't say, say plainly that you don't know and will ask the agent. If ${n} has already chosen and said why, answer in a few words and read back in the same reply; don't ask whether the answer changes their mind.
@@ -442,8 +442,9 @@ export function titlePrompt(d: Decision): string {
   return `Give this question from an AI agent a short label for a busy person's to-do list.
 
 - emoji: exactly one emoji that pictures what the decision is about.
-- title: what is being decided, in at most ${MAX_TITLE_WORDS} words (count them), sentence case, no final period, no agent jargon or internal identifiers. Example: "Rename the v2 user field" (5 words).
+- title: what is being decided, in at most ${MAX_TITLE_WORDS} words (count them; anything longer is rejected, so drop "where" words like "in the SDK repo"), sentence case, no final period, no agent jargon or internal identifiers. Example: "Rename the v2 user field" (5 words).
 - done: for each option key, what was done if that option was taken, in the past tense, in at most ${MAX_TITLE_WORDS} words (count them), keeping any count from the question. Leave out where and how ("on a branch", "after CI"). Example: "Deleted 41 merged branches" (4 words).
+- labels: for each option key, the option as the busy person would say it, in at most ${MAX_TITLE_WORDS} words (count them), starting with a verb, sentence case, no final period. Plain everyday words: no agent jargon, codes, version names or internal identifiers; say what the option does instead. Keep names and numbers the person would recognize (a flight time, a field name they'd type). Example: "Keep the old tax table" for "Keep T-19 mapping".
 
 Question: ${d.question}
 Options:
@@ -457,11 +458,12 @@ export function titleSchema(keys: string[]) {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["emoji", "title", "done"],
+    required: ["emoji", "title", "done", "labels"],
     properties: {
       emoji: { type: "string" },
       title: { type: "string" },
       done: { type: "object", additionalProperties: false, required: keys, properties: Object.fromEntries(keys.map((k) => [k, { type: "string" }])) },
+      labels: { type: "object", additionalProperties: false, required: keys, properties: Object.fromEntries(keys.map((k) => [k, { type: "string" }])) },
     },
   } as const;
 }

@@ -174,7 +174,7 @@ describe("read-backs and the primary button, one per outcome", () => {
 });
 
 describe("closeInputs: what the close path is given", () => {
-  it("reason, conditions and narration in Jordan's words; whether the why was already asked", () => {
+  it("reason, conditions and narration in Jordan's words", () => {
     const turns = [j("Keep user_id"), bug("Why that one?", "ask"), j("Because integrators parse v1. As long as docs say why.")];
     const c = closeInputs(api, turns, L({ choice: "B", why: [q(1, "Because integrators parse v1.")], conditions: [q(1, "As long as docs say why.")] }));
     expect(c).toMatchObject({
@@ -183,7 +183,6 @@ describe("closeInputs: what the close path is given", () => {
       conditions: "As long as docs say why.",
       narration: "Keep user_id\nBecause integrators parse v1. As long as docs say why.",
       evidence: "Because integrators parse v1. As long as docs say why.",
-      whyAsked: true,
       noMoreQuestions: false,
       hasFeedback: false,
     });
@@ -197,11 +196,16 @@ describe("closeInputs: what the close path is given", () => {
     const short = closeInputs(api, [j("why. shouldn't have come to me")], L({ choice: "B", why: [q(0, "why.")], feedback: [{ quote: q(0, "shouldn't have come to me"), kind: "routing" }] }));
     expect(short.evidence).toBe("why. shouldn't have come to me");
   });
-  it("the why backstop stays quiet when the conversation asked, or Jordan said to stop", () => {
+  it("after the reveal, Bug Me nudges for a reason against the agent or a confident guess, unless told to stop (docs/STAGE-6F.md)", () => {
     const guess = [{ option: "A", p: 0.9 }, { option: "B", p: 0.1 }];
     expect(shouldAskWhy("B", guess, "")).toBe(true);
-    expect(shouldAskWhy("B", guess, "", { whyAsked: true })).toBe(false);
     expect(shouldAskWhy("B", guess, "", { noMoreQuestions: true })).toBe(false);
+    // Bug Me guessed right, but the agent would have picked otherwise: still a nudge.
+    const right = [{ option: "B", p: 0.9 }, { option: "A", p: 0.1 }];
+    expect(shouldAskWhy("B", right, "")).toBe(false);
+    expect(shouldAskWhy("B", right, "", { recommended: "A" })).toBe(true);
+    expect(shouldAskWhy("B", right, "", { recommended: "B" })).toBe(false);
+    expect(shouldAskWhy("B", right, "Customers hate corrections.", { recommended: "A" })).toBe(false);
   });
 });
 

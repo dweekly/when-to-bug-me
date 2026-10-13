@@ -72,7 +72,7 @@ One shared function, `advance(transcript, ledger, modelResponse)` in `src/shared
 When Jordan confirms, the ledger feeds the existing path:
 
 - **A listed option**: `answer` → pushback → `finalize` → `propose`. The reason is the `why` quotes joined; the conditions are the `conditions` quotes; the narration is all of Jordan's turns.
-- **The why backstop** ("I'm curious: why?") is suppressed when the conversation already asked why or Jordan said `no_more_questions`. This is a deliberate change to the guidance rules (`shouldAskWhy` gains the two flags).
+- **The why backstop** ("I'm curious: why?") is suppressed when Jordan said `no_more_questions`. (Until stage 6f it was also suppressed when the conversation had already asked; 6f's reveal of the agent's pick made a second, pointed ask worthwhile. See docs/STAGE-6F.md.)
 - **Feedback** is a reason to propose standing guidance (a fact, via `/api/fact`), even when Jordan agreed with the recommendation, so "you shouldn't have asked me this" can be remembered.
 - **Other** goes through `chooseOther` with `course`, and **reject** through a new `rejected` outcome. Both can propose guidance when there is feedback or a why. `/api/answer` stays option-only. `/api/fact` gains an `outcome` field (`"option" | "other" | "rejected"`) with the course in Jordan's words, so neither is ever mapped onto a listed option. `Answer` gets one `outcome` field, used by the flow, the record and export, the closed card, and the agenda (rejected and other count as resolved).
 - **Ask the agent** goes through `sendQuestionToAgent`, as today.
@@ -175,7 +175,7 @@ Where the build differs from the plan above, and why:
 - **The ledger isn't sent back.** Each turn sends the transcript only; Claude re-reads it and returns the whole current ledger. That makes the request smaller, and nothing from an earlier answer can leak into a recording key.
 - **The card the conversation sees is its route and `why_here`.** That is enough for Bug Me to talk about why it came to Jordan. It is the whole projection: `sealed` and `source` are dropped (`parseConverseRequest`, tested).
 - **Confirming with the button makes no call.** Only a typed "yes" goes to the model. Its "close" stands only when the turn just agrees with the read-back before it: the same decision (each read-back carries `heard`, a fingerprint of the choice, course and conditions it read back, which the page stores and sends back), no click, and no new question. "Yes, but only if…", "yes, without the docs note" or a yes with a different click gets a fresh read-back (Codex review of #26, two passes).
-- **`whyAsked` means "Bug Me asked anything".** Any elicitation question in the thread silences the "I'm curious: why?" backstop, not only a question about why.
+- **`whyAsked`** (removed in stage 6f) meant "Bug Me asked anything": any elicitation question silenced the backstop.
 - **The scripts are `CONVERSATIONS` in `src/shared/examples.ts`,** separate from `EXAMPLES`, which the stage 4 page still uses until 6c.
 - **Titles: 39 of 40 recorded.** However often it is asked, Haiku titles `dockerfile-format` in seven words ("Trim whitespace and sort Dockerfile package lists"). The limit stays at six, and that card shows its headline instead; the test names the exception.
 - **The spend reservation is unchanged.** The largest conversation prompt is under 24,000 characters (about 8k tokens), the figure the reservation was set for.
@@ -185,7 +185,7 @@ Where the build differs from the plan above, and why:
 ## As built: stage 6c (the page)
 
 - **The thread** replaces the think-out-loud box (`src/page/card.ts` `threadArea`/`paintThread`, `src/page/actions.ts` `sendTurn`/`confirmThread`). The composer is mounted once per flow, so typing keeps focus while replies arrive; Enter sends, Shift+Enter is a new line. Marks on Jordan's turns come from the latest ledger, by turn. Each Bug Me turn shows its source label unless it was live.
-- **The close path** is the existing one, with the thread's inputs: `finalize` passes `whyAsked`/`noMoreQuestions` to `shouldAskWhy`, and feedback is a reason to propose guidance; other and rejected outcomes go through `chooseOutside` and can propose guidance with `outcome` and `course`. The answer keeps `outcome` and the whole `thread`; a closed card re-opens with it, read-only.
+- **The close path** is the existing one, with the thread's inputs: `finalize` passes `noMoreQuestions` (and, since 6f, the agent's pick) to `shouldAskWhy`, and feedback is a reason to propose guidance; other and rejected outcomes go through `chooseOutside` and can propose guidance with `outcome` and `course`. The answer keeps `outcome` and the whole `thread`; a closed card re-opens with it, read-only.
 - **Re-routes skip a decision with an open conversation** (`reroutableIds`, and a filter in `reroute`), so a card can't move into Decided for you mid-talk.
 - **A failed or interrupted turn** keeps Jordan's words in the thread; the button becomes "Send again" and asks for the reply without adding a turn.
 - **Tours** talk through each decision with the scripted turns (`say`/`decide` steps); the tour offers the next scripted turn for wherever the thread is. A tour step waits for Bug Me's real reply, never its typing dots.

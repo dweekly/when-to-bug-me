@@ -81,12 +81,11 @@ function renderBar(route: Route): void {
       nav({ view: "settled" }, `Decided for you${settledCount ? ` · ${settledCount}` : ""}`),
       nav({ view: "rules" }, "Rules"),
       nav({ view: "record" }, "Record"),
-      // The tours script Jordan's decisions, so the owner's live queue has none.
-      Q.owner ? null : h("button", { type: "button", class: "nav tours-btn", onclick: () => openToursMenu() }, "Tours"),
+      // The demos (guided tours) script Jordan's decisions, so the owner's live queue has none.
+      Q.owner ? null : h("button", { type: "button", class: "nav tours-btn", onclick: () => openToursMenu() }, "Demos"),
     ),
-    Q.owner
-      ? h("span", { class: "synthetic live-label", title: "Real questions from your own sessions." }, "Live · your real queue")
-      : h("a", { href: "/#real", class: "synthetic", title: "Everything here is made up. See what is real." }, { live: "Synthetic · live Claude", recorded: "Synthetic · recorded Claude", fake: "Synthetic · code stand-in" }[Q.mode]),
+    // The owner's page says it is the real queue; the simulation says what's real on the explainer and per turn.
+    ...(Q.owner ? [h("span", { class: "synthetic live-label", title: "Real questions from your own sessions." }, "Live · your real queue")] : []),
   );
 }
 

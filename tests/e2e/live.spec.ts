@@ -61,7 +61,7 @@ test("if the session can't be reached, nothing is recorded and the card stays op
   await decide(page, "Hold for review", "Hold for review, because the team still uses two of them.");
   await expect(page.locator("#now")).toContainText("Couldn't reach the asking session");
   expect((await told(request, id)).status).toBe("pending");
-  await expect(page.locator("#now")).not.toContainText("hidden until now"); // the guess stays sealed until it's sent
+  await expect(page.locator("#now .reveal-line")).toHaveCount(0); // the guess stays sealed until it's sent
   fail = false;
   await toDecision(page); // press the decision again
   await expect.poll(async () => (await told(request, id)).status, { timeout: 15_000 }).toBe("answered");
@@ -280,8 +280,8 @@ test("Skip during a late reason's delivery wins: the reason is sent, but no guid
   await expect(page.locator("#now")).not.toContainText("Remember this");
 });
 
-test("the simulation is untouched: no live label, tours still there", async ({ page }) => {
+test("the simulation is untouched: no live label, demos still there", async ({ page }) => {
   await page.goto("/app#/");
-  await expect(page.locator(".synthetic")).toContainText("Synthetic");
-  await expect(page.locator(".tours-btn")).toHaveCount(1);
+  await expect(page.locator(".live-label")).toHaveCount(0);
+  await expect(page.locator(".tours-btn")).toHaveText("Demos");
 });

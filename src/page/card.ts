@@ -126,7 +126,6 @@ function drawNow(): void {
               ? h("span", { class: "opt-desc" }, o.description)
               : null,
           n?.consequence ? h("span", { class: "consequence" }, n.consequence) : null,
-          o.key === d.recommended ? h("i", { class: "agent-pick" }, "the agent's pick") : null,
         ),
       );
     }),
@@ -160,13 +159,15 @@ function drawNow(): void {
       h("summary", {}, "More context"),
       c.briefing && c.in_your_terms ? h("p", { class: "briefing-text" }, c.in_your_terms) : null,
       c.headline !== d.question ? h("p", { class: "original" }, h("span", { class: "quiet" }, "The agent asked: "), h("q", {}, d.question)) : null,
+      // The options are shown in Jordan's terms (docs/STAGE-6F.md); here is what the agent called them.
+      d.options.some((o) => o.agent_label)
+        ? h("p", { class: "original" }, h("span", { class: "quiet" }, "The agent's options: "), d.options.map((o) => `${o.key}. ${o.agent_label ?? o.label}`).join(" · "))
+        : null,
       h("p", { class: "context" }, h("span", { class: "quiet" }, "From the agent: "), d.context),
       c.adjusted ? h("p", { class: "quiet" }, "Claude's own reasoning: ", c.why_here) : null,
       h("p", { class: "quiet" }, `Routing, briefing and notes: ${SOURCE_LABEL[c.source]}.`),
     ),
     h("h3", { id: "now-q" }, c.headline || d.question),
-    // Until Bug Me has said anything, "Huh?" is about the card itself (paintThread shows or hides it).
-    flow.phase === "choose" ? huhButton(flow, d, route, "huh-q") : null,
     lastPunt
       ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
       : null,
@@ -219,39 +220,39 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
     primary(flow, d, route);
   });
   const script = CONVERSATIONS.find((c) => c.id === d.id);
+  // DEMO REPLY fills the box with Jordan's scripted words for this turn (recorded, so they replay for free).
+  const demo =
+    script && Q.mode !== "live"
+      ? h(
+          "button",
+          {
+            type: "button",
+            class: "demo-reply",
+            title: "Fill in Jordan's recorded reply",
+            onclick: () => {
+              const t = scriptWords(script)[scriptIndex(flow)];
+              if (!t) return;
+              if (t.pick) pick(flow, t.pick);
+              ta.value = t.text;
+              thinkEdited(flow, t.text);
+              fit(ta);
+            },
+          },
+          "DEMO REPLY",
+        )
+      : null;
   const el = h(
     "section",
     { class: "think thread", "aria-label": "Conversation with Bug Me" },
     h("ol", { class: "turns" }),
-    h("div", { class: "think-field composer" }, ta),
+    // "Huh?" sits just above the box: it is about whatever Bug Me showed last (paintThread shows or hides it).
+    h("div", { class: "huh-row" }, huhButton(flow, d, route)),
+    h("div", { class: "think-field composer" }, ta, demo),
     h("p", { class: "think-msg adjusted", role: "status" }),
     h(
       "div",
       { class: "think-actions" },
       h("button", { type: "button", class: "linkish skip-q", onclick: () => startPunt(flow) }, "Skip"),
-      script && Q.mode !== "live"
-        ? h(
-            "p",
-            { class: "example" },
-            h(
-              "button",
-              {
-                type: "button",
-                class: "linkish",
-                onclick: () => {
-                  const t = scriptWords(script)[scriptIndex(flow)];
-                  if (!t) return;
-                  if (t.pick) pick(flow, t.pick);
-                  ta.value = t.text;
-                  thinkEdited(flow, t.text);
-                  fit(ta);
-                },
-              },
-              "Use Jordan's words",
-            ),
-            " (recorded)",
-          )
-        : null,
       h("button", { type: "button", class: "primary send", onclick: () => primary(flow, d, route) }, "Send"),
     ),
   );
@@ -260,12 +261,12 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
 }
 
 /** "Huh?" (docs/STAGE-6E.md): one press asks Bug Me to say the last thing it showed more plainly. */
-function huhButton(flow: Flow, d: Decision, route: RouteKind, cls: string): HTMLElement {
+function huhButton(flow: Flow, d: Decision, route: RouteKind): HTMLElement {
   return h(
     "button",
     {
       type: "button",
-      class: `huh ${cls}`,
+      class: "huh",
       title: "Say that more plainly",
       // The explanation lands below the options; bring it into view, since this press asked for it.
       onclick: () => void sendTurn(flow, d, route, true).then(() => showing(flow) && document.querySelector("#now .turns > li:last-child")?.scrollIntoView({ block: "nearest" })),
@@ -323,14 +324,13 @@ function jordanTurn(d: Decision, flow: Flow, t: JordanTurn, n: number): HTMLElem
 
 const face = () => h("img", { class: "bug-face", src: "/firefly/clay/attentive.png", alt: "", width: 28, height: 28 });
 
-function bugTurn(t: ShownBugTurn, huh: HTMLElement | null = null): HTMLElement {
+function bugTurn(t: ShownBugTurn): HTMLElement {
   return h(
     "li",
     { class: `turn bug${t.next === "confirm" ? " readback" : t.next === "explain" ? " explain" : ""}` },
     face(),
     h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), t.text),
     t.source && t.source !== "live" ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "code" ? "stand-in" : t.source) : null,
-    huh,
   );
 }
 
@@ -356,11 +356,9 @@ export function paintThread(): void {
 
   const list = area.querySelector(".turns")!;
   let n = 0;
-  const route = threadNodes.get(flow.id)?.route ?? routeOf(flow.id) ?? "decide";
-  const huh = canHuh(flow);
-  const items = flow.turns.map((t, i) => (t.who === "jordan" ? jordanTurn(d, flow, t, n++) : bugTurn(t, huh && i === flow.turns.length - 1 ? huhButton(flow, d, route, "huh-turn-btn") : null)));
-  const huhQ = document.querySelector<HTMLElement>("#now .huh-q");
-  if (huhQ) huhQ.hidden = !huh || flow.turns.some((t) => t.who === "bugme");
+  const items = flow.turns.map((t) => (t.who === "jordan" ? jordanTurn(d, flow, t, n++) : bugTurn(t)));
+  const huhRow = area.querySelector<HTMLElement>(".huh-row");
+  if (huhRow) huhRow.hidden = !canHuh(flow);
   if (busy && flow.turns.at(-1)?.who === "jordan") items.push(h("li", { class: "turn bug typing", "aria-hidden": "true" }, face(), h("p", {}, h("span", { class: "dots" }, "…"))));
   const grew = items.length !== list.childElementCount;
   list.replaceChildren(...items);
@@ -384,9 +382,12 @@ export function paintThread(): void {
   }
   const msg = area.querySelector(".think-msg")!;
   msg.textContent = flow.error || (choosing ? flow.message : "");
-  const ex = area.querySelector<HTMLElement>(".example");
+  const demo = area.querySelector<HTMLElement>(".demo-reply");
   const script = CONVERSATIONS.find((c) => c.id === d.id);
-  if (ex) ex.hidden = !choosing || !script || !scriptWords(script)[scriptIndex(flow)];
+  if (demo) {
+    demo.hidden = !choosing || !script || !scriptWords(script)[scriptIndex(flow)];
+    (demo as HTMLButtonElement).disabled = busy;
+  }
   const skip = area.querySelector<HTMLButtonElement>(".skip-q");
   if (skip) {
     skip.hidden = !choosing;
@@ -528,26 +529,22 @@ function puntPanel(flow: Flow, d: Decision): HTMLElement {
  * the visitor picked the example's option. It is labeled; it never replaces the visitor's own words.
  */
 export function exampleButton(d: Decision, ta: HTMLTextAreaElement): Child {
-  // Offered before the click (clicking decides), for the option the recorded reason goes with.
+  // DEMO REPLY, as in the conversation box: Jordan's recorded reason for the option chosen.
   const ex = EXAMPLES.find((e) => e.id === d.id && (!F?.choice || e.choice === F.choice));
   if (!ex || Q.mode === "live") return null;
   return h(
-    "p",
-    { class: "example" },
-    "Live calls are off, so only recorded answers can be evaluated. ",
-    h(
-      "button",
-      {
-        type: "button",
-        class: "linkish",
-        onclick: () => {
-          ta.value = ex.reason;
-          ta.dispatchEvent(new Event("input"));
-          if (F) F.basis = ex.reason;
-        },
+    "button",
+    {
+      type: "button",
+      class: "demo-reply",
+      title: "Fill in Jordan's recorded reason",
+      onclick: () => {
+        ta.value = ex.reason;
+        ta.dispatchEvent(new Event("input"));
+        if (F) F.basis = ex.reason;
       },
-      `Use Jordan's recorded reason for “${d.options.find((o) => o.key === ex.choice)?.label ?? ex.choice}”`,
-    ),
+    },
+    "DEMO REPLY",
   );
 }
 
@@ -580,22 +577,37 @@ export function followup(d: Decision, route: RouteKind): Child {
 
   const top = F.guess ? topGuess(F.guess) : null;
   const guessed = top ? d.options.find((o) => o.key === top.option)! : null;
+  // Revealed only now (docs/STAGE-6F.md): what the agent would have picked, then Bug Me's own guess.
+  const agentPick = d.no_recommendation ? undefined : d.options.find((o) => o.key === d.recommended);
   const parts: Child[] =
-    F.phase === "why" || !top || !guessed
+    !top || !guessed
       ? []
-      : [h("p", {}, h("b", {}, "Bug Me's guess, hidden until now: "), `${guessed.label} (${Math.round(top.p * 100)}%).`, top.option === F.choice ? " You agreed." : " You went the other way.")];
+      : [
+          h(
+            "p",
+            { class: "reveal-line" },
+            // Said once when the agent and Bug Me expected the same thing.
+            ...(agentPick && agentPick.key === top.option
+              ? agentPick.key === F.choice
+                ? ["The agent would have picked this one too, and so would I."]
+                : ["The agent would have picked ", h("b", {}, agentPick.label), ", and so would I."]
+              : [
+                  ...(agentPick ? (agentPick.key === F.choice ? ["The agent would have picked this one too. "] : ["The agent would have picked ", h("b", {}, agentPick.label), ". "]) : []),
+                  ...(top.option === F.choice ? ["My guess was this one."] : ["My guess was ", h("b", {}, guessed.label), "."]),
+                ]),
+          ),
+        ];
   if (F.phase === "why") {
     const ta = h("textarea", { class: "fact-edit", id: "why", rows: 2, placeholder: "Say it or type it" }) as HTMLTextAreaElement;
     const flow = F;
     ta.value = flow.basis;
     ta.addEventListener("input", () => (flow.basis = ta.value));
     parts.push(
-      h("p", { class: "lead" }, "I'm curious: why?"),
-      h("p", {}, "Your answer surprised me. Your reason can become guidance for every agent."),
+      h("p", { class: "lead why-lead" }, agentPick && agentPick.key !== flow.choice ? "What made you go against the agent?" : "I'm curious: why this one?"),
+      h("p", {}, "A sentence is plenty. Your reason can become guidance for every agent."),
       h("label", { for: "why", class: "sr-only" }, "Why did you choose that?"),
-      h("div", { class: "basis-row" }, ta),
+      h("div", { class: "basis-row" }, ta, exampleButton(d, ta)),
       flow.error ? h("p", { class: "adjusted", role: "alert" }, flow.error) : null,
-      exampleButton(d, ta),
       h(
         "div",
         { class: "actions" },

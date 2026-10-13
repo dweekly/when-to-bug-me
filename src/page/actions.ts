@@ -264,7 +264,6 @@ export async function confirmThread(flow: Flow, d: Decision, route: RouteKind): 
   flow.basis = ci.reason;
   flow.conditions = ci.conditions;
   flow.evidence = ci.evidence;
-  flow.whyAsked = ci.whyAsked;
   flow.noMoreQuestions = ci.noMoreQuestions;
   flow.hasFeedback = ci.hasFeedback;
   const n: Narration = { narration: ci.narration, narrationMarks: [], unparsed: false };
@@ -459,8 +458,8 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
   });
   glowEvent({ kind: "answered", route, basis: substantiveBasis(basis), againstRecommendation: choice !== d.recommended });
   save();
-  // The conversation already asked (or was told to stop asking): the backstop stays quiet.
-  if (shouldAskWhy(choice, r.guess, guidanceText({ reason: basis, conditions }), { whyAsked: flow.whyAsked, noMoreQuestions: flow.noMoreQuestions })) {
+  // Against the agent or a confident guess, with no reason yet: nudge (unless told to stop asking).
+  if (shouldAskWhy(choice, r.guess, guidanceText({ reason: basis, conditions }), { noMoreQuestions: flow.noMoreQuestions, ...(d.no_recommendation ? {} : { recommended: d.recommended }) })) {
     flow.phase = "why";
     save(); // saved before it is shown, so a reload keeps the question
     if (showing(flow)) {
@@ -595,7 +594,9 @@ export async function keepFact(flow: Flow, d: Decision, text: string, p: FactOut
 
 async function keepFactNow(flow: Flow, d: Decision, text: string, p: FactOutput & { reroute: string[] }): Promise<void> {
   const t = text.replace(/\s+/g, " ").trim();
-  const label = d.options.find((o) => o.key === flow.choice)?.label ?? "";
+  // The kept fact's source names the option as the agent did: it feeds routing, which never sees the plain labels.
+  const opt = d.options.find((o) => o.key === flow.choice);
+  const label = opt?.agent_label ?? opt?.label ?? "";
   // Live queue only: the guidance is saved on the server first (if it isn't, it isn't kept), then added
   // to the session's answer. A retry after a failed update finds it already saved and only updates;
   // it adds nothing, so the cap on facts doesn't apply to it.

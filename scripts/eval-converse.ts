@@ -13,11 +13,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import recorded from "../fixtures/captures/recorded.json";
-import { EFFORT, MAX_TOKENS, MODEL, PRICE_PER_MTOK } from "../src/shared/constants";
+import { EFFORT, MAX_TOKENS, MODEL, PRICE_PER_MTOK, TITLE_MAX_TOKENS, TITLE_MODEL } from "../src/shared/constants";
+import { parseTitles, plainOptions } from "../src/shared/titles";
 import { type ConvTurn, type ConverseResult, type Next, advance, sanitizeLedger, unverifiedQuotes } from "../src/shared/converse";
 import { type Script, scriptTurn } from "../src/shared/examples";
 import { modelCacheKey } from "../src/shared/hash";
-import { CONVERSE_PROMPT_VERSION, PROMPT_VERSION, conversePrompt, converseSchema, routePrompt, routeSchema } from "../src/shared/prompts";
+import { CONVERSE_PROMPT_VERSION, PROMPT_VERSION, TITLE_PROMPT_VERSION, conversePrompt, converseSchema, routePrompt, routeSchema, titlePrompt, titleSchema } from "../src/shared/prompts";
 import { enforceSettleInvariant, parseRouteOutput } from "../src/shared/route";
 import type { Decision, Fact, Persona, Rule } from "../src/shared/types";
 
@@ -169,8 +170,17 @@ async function cardFor(d: Decision) {
   return { route: enforceSettleInvariant(out, d, rules, facts).route, why_here: out.why_here };
 }
 
-async function trial(c: Case, d: Decision, n: number): Promise<{ pass: boolean; detail: string[]; ms: number[] }> {
-  const card = await cardFor(d);
+/** The decision as the Worker hands it to the conversation: options in Jordan's terms from the recorded
+ *  titles (docs/STAGE-6F.md). Routing still uses the agent's own decision. */
+async function plainFor(d: Decision): Promise<Decision> {
+  const key = await modelCacheKey({ model: TITLE_MODEL, effort: EFFORT, maxTokens: TITLE_MAX_TOKENS, promptVersion: TITLE_PROMPT_VERSION, schema: titleSchema(d.options.map((o) => o.key)), prompt: titlePrompt(d) });
+  const out = entries[key]?.output;
+  return plainOptions(d, out === undefined ? undefined : parseTitles(out, d).labels);
+}
+
+async function trial(c: Case, agents: Decision, n: number): Promise<{ pass: boolean; detail: string[]; ms: number[] }> {
+  const card = await cardFor(agents);
+  const d = await plainFor(agents);
   const turns: ConvTurn[] = [];
   const detail: string[] = [];
   const ms: number[] = [];

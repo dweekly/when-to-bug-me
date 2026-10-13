@@ -27,15 +27,16 @@ test("flight -> why -> kept fact -> Berlin sync re-checked and reframed, formatt
   await expect(page.locator("#now-q")).toContainText("6:05am flight");
   await decideQuietly(page, "9:40am flight");
 
-  await expect(page.getByText("I'm curious: why?")).toBeVisible();
-  await expect(page.getByText("hidden until now")).toHaveCount(0);
+  // The nudge comes with the reveal: what the agent would have picked, and Bug Me's guess (docs/STAGE-6F.md).
+  await expect(page.locator("#now .why-lead")).toBeVisible();
+  await expect(page.locator("#now .reveal-line")).toContainText("The agent would have picked");
 
   await page.getByLabel("Why did you choose that?").fill("I do school drop-off before 8:30, so no early-morning flights for me.");
   await page.getByRole("button", { name: "Tell Bug Me" }).click();
 
-  const guessLine = page.locator("#now").getByText("Bug Me's guess, hidden until now:");
+  const guessLine = page.locator("#now .reveal-line");
   await expect(guessLine).toBeVisible();
-  await expect(page.locator("#now")).toContainText("You went the other way.");
+  await expect(guessLine).not.toContainText("this one");
 
   await page.getByRole("button", { name: "Keep it" }).click();
   // The answered card lists what the kept guidance changed, Berlin among it.

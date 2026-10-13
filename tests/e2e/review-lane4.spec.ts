@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 async function flightNo(page: import("@playwright/test").Page): Promise<void> {
   await openDecision(page, "onsite-flight");
   await decideQuietly(page, "9:40am flight");
-  await expect(page.getByText("I'm curious: why?")).toBeVisible();
+  await expect(page.locator("#now .why-lead")).toBeVisible();
 }
 
 test("an answer in flight stays with its own card when another card is opened", async ({ page }) => {

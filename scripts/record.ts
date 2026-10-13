@@ -23,7 +23,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { EFFORT, MAX_REROUTES_PER_FACT, MAX_TOKENS, MODEL, PRICE_PER_MTOK, TITLE_MAX_TOKENS, TITLE_MODEL, TITLE_PRICE_PER_MTOK } from "../src/shared/constants";
 import { type ConvTurn, type ConverseResult, type Next, advance, closeInputs, outcomeOf, sanitizeLedger } from "../src/shared/converse";
-import { parseTitles } from "../src/shared/titles";
+import { parseTitles, plainOptions } from "../src/shared/titles";
 import { parseFactOutput } from "../src/shared/fact";
 import { modelCacheKey } from "../src/shared/hash";
 import { keptFact, withFact } from "../src/shared/lifecycle";
@@ -167,8 +167,11 @@ async function routedCard(d: Decision): Promise<{ route: "settle" | "check_in" |
 
 /** Play one scripted conversation, then record the guidance call it leads to and that call's re-routes. */
 async function playConversation(s: (typeof CONVERSATIONS)[number]): Promise<void> {
-  const d = byId.get(s.id)!;
-  const card = await routedCard(d);
+  const agents = byId.get(s.id)!;
+  const card = await routedCard(agents);
+  // The conversation runs on the options in Jordan's terms, as the Worker does (docs/STAGE-6F.md).
+  const t = await ask(`titles ${agents.id}`, titlePrompt(agents), titleSchema(agents.options.map((o) => o.key)), (raw) => parseTitles(raw, agents), TITLE_PROMPT_VERSION, FAST);
+  const d = plainOptions(agents, t ? parseTitles(t, agents).labels : undefined);
   const turns: ConvTurn[] = [];
   let last: ConverseResult | null = null;
   for (const [i, t] of s.turns.entries()) {
@@ -193,7 +196,8 @@ async function playConversation(s: (typeof CONVERSATIONS)[number]): Promise<void
     return;
   }
   console.log(`  close ${s.id}: reason "${c.reason}" conditions "${c.conditions}" evidence "${c.evidence}"`);
-  if (c.evidence) await factAndReroutes(d, s.choice, c.evidence);
+  // Guidance is the Worker's /api/fact, which works on the agent's own decision.
+  if (c.evidence) await factAndReroutes(agents, s.choice, c.evidence);
 }
 
 /** Calls that ran but did something other than a script expects: the run exits non-zero. */

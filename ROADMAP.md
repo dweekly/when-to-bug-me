@@ -42,6 +42,12 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Huh? on an older turn or a single phrase,** and sending the confusion back to the asking agent ("ask it again, more plainly") or fetching material the agent never supplied.
 - **Explanation quality beyond the designed cases:** indirect confusion, accurate definitions, and a second explanation that differs from the first.
 
+## From stage 6f (the card in Jordan's words)
+
+- **Label fidelity:** an eval that a plain label says what the option does, keeps its conditions, stays distinct from its sibling and doesn't lean (two of 40 lean a little today: "easy to undo", "safe updates").
+- **Translate the rest of the card's agent language:** the agent chain (`billing-lead › invoice-migrator › tax-mapper`) and payload snippets.
+- **Saved conversations across label or prompt changes:** a thread saved under older labels replays against new recordings; version its inputs, or keep a label snapshot with it.
+
 ## From the stage 7 plan review (live fire)
 
 - **Verify what agents declare.** Live asks carry the agent's own claims of reversibility and cost; settling trusts them within a $1 ceiling and permission-granting rules. Independent checks (deploy target, money at stake, data touched) would let Bug Me settle more, safely.

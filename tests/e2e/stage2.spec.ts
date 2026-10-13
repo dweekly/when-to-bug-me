@@ -337,7 +337,7 @@ test.describe("Skip", () => {
     // Once an answer is final, the decision can't be set aside; the follow-up's own Skip only skips the why.
     await openDecision(page, "onsite-flight");
     await decideQuietly(page, "9:40am flight");
-    await expect(page.getByText("I'm curious: why?")).toBeVisible();
+    await expect(page.locator("#now .why-lead")).toBeVisible();
     await expect(page.locator("#now .skip-q:visible")).toHaveCount(0);
     s = (await stored(page))!;
     expect(s.answered["onsite-flight"]?.final).toBe("B");

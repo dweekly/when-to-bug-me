@@ -35,12 +35,14 @@ export function surprised(finalChoice: string, guess: Guess): boolean {
 }
 
 /**
- * Ask "I'm curious: why?" only when surprised and no basis was given yet. Never ask twice: not when the
- * conversation already asked (`whyAsked`), and not when the person said to stop asking
- * (`noMoreQuestions`) (docs/STAGE-6.md, "Close").
+ * After the decision, nudge for a reason when the answer went against a confident guess or, given
+ * `recommended`, against the agent's pick, and no reason was given yet (David, 2026-10-13; docs/STAGE-6F.md).
+ * The reveal is new information, so a "why?" earlier in the conversation doesn't silence it; being told
+ * to stop asking (`noMoreQuestions`) does.
  */
-export function shouldAskWhy(finalChoice: string, guess: Guess, basis: string | undefined, flags: { whyAsked?: boolean; noMoreQuestions?: boolean } = {}): boolean {
-  return surprised(finalChoice, guess) && !hasBasis(basis) && !flags.whyAsked && !flags.noMoreQuestions;
+export function shouldAskWhy(finalChoice: string, guess: Guess, basis: string | undefined, flags: { noMoreQuestions?: boolean; recommended?: string } = {}): boolean {
+  const againstAgent = flags.recommended !== undefined && finalChoice !== flags.recommended;
+  return (surprised(finalChoice, guess) || againstAgent) && !hasBasis(basis) && !flags.noMoreQuestions;
 }
 
 /**
