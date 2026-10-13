@@ -2,10 +2,10 @@
 // the card it started on, a reset discards late responses, open follow-ups stay reachable, dictation
 // cannot cross cards, and the explored-options card asks for its teach-back.
 import { expect, test } from "@playwright/test";
-import { editRule, freshPage, goHome, goRecord, hold, openDecision, openFromAgenda, option, decide } from "./helpers";
+import { editRule, freshPage, goHome, goRecord, hold, openDecision, openFromAgenda, option, decide, decideQuietly } from "./helpers";
 
 const state = async (page: import("@playwright/test").Page) =>
-  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v3')")) as string);
+  JSON.parse((await page.evaluate("localStorage.getItem('bugme.state.v4')")) as string);
 
 test.beforeEach(async ({ page }) => {
   await freshPage(page);
@@ -18,12 +18,14 @@ test("pending re-checks are saved before their requests return", async ({ page }
   release();
 });
 
-test("an answer uses the card it started on, even if a re-route replaces it mid-answer", async ({ page }) => {
+test("an answer uses the card it started on: a re-route leaves a decision alone while it is being talked through", async ({ page }) => {
   const release = await hold(page, "/api/answer", (b) => b.id === "onsite-flight" && b.stage === "check");
   await openDecision(page, "onsite-flight");
-  await decide(page, "9:40am flight");
+  await decideQuietly(page, "9:40am flight");
   await editRule(page, "R12", "Travel: never book flights that leave before 8am.");
-  await expect.poll(async () => (await state(page)).cards["onsite-flight"].rule_quoted).toContain("never book flights");
+  await expect.poll(async () => (await state(page)).pending.length).toBe(0);
+  // The conversation is open, so the card isn't re-routed under the person (docs/STAGE-6.md).
+  expect((await state(page)).cards["onsite-flight"].rule_quoted ?? "").not.toContain("never book flights");
   release();
   await expect.poll(async () => (await state(page)).answered["onsite-flight"]?.final).toBe("B");
   const guess = (await state(page)).answered["onsite-flight"].guess as { option: string; p: number }[];
@@ -36,7 +38,7 @@ test("an answer uses the card it started on, even if a re-route replaces it mid-
 test("starting over discards a response that arrives afterwards", async ({ page }) => {
   const release = await hold(page, "/api/answer", (b) => b.id === "onsite-flight");
   await openDecision(page, "onsite-flight");
-  await decide(page, "9:40am flight");
+  await decideQuietly(page, "9:40am flight");
   await goRecord(page);
   await page.getByRole("button", { name: "Start the morning over" }).click();
   release();
@@ -46,7 +48,7 @@ test("starting over discards a response that arrives afterwards", async ({ page 
 
 test("an open 'why?' stays reachable after opening another card", async ({ page }) => {
   await openDecision(page, "onsite-flight");
-  await decide(page, "9:40am flight");
+  await decideQuietly(page, "9:40am flight");
   await expect(page.getByText("I'm curious: why?")).toBeVisible();
   await openFromAgenda(page, "File the five action items");
   await goHome(page);

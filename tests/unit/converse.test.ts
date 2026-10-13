@@ -74,7 +74,7 @@ describe("advance: the model proposes, code disposes", () => {
   it("a close straight after a read-back of the same choice stands, and every read-back says what it read back", () => {
     expect(advance(api, [j("Keep user_id, because integrators parse v1")], "", "confirm", picked).heard).toBe(decisionFingerprint(picked));
     const r = advance(api, [j("Keep user_id, because integrators parse v1"), bug("So: keep user_id. Right?", "confirm", decisionFingerprint(picked)), j("Yes")], "Sending that now.", "close", picked);
-    expect(r).toMatchObject({ next: "close", reply: "Sending that now." });
+    expect(r).toMatchObject({ next: "close", reply: "Got it. Press the button to send it." });
   });
 
   it("a yes that changes the decision is read back again, not closed", () => {

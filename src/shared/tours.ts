@@ -19,9 +19,9 @@ export interface TourStep {
   /** A step that may not happen on this path (pushback is rationed and depends on the record):
    *  if its target hasn't appeared within a moment, the tour skips it. */
   optional?: boolean;
-  /** Offer Jordan's words for this textarea: a recorded example (by decision: its narration for the
-   *  think box, its reason for the "why?" box), or a literal sentence for steps that call no model.
-   *  Labeled; for a recorded example, offered only when live calls are off. */
+  /** Offer Jordan's words for this textarea: a recorded example (by decision: its scripted turn for the
+   *  conversation box, its reason for the "why?" box), or a literal sentence for steps that call no
+   *  model. Labeled; offered on live servers too, since recorded words replay for free. */
   example?: { textarea: string; decision?: string; text?: string };
 }
 
@@ -41,19 +41,20 @@ export interface Tour {
 }
 
 const pick = (key: string) => `#now .opt[data-key="${key}"]`;
-/** Think out loud: Jordan's words go in, and the step finishes when there is a pick (marked in the
- *  words, or clicked: someone who'd rather click is not held here). */
-const think = (decision: string, text: string): TourStep => ({
-  target: "#now .think",
-  title: "Think out loud",
+/** One of Jordan's turns in the conversation: say it (or use Jordan's words, the decision's scripted
+ *  turn), then Send. Finishes when Bug Me's reply to that turn (the `turn`th) appears. */
+const say = (decision: string, turn: number, title: string, text: string): TourStep => ({
+  target: "#now .thread",
+  title,
   text,
-  until: { appear: "#now .think-marks .m-choice, #now .opt[aria-pressed='true']" },
+  until: { appear: `#now .turns li.bug:not(.typing):nth-child(${turn * 2})` },
   example: { textarea: "#think", decision },
 });
-/** Send: nothing goes out until now. Moves on when Bug Me answers (pushback, why, guidance or done). */
-const send = (text = "Nothing went out until now. Send it."): TourStep => ({
-  target: "#now .send",
-  title: "Send",
+/** Bug Me read the decision back: the button is the decision itself. Moves on when the answer goes
+ *  down the usual path (pushback, the guess, guidance or done). */
+const decide = (text = "Bug Me read it back. The button is the decision itself: press it."): TourStep => ({
+  target: "#now .send.decide",
+  title: "Decide",
   text,
   until: { appear: "#now .followup" },
 });
@@ -74,11 +75,11 @@ export const TOURS: Tour[] = [
       { target: "#agenda", title: "Then, in order", text: "Every waiting question in the order to work it. ● a real decision, ◐ a quick check.", until: "next" },
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have booked the cheap 6:05am itself. Code stopped it: $212 and only partly refundable.", until: "next" },
       { target: "#now .viz", title: "See it, don't read it", text: "A picture of the trade-off: the 6:05 lands before the 10:00 start. Each option lists its pros, cons and cost.", until: "next" },
-      think("onsite-flight", "Say it the way you'd say it to a colleague: take the 9:40. Bug Me lights the choice in your words. Or use Jordan's."),
-      send("Nothing went out until now, and Bug Me's guess is still sealed. Send it."),
+      say("onsite-flight", 1, "Talk to Bug Me", "Say it the way you'd say it to a colleague: take the 9:40. Then Send. Or use Jordan's words."),
+      say("onsite-flight", 2, "One light question", "A bare pick earns one question: why? Answer it, or use Jordan's words."),
+      decide("Bug Me read it back. The button is the decision itself, and its guess is still sealed: press it."),
       { target: "#now .followup.push", optional: true, title: "Pushback, from your own rules", text: "Your travel rule says cheapest. Bug Me asks once. Say this one's an exception.", until: { click: "#now .followup.push .primary" } },
-      { target: "#now .followup", title: "I'm curious: why?", text: "You gave no reason, and your answer surprised it. Say why, or use Jordan's words.", until: { appear: "#fact-text" }, example: { textarea: "#why", decision: "onsite-flight" } },
-      { target: "#now .followup", title: "A reason becomes guidance", text: "Keep it (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
+      { target: "#now .followup", title: "A reason becomes guidance", text: "Its guess is revealed. Keep your reason (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The 7:30am Berlin invite was checked again under your new guidance.", until: { click: "#now .rerouted button" } },
       { target: "#now .skip-q", title: "Skip", text: "Not ready to decide? Set it aside, and say what you'd need.", until: { click: "#now .skip-q" } },
       { target: "#now .punt", title: "What would you need?", text: "Pick one and say it in a sentence. The agent is told exactly that.", until: { event: "bugme:set-aside" }, example: { textarea: "#punt-reason", text: "Ask the Berlin team whether 9:30am Pacific works; that's still 18:30 for them." } },
@@ -94,10 +95,10 @@ export const TOURS: Tour[] = [
     path: [{ decision: "onsite-flight", choice: "B", narration: true, reason: "example", keep: true }],
     steps: [
       { go: "#/d/onsite-flight", target: "#now .why", title: "Code said no", text: "Claude would have settled this; code brought it to you: it costs $212 and is only partly refundable.", until: "next" },
-      think("onsite-flight", "Say no: take the 9:40. Or use Jordan's words."),
-      send("Bug Me's guess stays sealed until you send."),
+      say("onsite-flight", 1, "Say no", "Take the 9:40, then Send. Or use Jordan's words."),
+      say("onsite-flight", 2, "Say why", "Bug Me asks why, once. Answer it, or use Jordan's words."),
+      decide("Bug Me's guess stays sealed until you decide."),
       { target: "#now .followup.push", optional: true, title: "Pushback, from your own rules", text: "Your travel rule says cheapest. Bug Me asks once. Say this one's an exception.", until: { click: "#now .followup.push .primary" } },
-      { target: "#now .followup", title: "I'm curious: why?", text: "Say why, or use Jordan's words.", until: { appear: "#fact-text" }, example: { textarea: "#why", decision: "onsite-flight" } },
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The weekly 7:30am invite is now framed by what you said.", until: "next" },
     ],
@@ -112,9 +113,9 @@ export const TOURS: Tour[] = [
     steps: [
       { go: "#/d/api-rename", target: "#now .why", title: "Why it's yours", text: "Your written rule says public API changes are yours.", until: "next" },
       { target: "#now .options", title: "Each option, whole", text: "Each card holds its own line of the real payload, its pros and its cons.", until: "next" },
-      think("api-rename", "Talk it through: which way, why, any “but…”, any question. Bug Me marks each as you go. Or use Jordan's words."),
-      { target: "#now .answers", title: "Asked as you talk", text: "Your question is answered under your words, from what the agent provided.", until: "next" },
-      send("The reason and the condition go with it, in your words."),
+      say("api-rename", 1, "Talk it through", "Which way, why, any “but…”, any question, in one go. Then Send. Or use Jordan's words."),
+      { target: "#now .turns", title: "Heard, in your words", text: "Bug Me marks what it heard: the choice, the reasons, the condition, the question. Then it reads the decision back.", until: "next" },
+      decide("The reason and the condition go with it, in your words."),
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The webhook rename is now framed by your reason.", until: "next" },
     ],
@@ -128,7 +129,9 @@ export const TOURS: Tour[] = [
     path: [{ decision: "sdk-dependency", choice: "B" }],
     steps: [
       { go: "#/d/sdk-dependency", target: pick("A"), title: "Take the agent's pick", text: "Add the library: click it. Clicking picks; nothing goes out yet.", until: { click: pick("A") } },
-      send("Bug Me checks your record before it goes out."),
+      { target: "#now .send", title: "Send", text: "Send the click on its own.", until: { appear: "#now .turns li.bug:not(.typing):nth-child(2)" } },
+      say("sdk-dependency", 2, "Just do it", "A bare click earns one question. Tell Bug Me to just do it, or use Jordan's words."),
+      decide("Bug Me checks your record before it goes out."),
       { target: "#now .followup.push", title: "Your own words", text: "It quotes what you told it last week. Change your answer.", until: { click: "#now .followup.push .ghost" } },
       { target: "#now .followup", title: "Pushback, rationed", text: "At most twice a session, and only with your own record.", until: "next" },
     ],
@@ -142,8 +145,8 @@ export const TOURS: Tour[] = [
     path: [{ decision: "settings-redesign", choice: "B", narration: true, keep: true }],
     steps: [
       { go: "#/d/settings-redesign", target: "#now .options", title: "Both built", text: "Click around in each. They're real prototypes, not screenshots.", until: "next" },
-      think("settings-redesign", "Pick one and teach it back: what happens next on that page? Or use Jordan's words."),
-      send(),
+      say("settings-redesign", 1, "Teach it back", "Pick one and say what happens next on that page, then Send. Or use Jordan's words."),
+      decide(),
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
     ],
   },
@@ -157,8 +160,8 @@ export const TOURS: Tour[] = [
     steps: [
       { go: "#/d/reconciliation-path", target: "#now-q", title: "In your terms", text: "What the decision actually means for customers.", until: "next" },
       { target: "#now details.more", title: "What the agent asked", text: "Open it: “v2 reconciliation path or the T-19 mapping?”", until: { click: "#now details.more summary" } },
-      think("reconciliation-path", "Decide out loud: leave past invoices alone, and say why. Or use Jordan's words."),
-      send(),
+      say("reconciliation-path", 1, "Decide out loud", "Leave past invoices alone, and say why. Then Send. Or use Jordan's words."),
+      decide(),
       { target: "#now .followup", title: "Guidance", text: "Keep it (edit it first if you like).", until: { appear: "#now .followup .senddown" } },
     ],
   },

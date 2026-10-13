@@ -27,6 +27,7 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 
 ## From the stage 6 plan review
 
+- **Read back only when there is ambiguity** (David, 2026-10-12: "I don't know that a full readback is necessary to the user unless there is potential ambiguity"). Today every decision is read back before it closes, and a typed "yes" is checked against a fingerprint of what was read back. Closing on a clear answer, and reading back only a paraphrased condition, another course, a rejected question or a correction, would remove most of that machinery.
 - **Choosing what to raise next from what was just said.** David's "next best thing" idea: the next decision is the one an answer just made most urgent or most changed, not the next card in a project pile, with an eye on how long Jordan has spent.
 - **Conversation quality beyond the designed cases.** Eight scripted conversations demonstrate the mechanism. Held-out people, implicit reasons, contradictory accounts, long sessions and adversarial material need a broader eval.
 - **Server-owned threads.** Today the transcript, question count and ledger live in the browser. Accounts, multi-device recovery and idempotent turns belong with durable records.

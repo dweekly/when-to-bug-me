@@ -203,7 +203,7 @@ export function primaryLabel(d: Decision, l: Ledger): string {
 /** The read-back code writes when it overrides the model: one fixed template per outcome. */
 export function readBack(d: Decision, l: Ledger): string {
   const o = outcomeOf(d, l);
-  const conds = l.conditions.map((c) => sentence(c.quote)).join("; ");
+  const conds = l.conditions.map((c) => lowerFirst(sentence(c.quote))).join("; ");
   if (o.kind === "option") {
     const label = lowerFirst(d.options.find((x) => x.key === o.key)!.label);
     return `So: ${label}${conds ? `, ${conds}` : ""}. Right?`;
@@ -254,7 +254,8 @@ export function advance(d: Decision, turns: ConvTurn[], reply: string, next: Nex
   const clip = (s: string) => (s.length > MAX_REPLY_CHARS ? `${s.slice(0, MAX_REPLY_CHARS - 1).trimEnd()}…` : s);
   const confirm = (text: string, forced?: string): ConverseResult => ({ reply: text, next: "confirm", ledger, heard: decisionFingerprint(ledger), ...(forced ? { forced } : {}) });
   if (next === "close") {
-    if (agreesOnly(turns, ledger) && sendable) return { reply: clip(reply.trim()), next: "close", ledger };
+    // The page sends nothing on a typed "yes": it lights the decision button, so the reply says so.
+    if (agreesOnly(turns, ledger) && sendable) return { reply: "Got it. Press the button to send it.", next: "close", ledger };
     return confirm(readBack(d, ledger), last?.next !== "confirm" ? "close before a read-back" : !sendable ? "nothing to send yet" : "the decision changed since the read-back");
   }
   if (next === "ask") {

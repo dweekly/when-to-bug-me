@@ -4,8 +4,9 @@
 // so the current step's target is re-found after every render. Escape or the close button ends it.
 
 import { type Driver, type DriveStep, driver } from "driver.js";
-import { EXAMPLES } from "../shared/examples";
+import { CONVERSATIONS, EXAMPLES } from "../shared/examples";
 import { TOURS, type Tour, type TourStep } from "../shared/tours";
+import { scriptIndex } from "./actions";
 import { voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
@@ -160,8 +161,13 @@ function exampleText(step: TourStep): string | null {
   if (!step.example) return null;
   if (step.example.text) return step.example.text;
   // Offered on live servers too: Jordan's exact words replay the recording, so they cost nothing.
-  const ex = EXAMPLES.find((e) => e.id === step.example!.decision);
-  return (step.example.textarea === "#think" ? ex?.narration : ex?.reason) ?? null;
+  if (step.example.textarea === "#think") {
+    // The conversation: the decision's scripted turn for where the thread is now.
+    const script = CONVERSATIONS.find((c) => c.id === step.example!.decision);
+    const at = F && F.id === step.example.decision ? scriptIndex(F) : 0;
+    return script?.turns[at]?.text || null;
+  }
+  return EXAMPLES.find((e) => e.id === step.example!.decision)?.reason ?? null;
 }
 
 function show(r: Running, step: TourStep, el: Element): void {

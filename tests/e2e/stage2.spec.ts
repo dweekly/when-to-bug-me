@@ -21,7 +21,7 @@ import {
   projectGroup,
   stored,
   waitForHome,
-  waitForLoad, decide, think } from "./helpers";
+  waitForLoad, decide, decideQuietly, toDecision } from "./helpers";
 
 /** Platform's waiting (unsettled) decisions in the fixtures. */
 const PLATFORM = ["incident-action-items", "onsite-flight"];
@@ -37,7 +37,13 @@ async function answerQuickly(page: Page): Promise<void> {
   const now = page.locator("#now");
   await now.locator(".options .opt").first().click();
   await now.locator(".send").click();
-  await expect(now.getByRole("button", { name: "Next decision" })).toBeVisible();
+  await toDecision(page);
+  // Guidance offered on an answer that taught something: not kept, so the card can close.
+  const dont = now.getByRole("button", { name: "Don't keep" });
+  const nextBtn = now.getByRole("button", { name: "Next decision" });
+  await expect(dont.or(nextBtn).first()).toBeVisible();
+  if (await dont.count()) await dont.click();
+  await expect(nextBtn).toBeVisible();
 }
 
 /** Open "Skip" on the card in focus, pick a kind of reason, give a sentence, and set it aside. */
@@ -315,8 +321,7 @@ test.describe("Skip", () => {
 
   test("is offered at pushback, and not once an answer is final", async ({ page }) => {
     await openDecision(page, "sdk-dependency");
-    await think(page, "Because generated validators stay in sync with the OpenAPI spec for free.");
-    await decide(page, "Add the library");
+    await decide(page, "Add the library", "Because generated validators stay in sync with the OpenAPI spec for free.");
     const push = page.locator("#now .followup.push");
     await expect(push).toBeVisible();
     await push.locator(".skip-q").click();
@@ -331,9 +336,9 @@ test.describe("Skip", () => {
 
     // Once an answer is final, the decision can't be set aside; the follow-up's own Skip only skips the why.
     await openDecision(page, "onsite-flight");
-    await decide(page, "9:40am flight");
+    await decideQuietly(page, "9:40am flight");
     await expect(page.getByText("I'm curious: why?")).toBeVisible();
-    await expect(page.locator("#now .skip-q")).toHaveCount(0);
+    await expect(page.locator("#now .skip-q:visible")).toHaveCount(0);
     s = (await stored(page))!;
     expect(s.answered["onsite-flight"]?.final).toBe("B");
   });

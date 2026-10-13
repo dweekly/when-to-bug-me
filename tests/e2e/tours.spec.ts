@@ -33,14 +33,15 @@ async function act(page: Page, step: TourStep): Promise<void> {
     await page.locator(step.until.click).first().click();
     return;
   }
-  // Steps that finish when something appears: thinking out loud (use Jordan's words), a question
-  // being answered (wait), Send (press it), the why prompt, keeping guidance.
-  if (step.target === "#now .think") {
+  // Steps that finish when something appears: a turn of the conversation (use Jordan's words, then
+  // Send), Send or the decision button (press it), the why prompt, keeping guidance.
+  if (step.target === "#now .thread") {
     await example.click();
+    await page.locator("#now .send").click();
     return;
   }
-  if (step.target === "#now .send") {
-    await page.locator("#now .send").click();
+  if (step.target === "#now .send" || step.target === "#now .send.decide") {
+    await page.locator(step.target).click();
     return;
   }
   if (step.until.appear === "#fact-text") {
