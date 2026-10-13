@@ -48,6 +48,15 @@ test("DEMO REPLY sits in the box and fills it with Jordan's scripted words; it's
   await expect(demo).toBeEnabled();
 });
 
+test("DEMO REPLY is offered with live Claude on too: the scripted words replay the recording", async ({ page }) => {
+  await page.route("**/api/queue", async (route) => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res, json: { ...(await res.json()), mode: "live", live_available: true } });
+  });
+  await openDecision(page, "onsite-flight");
+  await expect(page.locator("#now .composer .demo-reply")).toBeVisible();
+});
+
 test("the header has no synthetic pill, and the tours are called Demos", async ({ page }) => {
   await openDecision(page, "onsite-flight");
   await expect(page.locator("#bar .synthetic")).toHaveCount(0);
