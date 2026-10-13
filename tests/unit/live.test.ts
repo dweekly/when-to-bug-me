@@ -31,7 +31,7 @@ const ASK = {
   ],
   recommended: "Deploy now",
   context: "Staging passed; this is the production deploy.",
-  project: "nwx",
+  project: "tidepool",
   session: "onboarding work",
 };
 
@@ -59,7 +59,7 @@ describe("an ask becomes a decision", () => {
   it("keeps the agent's words and declared bounds, keyed A, B…", () => {
     const d = decisionFromAsk(ASK, "t-abc");
     expect(d.id).toBe("t-abc");
-    expect(d.project).toBe("nwx");
+    expect(d.project).toBe("tidepool");
     // The decision carries the project's id, so the page's agenda finds it under the persona's projects.
     expect(decisionFromAsk({ ...ASK, project: "My App" }, "t-p").project).toBe("my-app");
     expect(decisionFromAsk({ ...ASK, project: undefined }, "t-p").project).toBe("other");
@@ -84,9 +84,9 @@ describe("an ask becomes a decision", () => {
   });
 
   it("names the owner's projects from the tickets, and is not marked synthetic", () => {
-    const p = ownerPersona([{ id: "nwx", name: "nwx" }, { id: "medcorder", name: "Medcorder" }]);
+    const p = ownerPersona([{ id: "tidepool", name: "tidepool" }, { id: "lantern", name: "Lantern" }]);
     expect(p.synthetic).toBe(false);
-    expect(p.projects.map((x) => x.id)).toEqual(["nwx", "medcorder"]);
+    expect(p.projects.map((x) => x.id)).toEqual(["tidepool", "lantern"]);
   });
 });
 
