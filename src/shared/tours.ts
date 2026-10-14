@@ -4,6 +4,8 @@
 // short sentences, and finishes when the visitor does the thing (a click on the real UI, or an
 // expected element appearing), never by the tour doing it for them.
 
+import { DISPATCH_EXAMPLES } from "./dispatchExamples";
+
 export interface TourStep {
   /** Navigate here before the step (a hash like "#/d/onsite-flight"). */
   go?: string;
@@ -182,6 +184,31 @@ export const TOURS: Tour[] = [
       { target: "#settled .dgroup:first-of-type > summary", title: "Open a group", text: "Open one to see each job.", until: { click: "#settled .dgroup:first-of-type > summary" } },
       { target: "#settled .dgroup[open] .drow:first-child .dundo", title: "Undo", text: "Undo one: it comes back to you.", until: { click: "#settled .dgroup[open] .drow:first-child .dundo" } },
       { target: "#settled .dgroup[open] .drow:first-child .dacts", title: "Two kinds of wrong", text: "Ask! says it should have come to you; Disagree says right to decide, wrong call. They're kept apart.", until: "next" },
+    ],
+  },
+  {
+    id: "dispatch",
+    title: "Send work out at the right size",
+    blurb: "A rough task becomes a brief: sized, fenced in, with what it needs from you first.",
+    minutes: 1,
+    mood: "attentive",
+    path: [],
+    steps: [
+      {
+        go: "#/dispatch",
+        target: ".dispatch-new",
+        // Above the box: on a phone, below it would cover Draft brief.
+        side: "top",
+        title: "Say what you want done",
+        text: "Say it or type it, the way you'd tell a colleague. Then Draft brief.",
+        until: { click: "#draft-brief" },
+        example: { textarea: "#dispatch-task", text: DISPATCH_EXAMPLES[0].task },
+      },
+      { target: "#brief .brief-meta", title: "Sized first", text: "A stage, an estimate, and a stop at twice it, where the session asks instead of growing the job.", until: "next" },
+      { target: "#brief .brief-skip", title: "Not this time", text: "What it would be tempted to build. Ruled out.", until: "next" },
+      { target: "#brief .brief-you", title: "You first", text: "What would stop it halfway. Tick it off.", until: { click: "#brief .brief-you input" } },
+      { target: "#copy-command", title: "Copy and run", text: "One command: model, effort, tools off, and the brief. The setup is under Details.", until: { click: "#copy-command" } },
+      { target: ".brief-report", title: "It reports back", text: "How it went, next to what was briefed.", until: "next" },
     ],
   },
 ];

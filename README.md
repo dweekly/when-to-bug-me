@@ -4,7 +4,7 @@
 
 **Try it:** [bugme.weekly.org](https://bugme.weekly.org), live Claude behind a daily spend cap. This repo is the working prototype for an Anthropic Labs take-home.
 
-Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the prototype's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11), [`docs/STAGE-4.md`](docs/STAGE-4.md) (think out loud: one place to talk a decision through, marked up as Bug Me reads it; fresh as of 2026-10-12), [`docs/STAGE-6.md`](docs/STAGE-6.md) (the decision as a conversation; fresh as of 2026-10-12), [`docs/STAGE-6E.md`](docs/STAGE-6E.md) ("Huh?": say that again, plainly; fresh as of 2026-10-13), [`docs/STAGE-6F.md`](docs/STAGE-6F.md) (the card in Jordan's words; fresh as of 2026-10-13).
+Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the prototype's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11), [`docs/STAGE-4.md`](docs/STAGE-4.md) (think out loud: one place to talk a decision through, marked up as Bug Me reads it; fresh as of 2026-10-12), [`docs/STAGE-6.md`](docs/STAGE-6.md) (the decision as a conversation; fresh as of 2026-10-12), [`docs/STAGE-6E.md`](docs/STAGE-6E.md) ("Huh?": say that again, plainly; fresh as of 2026-10-13), [`docs/STAGE-6F.md`](docs/STAGE-6F.md) (the card in Jordan's words; fresh as of 2026-10-13), [`docs/STAGE-8.md`](docs/STAGE-8.md) (Dispatch: work sent out at the right size; fresh as of 2026-10-13).
 
 > **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 40 of their questions are made up. No real agent receives anything Bug Me "sends down".
 
@@ -16,7 +16,8 @@ The front page is a short explainer; each tour card opens a guided tour of the r
 2. **A decision card** briefs you first (what is going on, and why it is yours, quoting the rule), then asks. The options sit side by side, each with its own pros, cons and cost (and, where there is one, its line of the payload or its clickable prototype).
 3. **Talk it through.** The card is Bug Me's opening; below it is a conversation. Say or type it the way you would to a colleague: which way you lean, why, any "but…", any question, or reject the question outright. Or just click an option and Send. Bug Me replies: a bare click earns one light "Why that one?"; a question gets an answer from what the agent provided (or "I'll ask the agent"); "just do it" stops the questions. Your turns are marked with what it heard, each an exact quote. When it has enough, it reads the decision back in a line, and the button becomes the decision itself ("Keep user_id"). Nothing goes out until you press it, and Bug Me's guess stays sealed until then. If the card or Bug Me's last line doesn't make sense, press **🤔 Huh?**: Bug Me says it again in plain English, and counts it as a miss on its own translation.
 4. Then Bug Me reveals what the agent would have picked and what it guessed (neither shows before you decide), and your reason becomes proposed guidance; keep it, and the waiting decisions it touches are re-checked with the cause shown (the 7:30am Berlin invite is reframed by a reason given on the flight). If you went against the agent or surprised Bug Me without saying why, it asks: **"What made you go against the agent?"**
-5. **The clay firefly** in the corner shows the morning's glow (brighter as you give real reasons). To talk instead of type, press the microphone inside the card's text box: it keeps listening across cards, shows the words it hears under the box, and writes them into it.
+5. **Dispatch** goes the other way: say what you want a session to do, and Bug Me drafts a brief before it starts. The stage (prototype, MVP or product), an estimate, a stopping point at twice it where the session asks instead of growing the job, what's out of scope, the model, effort and permission mode, the tools turned off, what you must do first (a token, a decision), and what comes back to you. Sensitive work that isn't urgent is marked to run locally (a recommendation; the local route isn't wired). Copy command gives one `claude …` line with the brief as its opening prompt, and stays off until every prerequisite is ticked. Three demo tasks are recorded; on the public site the command is illustration only.
+6. **The clay firefly** in the corner shows the morning's glow (brighter as you give real reasons). To talk instead of type, press the microphone inside the card's text box: it keeps listening across cards, shows the words it hears under the box, and writes them into it.
 
 Also worth a click: edit a written rule and watch decisions re-route; undo something in **Decided for you**, or mark it "this shouldn't have come to me"; the settings redesign card, where both options are clickable prototypes.
 
@@ -116,6 +117,14 @@ claude mcp add bugme --scope user -e BUGME_URL=https://bugme.weekly.org -- node 
 ```
 
 Then open the sign-in link once on each device; the page trades the key for a cookie and drops it from the address bar. Without `LIVE_TOKEN`, `/me` and `/api/me/*` don't exist.
+
+**Dispatch on `/me`** ([`docs/STAGE-8.md`](docs/STAGE-8.md)). Send Bug Me your MCP servers' and skills' names and statuses (never commands, URLs or keys), so briefs can turn tools off and flag ones that need connecting:
+
+```bash
+BUGME_URL=https://bugme.weekly.org node ~/dev/when-to-bug-me/mcp/bugme.mjs sync-catalog
+```
+
+Then draft a brief on `/me` → Dispatch, tick what it needs from you, and paste the copied command in a terminal where the work should happen. The session asks through `ask_bug_me` (linked to the brief) and reports with `report_to_bug_me` when it finishes or stops; the brief shows the report, how long since you copied it, and how many times it asked. `npm run smoke:dispatch` runs that whole loop against a local Worker with a real Haiku session (about a cent).
 
 ## Limitations
 

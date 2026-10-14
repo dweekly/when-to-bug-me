@@ -5,6 +5,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { AskError, type KV, LiveQueue, type Resolution, type Ticket } from "./live";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
+import type { Brief, BriefEdits, Catalog, Report } from "../shared/dispatch";
 
 export class OwnerQueue extends DurableObject {
   private q(): LiveQueue {
@@ -42,8 +43,37 @@ export class OwnerQueue extends DurableObject {
     return this.q().shown();
   }
 
-  async add(decision: Decision, card: Card, instruction: string, rev: number, unrouted?: string, projectName?: string): Promise<Ticket> {
-    return this.q().add(decision, card, instruction, rev, new Date(), unrouted, projectName);
+  async add(decision: Decision, card: Card, instruction: string, rev: number, unrouted?: string, projectName?: string, brief?: string): Promise<Ticket> {
+    return this.q().add(decision, card, instruction, rev, new Date(), unrouted, projectName, brief);
+  }
+
+  // Dispatch (docs/STAGE-8.md): the catalog and the briefs.
+  async catalog(): Promise<Catalog> {
+    return this.q().catalog();
+  }
+
+  async setCatalog(c: Catalog): Promise<void> {
+    return this.q().setCatalog(c);
+  }
+
+  async brief(id: string): Promise<Brief | undefined> {
+    return this.q().brief(id);
+  }
+
+  async briefs(): Promise<Brief[]> {
+    return this.q().briefs();
+  }
+
+  async addBrief(b: Brief): Promise<void> {
+    return this.q().addBrief(b);
+  }
+
+  async dispatched(id: string, edits: BriefEdits): Promise<Brief | undefined> {
+    return this.q().dispatched(id, edits);
+  }
+
+  async report(id: string, r: Report): Promise<Brief | undefined> {
+    return this.q().report(id, r);
   }
 
   async reroute(id: string, card: Card, instruction: string, rev: number): Promise<Ticket | undefined> {

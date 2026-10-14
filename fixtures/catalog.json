@@ -1,0 +1,66 @@
+{
+  "servers": [
+    {
+      "name": "bugme",
+      "prefix": "mcp__bugme",
+      "status": "connected"
+    },
+    {
+      "name": "GitHub",
+      "prefix": "mcp__GitHub",
+      "status": "connected"
+    },
+    {
+      "name": "Linear",
+      "prefix": "mcp__Linear",
+      "status": "connected"
+    },
+    {
+      "name": "Sentry",
+      "prefix": "mcp__Sentry",
+      "status": "connected"
+    },
+    {
+      "name": "Datadog",
+      "prefix": "mcp__Datadog",
+      "status": "connected"
+    },
+    {
+      "name": "Slack",
+      "prefix": "mcp__Slack",
+      "status": "connected"
+    },
+    {
+      "name": "Gmail",
+      "prefix": "mcp__Gmail",
+      "status": "connected"
+    },
+    {
+      "name": "Google Calendar",
+      "prefix": "mcp__Google_Calendar",
+      "status": "connected"
+    },
+    {
+      "name": "Figma",
+      "prefix": "mcp__Figma",
+      "status": "connected"
+    },
+    {
+      "name": "PagerDuty",
+      "prefix": "mcp__PagerDuty",
+      "status": "needs authentication"
+    },
+    {
+      "name": "Zendesk",
+      "prefix": "mcp__Zendesk",
+      "status": "connected"
+    }
+  ],
+  "skills": [
+    "frontend-design",
+    "webapp-testing",
+    "pdf",
+    "xlsx",
+    "data-analysis"
+  ]
+}

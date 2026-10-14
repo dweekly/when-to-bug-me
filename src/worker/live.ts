@@ -2,6 +2,7 @@
 // it in Node: turning an agent's ask into a Decision, the owner's persona and starting rules, and the
 // ticket lifecycle over a small key-value store (the owner's Durable Object in production, a Map in tests).
 
+import type { Brief, BriefEdits, Catalog, Report } from "../shared/dispatch";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import type { Card, Decision, Fact, Persona, Reversible, Rule } from "../shared/types";
 
@@ -98,6 +99,8 @@ export interface Ticket {
   aside?: Aside;
   /** Set when routing failed: the ticket is the owner's to decide, with the reason shown. */
   unrouted?: string;
+  /** The dispatch brief the asking session was started from (docs/STAGE-8.md), if it said. */
+  brief?: string;
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
@@ -106,6 +109,21 @@ function text(v: unknown, max: number, field: string, required = true): string {
   if (required && !t) throw new AskError(`${field} is required`);
   if (t.length > max) throw new AskError(`${field} is longer than ${max} characters`);
   return t;
+}
+
+/** How many briefs the owner's Dispatch view lists. */
+export const MAX_BRIEFS_SHOWN = 30;
+
+/** A brief's id: "b-" and 10 characters, like a ticket's. */
+export function briefId(): string {
+  const b = crypto.getRandomValues(new Uint8Array(10));
+  return `b-${Array.from(b, (x) => "abcdefghijkmnpqrstuvwxyz23456789"[x % 32]).join("")}`;
+}
+export const BRIEF_ID_RE = /^b-[a-z0-9]{10}$/;
+
+/** The brief an ask names, if it's well formed; anything else is ignored rather than refused. */
+export function askBrief(b: Record<string, unknown>): string | undefined {
+  return typeof b.brief === "string" && BRIEF_ID_RE.test(b.brief) ? b.brief : undefined;
 }
 
 /** A short, URL-safe ticket id. */
@@ -294,6 +312,54 @@ const STATUS_OF: Record<Resolution["outcome"], TicketStatus> = {
 export class LiveQueue {
   constructor(private kv: KV) {}
 
+  /** What the owner's briefs may choose from (docs/STAGE-8.md): names and statuses only. */
+  async catalog(): Promise<Catalog> {
+    return (await this.kv.get<Catalog>("catalog")) ?? { servers: [], skills: [] };
+  }
+
+  async setCatalog(c: Catalog): Promise<void> {
+    await this.kv.put("catalog", c);
+  }
+
+  async brief(id: string): Promise<Brief | undefined> {
+    return this.kv.get<Brief>(`b:${id}`);
+  }
+
+  /** The newest first, at most MAX_BRIEFS_SHOWN. */
+  async briefs(): Promise<Brief[]> {
+    return [...(await this.kv.list<Brief>("b:")).values()].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, MAX_BRIEFS_SHOWN);
+  }
+
+  async addBrief(b: Brief): Promise<void> {
+    await this.kv.put(`b:${b.id}`, b);
+  }
+
+  /** Copy command was pressed: the fields as copied replace the draft's, and the clock starts (again). */
+  async dispatched(id: string, edits: BriefEdits, now = new Date()): Promise<Brief | undefined> {
+    const b = await this.brief(id);
+    if (!b) return undefined;
+    const next: Brief = { ...b, ...edits, dispatched_at: now.toISOString() };
+    await this.kv.put(`b:${id}`, next);
+    return next;
+  }
+
+  /** The session's report. A later report replaces an earlier one (a stop at the tripwire, then done). */
+  async report(id: string, r: Report): Promise<Brief | undefined> {
+    const b = await this.brief(id);
+    if (!b) return undefined;
+    const next: Brief = { ...b, report: r };
+    await this.kv.put(`b:${id}`, next);
+    return next;
+  }
+
+  /** An ask that named a brief: counted on it, if the brief exists. */
+  private async countAsk(id: string): Promise<boolean> {
+    const b = await this.brief(id);
+    if (!b) return false;
+    await this.kv.put(`b:${id}`, { ...b, asks: (b.asks ?? 0) + 1 });
+    return true;
+  }
+
   /** The owner's rules and facts, and a revision that changes with every save. */
   async context(): Promise<{ rules: Rule[]; facts: Fact[]; rev: number }> {
     return { rules: (await this.kv.get<Rule[]>("rules")) ?? OWNER_RULES, facts: (await this.kv.get<Fact[]>("facts")) ?? [], rev: (await this.kv.get<number>("rev")) ?? 0 };
@@ -325,8 +391,17 @@ export class LiveQueue {
    * Store a newly routed ask. A settle route is answered by its rule at once, but only if the rules it
    * was routed under (`rev`) are still current; otherwise it waits for the owner.
    */
-  async add(decision: Decision, card: Card, instruction: string, rev: number, now = new Date(), unrouted?: string, projectName?: string): Promise<Ticket> {
-    const t: Ticket = { decision, card, status: "open", created_at: now.toISOString(), ...(unrouted ? { unrouted } : {}), ...(projectName ? { project_name: projectName } : {}) };
+  async add(decision: Decision, card: Card, instruction: string, rev: number, now = new Date(), unrouted?: string, projectName?: string, brief?: string): Promise<Ticket> {
+    const linked = brief ? await this.countAsk(brief) : false;
+    const t: Ticket = {
+      decision,
+      card,
+      status: "open",
+      created_at: now.toISOString(),
+      ...(unrouted ? { unrouted } : {}),
+      ...(projectName ? { project_name: projectName } : {}),
+      ...(linked ? { brief } : {}),
+    };
     if (card.route === "settle") {
       if (rev === (await this.context()).rev) settle(t, instruction, now);
       else t.card = withheld(card, "your rules changed while Bug Me was routing it");

@@ -20,6 +20,7 @@ import { modelCacheKey } from "../shared/hash";
 import {
   ASK_SCHEMA,
   CONVERSE_PROMPT_VERSION,
+  DISPATCH_PROMPT_VERSION,
   type ConverseCard,
   FACT_SCHEMA,
   PARSE_PROMPT_VERSION,
@@ -27,6 +28,7 @@ import {
   TITLE_PROMPT_VERSION,
   askPrompt,
   conversePrompt,
+  dispatchPrompt,
   converseSchema,
   factPrompt,
   parsePrompt,
@@ -37,6 +39,8 @@ import {
   titleSchema,
 } from "../shared/prompts";
 import { parseAskOutput } from "../shared/ask";
+import { type BriefDraft, type Catalog, dispatchSchema, parseBriefDraft } from "../shared/dispatch";
+import { fakeDispatch } from "../shared/fakeDispatch";
 import { type SettleLimits, parseRouteOutput } from "../shared/route";
 import { parseFactOutput } from "../shared/fact";
 import type { AskOutput, Decision, Fact, FactOutput, ParseOutput, Persona, RouteOutput, Rule, Source } from "../shared/types";
@@ -240,4 +244,24 @@ export async function converseFor(
 export async function titlesFor(env: Env, canSpend: boolean, d: Decision, ctx: ModelCtx = PUBLIC_CTX): Promise<{ out: Titles; source: Source }> {
   if (env.FAKE_MODEL) return { out: fakeTitles(d), source: "code" };
   return ask(env, canSpend, titlePrompt(d), titleSchema(d.options.map((o) => o.key)), (raw) => parseTitles(raw, d), TITLE_PROMPT_VERSION, FAST, ctx.store);
+}
+
+/**
+ * Dispatch (docs/STAGE-8.md): a rough task becomes a brief draft. The context has no default, so every
+ * caller says whose world it is in: the owner's drafts are never read from or written to the cache or
+ * the recorded run.
+ */
+export async function dispatchFor(
+  env: Env,
+  canSpend: boolean,
+  task: string,
+  answers: string,
+  catalog: Catalog,
+  rules: Rule[],
+  facts: Fact[],
+  ctx: ModelCtx,
+): Promise<{ out: BriefDraft; source: Source }> {
+  const check = (raw: unknown) => parseBriefDraft(raw, catalog, rules, facts);
+  if (env.FAKE_MODEL) return { out: check(fakeDispatch(task, answers, catalog)), source: "code" };
+  return ask(env, canSpend, dispatchPrompt(ctx.persona, rules, facts, task, answers, catalog), dispatchSchema(catalog), check, DISPATCH_PROMPT_VERSION, MAIN, ctx.store);
 }

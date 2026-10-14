@@ -1,6 +1,7 @@
 // Every screen except the decision card itself. One view at a time, chosen by the URL (router.ts):
 // home (the overview: nothing to decide here), focus (one decision; card.ts draws it), between (a
-// change of project), and the secondary views for what Bug Me decided, the rules, and the record.
+// change of project), the secondary views for what Bug Me decided, the rules, and the record, and
+// Dispatch (dispatch.ts, docs/STAGE-8.md).
 // render() redraws the bar and the current view from state.
 
 import { estimateMinutes, nextInSession } from "../shared/agenda";
@@ -14,6 +15,7 @@ import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 import { openToursMenu, tourAfterRender } from "./tour";
+import { renderDispatchView } from "./dispatch";
 
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
 let ruleDraft: { id: string; text: string; error: string; focus: boolean } | null = null;
@@ -78,6 +80,7 @@ function renderBar(route: Route): void {
       "nav",
       { "aria-label": "Views" },
       nav({ view: "home" }, "Home"),
+      nav({ view: "dispatch" }, "Dispatch"),
       nav({ view: "settled" }, `Decided for you${settledCount ? ` · ${settledCount}` : ""}`),
       nav({ view: "rules" }, "Rules"),
       nav({ view: "record" }, "Record"),
@@ -505,6 +508,7 @@ export function render(): void {
   else if (route.view === "between") renderBetween(view, route.project);
   else if (route.view === "settled") renderSettledView(view);
   else if (route.view === "rules") renderRulesView(view);
+  else if (route.view === "dispatch") renderDispatchView(view, route.id);
   else renderRecordView(view);
   tourAfterRender();
 }

@@ -7,6 +7,7 @@
 //   POST /api/ask     answer a clarifying question from what the agent provided, or say what is missing
 //   POST /api/parse   pick the choice, reasons, conditions and questions out of the person's thinking out loud
 //   POST /api/converse one turn of the decision conversation: Bug Me's reading of the thread and its next turn
+//   POST /api/dispatch a rough task becomes a brief, on Jordan's synthetic tools (docs/STAGE-8.md)
 //
 // The live queue (docs/STAGE-7.md), for the one owner, all 404 unless LIVE_TOKEN is set:
 //   GET  /me                    the same app, in live mode
@@ -17,6 +18,11 @@
 //   POST /api/me/resolve        the owner's answer, sent back to the asking session
 //   POST /api/me/context        save the owner's rules and facts
 //   POST /api/me/{route,answer,fact,ask,parse,converse}  the same calls as above, in the owner's world
+//   POST /api/me/catalog        the owner's tool and skill names and statuses (mcp/bugme.mjs sync-catalog)
+//   GET  /api/me/briefs         the owner's briefs and catalog
+//   POST /api/me/dispatch       a rough task becomes a stored brief, never cached or recorded
+//   POST /api/me/briefs/<id>/dispatched  the fields as copied; starts the clock
+//   POST /api/me/briefs/<id>/report      the dispatched session's report (report_to_bug_me)
 //
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
@@ -26,9 +32,10 @@ import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
 import { type Titles, plainOptions } from "../shared/titles";
-import { byId, decisions, defaultFacts, defaultRules, persona, publicDecision } from "./data";
-import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, factFor, parseFor, routeFor, titlesFor } from "./model";
-import { AskError, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askProjectName, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
+import { byId, decisions, defaultFacts, defaultRules, persona, publicCatalog, publicDecision } from "./data";
+import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishBrief, parseCatalog, parseEdits, parseReport } from "../shared/dispatch";
+import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, parseFor, routeFor, titlesFor } from "./model";
+import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
 import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
@@ -144,6 +151,22 @@ async function contextIn(b: Record<string, unknown>, w: World): Promise<{ rules:
   const c = context(b, await w.defaults());
   if (!w.snapshot) return { ...c, rev: 0 };
   return b.rules !== undefined || b.facts !== undefined ? w.snapshot(c.rules, c.facts) : w.snapshot();
+}
+
+/**
+ * A dispatch request's task and answers (docs/STAGE-8.md), trimmed but otherwise exactly as written:
+ * the session gets the person's own words, so "exactly two spaces" must survive.
+ */
+function dispatchInput(b: Record<string, unknown>): { task: string; answers: string } {
+  const exact = (v: unknown, max: number, field: string) => {
+    if (typeof v !== "string") throw new BadRequest(`${field} must be a string`);
+    const t = v.trim();
+    if (t.length > max) throw new BadRequest(`${field} is longer than ${max} characters`);
+    return t;
+  };
+  const task = exact(b.task, MAX_TASK_CHARS, "task");
+  if (!task) throw new BadRequest("task is required");
+  return { task, answers: b.answers === undefined ? "" : exact(b.answers, MAX_ANSWERS_CHARS, "answers") };
 }
 
 /** A fact's scope is "all" or a project id; a live project's id can be as long as its name (60). */
@@ -268,6 +291,7 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
       facts: defaultFacts,
       decisions: decisions.map(publicDecision),
       cards,
+      catalog: publicCatalog,
       live_available: Boolean(env.ANTHROPIC_API_KEY) && !env.FAKE_MODEL,
       mode: env.FAKE_MODEL ? "fake" : env.ANTHROPIC_API_KEY ? "live" : "recorded",
       turnstile_site_key: env.TURNSTILE_SECRET ? (env.TURNSTILE_SITE_KEY ?? null) : null,
@@ -290,6 +314,15 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
 
   // Live calls need a session only when the Turnstile gate is configured.
   const canSpend = !env.TURNSTILE_SECRET || (await sessionValid(env.SEAL_KEY!, req.headers.get("x-bugme-session")));
+
+  if (path === "/api/dispatch") {
+    // Jordan's world: the visitor's rules and facts, Jordan's synthetic tools. The brief lives in the
+    // visitor's browser; its command is illustration only (docs/STAGE-8.md).
+    const { task, answers } = dispatchInput(b);
+    const { rules, facts } = context(b, { rules: defaultRules, facts: defaultFacts });
+    const { out, source } = await dispatchFor(env, canSpend, task, answers, publicCatalog, rules, facts, PUBLIC_CTX);
+    return json({ brief: finishBrief(out, publicCatalog, { id: briefId(), task, answers, now: new Date(), owner: false }), source });
+  }
   return (await modelCall(env, key, path.slice("/api".length), b, publicWorld(env, canSpend))) ?? json({ error: "not found" }, 404);
 }
 
@@ -445,8 +478,51 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     });
   }
 
+  if (path === "/api/me/briefs" && req.method === "GET") {
+    return json({ briefs: await q.briefs(), catalog: await q.catalog() });
+  }
+
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
   const b = await body(req);
+
+  if (path === "/api/me/catalog") {
+    let c: Catalog;
+    try {
+      c = parseCatalog(b);
+    } catch (e) {
+      if (e instanceof DispatchError) throw new BadRequest(e.message);
+      throw e;
+    }
+    await q.setCatalog(c);
+    return json({ ok: true, servers: c.servers.length, skills: c.skills.length });
+  }
+
+  if (path === "/api/me/dispatch") {
+    const { task, answers } = dispatchInput(b);
+    const { rules, facts } = await q.snapshot();
+    const catalog = await q.catalog();
+    // Never the recorded run or the cache: the owner's task stays in the owner's Durable Object.
+    const ctx: ModelCtx = { persona: ownerPersonaOf(await q.shown()), store: false };
+    const { out, source } = await dispatchFor(env, true, task, answers, catalog, rules, facts, ctx);
+    const brief = finishBrief(out, catalog, { id: briefId(), task, answers, now: new Date(), owner: true });
+    await q.addBrief(brief);
+    return json({ brief, source });
+  }
+
+  const briefPath = path.match(/^\/api\/me\/briefs\/(b-[a-z0-9]{10})\/(dispatched|report)$/);
+  if (briefPath && BRIEF_ID_RE.test(briefPath[1])) {
+    try {
+      if (briefPath[2] === "dispatched") {
+        const next = await q.dispatched(briefPath[1], parseEdits(b, await q.catalog()));
+        return next ? json({ brief: next }) : json({ error: "unknown brief" }, 404);
+      }
+      const next = await q.report(briefPath[1], parseReport(b));
+      return next ? json({ ok: true, brief: briefPath[1] }) : json({ error: "unknown brief" }, 404);
+    } catch (e) {
+      if (e instanceof DispatchError) throw new BadRequest(e.message);
+      throw e;
+    }
+  }
 
   if (path === "/api/me/tickets") {
     let d: Decision;
@@ -469,7 +545,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       unrouted = e.message;
       c = await cardFromRoute(key, d, unroutedRoute(d, e.message), "code", rules, facts, null, ctx);
     }
-    const t = await q.add(d, c, await settleInstruction(key, d, c), rev, unrouted, projectName);
+    const t = await q.add(d, c, await settleInstruction(key, d, c), rev, unrouted, projectName, askBrief(b));
     return json(reply(t));
   }
 

@@ -7,7 +7,9 @@
 //   4. The owner answers it through the page's own API path (a conversation turn, the answer, the resolution).
 //   5. check_bug_me returns the answer with the owner's reason.
 //   6. Sign-in: no credentials is refused; the one-time link sets the cookie; /me serves the app.
-//   7. The Worker goes away while a session waits: the session still gets its ticket, to check later.
+//   7. Dispatch (docs/STAGE-8.md): a catalog is synced (a bad one refused), a task becomes a stored
+//      brief, Copy records the edits, an ask names the brief, and report_to_bug_me reports on it.
+//   8. The Worker goes away while a session waits: the session still gets its ticket, to check later.
 //
 // Run with `npm run smoke:live`. No API key is used and nothing is spent.
 
@@ -108,8 +110,8 @@ const rpc = startMcp();
 const init = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "smoke", version: "0" } });
 if (init.result?.serverInfo?.name !== "bugme") fail("initialize didn't name the bugme server");
 const tools = (await rpc("tools/list", {})).result.tools.map((t) => t.name);
-if (tools.join() !== "ask_bug_me,check_bug_me") fail(`unexpected tools: ${tools}`);
-ok("MCP handshake: tools ask_bug_me and check_bug_me");
+if (tools.join() !== "ask_bug_me,report_to_bug_me,check_bug_me") fail(`unexpected tools: ${tools}`);
+ok("MCP handshake: tools ask_bug_me, report_to_bug_me and check_bug_me");
 
 const settled = await toolResult(rpc, "ask_bug_me", {
   question: "Deploy the docs site to staging from main?",
@@ -165,6 +167,38 @@ const viaCookie = await fetch(`${BASE}/api/me/queue`, { headers: { cookie: cooki
 const page = await fetch(`${BASE}/me`);
 if (!viaCookie.ok || !page.ok || !/<html/i.test(await page.text())) fail("the cookie or the /me page didn't work");
 ok("sign-in: refused without credentials; the link sets an HttpOnly cookie; /me serves the app");
+
+const bad = await fetch(`${BASE}/api/me/catalog`, { method: "POST", headers: { authorization: `Bearer ${OWNER_KEY}`, "content-type": "application/json" }, body: JSON.stringify({ servers: [{ name: "x", prefix: "mcp__x$(id)", status: "connected" }], skills: [] }) });
+if (bad.status !== 400) fail(`a catalog with a shell prefix wasn't refused: ${bad.status}`);
+const synced = await owner("/api/me/catalog", {
+  servers: [
+    { name: "bugme", prefix: "mcp__bugme", status: "connected" },
+    { name: "GitHub", prefix: "mcp__GitHub", status: "connected" },
+    { name: "PagerDuty", prefix: "mcp__PagerDuty", status: "needs authentication" },
+  ],
+  skills: ["frontend-design"],
+});
+if (synced.servers !== 3) fail(`catalog: ${JSON.stringify(synced)}`);
+const drafted = await owner("/api/me/dispatch", { task: "Hook the release bot up to PagerDuty so failed releases page whoever is on call." });
+const brief = drafted.brief;
+if (!/^b-[a-z0-9]{10}$/.test(brief?.id ?? "") || drafted.source !== "code" || !brief.prerequisites.some((p) => /token/i.test(p.what))) fail(`dispatch: ${JSON.stringify(drafted)}`);
+const copied = await owner(`/api/me/briefs/${brief.id}/dispatched`, { model: "claude-haiku-5-5", effort: "low", permission_mode: "plan", estimate_minutes: 20, budget_usd: 1, tools_off: ["mcp__GitHub"] });
+if (copied.brief.model !== "claude-haiku-5-5" || !copied.brief.dispatched_at) fail(`dispatched: ${JSON.stringify(copied)}`);
+const linked = await toolResult(rpc, "ask_bug_me", {
+  question: "Page the whole team or only the on-call person?",
+  options: [
+    { label: "Only on-call", reversible: "yes", cost_usd: 0 },
+    { label: "Whole team", reversible: "yes", cost_usd: 0 },
+  ],
+  context: "Setting up release alerts.",
+  brief: brief.id,
+  wait_minutes: 0,
+});
+const reported = await toolResult(rpc, "report_to_bug_me", { brief: brief.id, outcome: "done", scope: "as briefed", summary: "Wired the bot to PagerDuty. One page goes to on-call." });
+const after = (await owner("/api/me/briefs")).briefs.find((b) => b.id === brief.id);
+if (!reported.ok || after?.asks !== 1 || after?.report?.outcome !== "done" || after?.model !== "claude-haiku-5-5") fail(`brief after the session: ${JSON.stringify(after)}`);
+if (!linked.ticket) fail("the linked ask has no ticket");
+ok(`dispatch: brief ${brief.id} drafted, copied with edits, asked about once, reported done`);
 
 const waiting = toolResult(rpc, "ask_bug_me", {
   question: "Rotate the production database password tonight?",
