@@ -1,0 +1,146 @@
+{
+  "session_id": "0f0e0d0c-0000-4000-8000-000000000001",
+  "transcript_path": "/home/user/.claude/projects/-home-user-demo-app/0f0e0d0c-0000-4000-8000-000000000001.jsonl",
+  "cwd": "/home/user/demo-app",
+  "prompt_id": "00000000-0000-4000-8000-0000000000aa",
+  "permission_mode": "auto",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "AskUserQuestion",
+  "tool_input": {
+    "questions": [
+      {
+        "question": "Which color should the demo button be?",
+        "header": "Color",
+        "options": [
+          {
+            "label": "Red",
+            "description": "Red button"
+          },
+          {
+            "label": "Green",
+            "description": "Green button"
+          },
+          {
+            "label": "Blue",
+            "description": "Blue button"
+          },
+          {
+            "label": "Gray",
+            "description": "Gray button"
+          }
+        ],
+        "multiSelect": false
+      },
+      {
+        "question": "Which name for the demo script?",
+        "header": "Name",
+        "options": [
+          {
+            "label": "demo.sh",
+            "description": "Name the script demo.sh"
+          },
+          {
+            "label": "run.sh",
+            "description": "Name the script run.sh"
+          }
+        ],
+        "multiSelect": false
+      },
+      {
+        "question": "Which checks should run?",
+        "header": "Checks",
+        "options": [
+          {
+            "label": "Lint",
+            "description": "Run the linter"
+          },
+          {
+            "label": "Types",
+            "description": "Run type checking"
+          },
+          {
+            "label": "Unit",
+            "description": "Run unit tests"
+          }
+        ],
+        "multiSelect": true
+      }
+    ],
+    "answers": {
+      "Which color should the demo button be?": "Red",
+      "Which name for the demo script?": "my own typed answer",
+      "Which checks should run?": "Lint, Types"
+    }
+  },
+  "tool_response": {
+    "questions": [
+      {
+        "question": "Which color should the demo button be?",
+        "header": "Color",
+        "options": [
+          {
+            "label": "Red",
+            "description": "Red button"
+          },
+          {
+            "label": "Green",
+            "description": "Green button"
+          },
+          {
+            "label": "Blue",
+            "description": "Blue button"
+          },
+          {
+            "label": "Gray",
+            "description": "Gray button"
+          }
+        ],
+        "multiSelect": false
+      },
+      {
+        "question": "Which name for the demo script?",
+        "header": "Name",
+        "options": [
+          {
+            "label": "demo.sh",
+            "description": "Name the script demo.sh"
+          },
+          {
+            "label": "run.sh",
+            "description": "Name the script run.sh"
+          }
+        ],
+        "multiSelect": false
+      },
+      {
+        "question": "Which checks should run?",
+        "header": "Checks",
+        "options": [
+          {
+            "label": "Lint",
+            "description": "Run the linter"
+          },
+          {
+            "label": "Types",
+            "description": "Run type checking"
+          },
+          {
+            "label": "Unit",
+            "description": "Run unit tests"
+          }
+        ],
+        "multiSelect": true
+      }
+    ],
+    "answers": {
+      "Which color should the demo button be?": "Red",
+      "Which name for the demo script?": "my own typed answer",
+      "Which checks should run?": "Lint, Types"
+    }
+  },
+  "tool_use_id": "toolu_01TDp6hXJf49kWcjci3gN1gn",
+  "duration_ms": 0
+}

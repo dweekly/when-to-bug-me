@@ -501,6 +501,18 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .turn.bug .turn-qs { grid-column: 2; margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.6; }
 @media (max-width: 560px) { .turn.bug .turn-qs { grid-column: 1; } }
 
+/* Mirrored from a Claude Code session (docs/STAGE-10.md, 10d): read-only options, answered in the terminal.
+   A pick made in the session is the person's own, so it alone carries the light. */
+.mirror-opts { list-style: none; padding: 0; }
+.mirror-opt { cursor: default; }
+.mirror-opt:hover { transform: none; border-color: var(--line); }
+.mirror-opt.picked { border-color: var(--glow); background: linear-gradient(180deg, var(--glow-soft), transparent), var(--night-2); }
+.mirror[data-state="closed"] .mirror-opt, .mirror[data-state="answered"] .mirror-opt:not(.picked) { opacity: 0.55; }
+.mirror-status { font: 600 15px var(--mono); margin: 16px 0 6px; padding: 12px 14px; border: 1px dashed var(--ink-3); border-radius: 10px; color: var(--ink); overflow-wrap: anywhere; }
+.mirror-status.answered, .mirror-status.closed { border-style: solid; border-color: var(--line); color: var(--ink-2); }
+#mirrors .mirror-note { display: block; grid-column: 2; font: 12.5px var(--mono); color: var(--ink-3); margin-top: 2px; overflow-wrap: anywhere; }
+#mirrors .item.ended .q { color: var(--ink-2); }
+
 /* ---------- Reflection (docs/STAGE-10.md, 10c) ----------
    The change-of-project screen's two quiet asks, and #/review. Regular weight, muted ink; route symbols
    carry the meaning. Color only where it means something: over or under a brief's estimate. */

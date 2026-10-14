@@ -4,8 +4,9 @@
 
 import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
 import type { OnboardingRun } from "../shared/onboarding";
-import { MAX_REASON_CHARS } from "../shared/constants";
-import type { Card, Decision, Fact, Persona, Reversible, Rule } from "../shared/types";
+import { MAX_REASON_CHARS, MIRROR_KEPT_MS, MIRROR_ORPHAN_MS } from "../shared/constants";
+import type { Card, Decision, Fact, MirrorAnswer, Persona, Reversible, Rule } from "../shared/types";
+import type { MirrorRecord } from "./mirror";
 
 /** Options an ask may carry, and the longest texts it may hold. */
 export const MIN_ASK_OPTIONS = 2;
@@ -62,7 +63,8 @@ export interface Ask {
   session: string;
 }
 
-export type TicketStatus = "open" | "settled" | "answered" | "set-aside" | "reopened";
+/** "closed" is a mirrored question that ended in its session with no answer Bug Me saw (docs/STAGE-10.md, 10d). */
+export type TicketStatus = "open" | "settled" | "answered" | "set-aside" | "reopened" | "closed";
 
 /** Why a set-aside ticket was set aside, kept so every device can list and resume it. */
 export interface Aside {
@@ -75,7 +77,8 @@ export interface Aside {
 /** What the asking session is told, merged as David adds to it (a late reason, kept guidance). */
 export interface TicketAnswer {
   outcome: "option" | "other" | "rejected" | "ask-agent" | "set-aside" | "reopened" | "resumed";
-  by: "rule" | "owner";
+  /** "session": a mirrored question, answered in its own session and seen by the hook. */
+  by: "rule" | "owner" | "session";
   choice?: string;
   label?: string;
   course?: string;
@@ -102,6 +105,22 @@ export interface Ticket {
   unrouted?: string;
   /** The dispatch brief the asking session was started from (docs/STAGE-8.md), if it said. */
   brief?: string;
+  /**
+   * Set on a question mirrored from a Claude Code session by the hook (docs/STAGE-10.md, 10d). It is
+   * answered only in that session: never settled, never resolved from the page, nothing sent down.
+   * `card` is what the page shows; the route Bug Me would have taken is kept apart, in `mirror.shadow`.
+   */
+  mirror?: MirrorRecord;
+}
+
+/** One question of a mirrored call, ready to store: its decision, its card so far, and its mirror record. */
+export interface MirrorItem {
+  decision: Decision;
+  card: Card;
+  projectName: string;
+  mirror: MirrorRecord;
+  /** The session's answer, on PostToolUse. */
+  answer?: MirrorAnswer;
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
@@ -523,6 +542,8 @@ export class LiveQueue {
    */
   async reroute(id: string, card: Card, instruction: string, rev: number, now = new Date()): Promise<Ticket | undefined> {
     const t = await this.get(id);
+    // A mirror is never settled: a waiting one takes the new briefing, with any settle withheld.
+    if (t?.mirror) return t.status === "open" ? this.mirrorRouted(id, card) : t;
     if (!t || (t.status !== "open" && t.status !== "reopened")) return t;
     if (rev !== (await this.context()).rev) return t;
     if (card.route === "settle" && t.status === "open" && !t.answer) {
@@ -540,6 +561,7 @@ export class LiveQueue {
   async resolve(id: string, r: Resolution, now = new Date()): Promise<Ticket> {
     const t = await this.get(id);
     if (!t) throw new AskError("unknown ticket");
+    if (t.mirror) throw new AskError("this one is answered in its session, not here");
     const label = r.choice ? t.decision.options.find((o) => o.key === r.choice)?.label : undefined;
     const prev = t.answer && t.answer.outcome === r.outcome && t.answer.by === "owner" && t.answer.choice === r.choice ? t.answer : undefined;
     if (r.update && (!prev || t.status !== STATUS_OF[r.outcome])) throw new AskError("the answer this adds to has changed");
@@ -561,7 +583,137 @@ export class LiveQueue {
   /** Tickets the owner answered in the last day: the page keeps their follow-ups (a late reason, guidance) working. */
   async recentlyAnswered(now = new Date()): Promise<Ticket[]> {
     const since = now.getTime() - ANSWERED_KEPT_MS;
-    return (await this.all()).filter((t) => t.status === "answered" && t.answer && Date.parse(t.answer.at) >= since);
+    return (await this.all()).filter((t) => !t.mirror && t.status === "answered" && t.answer && Date.parse(t.answer.at) >= since);
+  }
+
+  // Mirrors (docs/STAGE-10.md, 10d). Each method only reads and writes storage, with no model call in
+  // between, so in the Durable Object each runs whole: an answer can land while routing is out, and
+  // routing that finishes later never reopens or overwrites it.
+
+  /**
+   * PreToolUse: store each question as waiting. A ticket that already exists is left as it is (a repeat
+   * delivery, or a PostToolUse that got there first). If the session's Stop or SessionEnd, stamped after
+   * the question, got there first, the question is stored closed.
+   */
+  async mirrorOpen(items: MirrorItem[], now = new Date()): Promise<string[]> {
+    for (const it of items) {
+      if (await this.get(it.decision.id)) continue;
+      const t = mirrorTicket(it, now);
+      const ended = await this.kv.get<{ at: number; why: string }>(`me:${it.mirror.session}`);
+      if (ended && ended.at >= it.mirror.asked_at) close(t, ended.why, now);
+      await this.kv.put(`t:${it.decision.id}`, t);
+      await this.indexSession(it.mirror.session, it.decision.id);
+    }
+    return items.map((it) => it.decision.id);
+  }
+
+  /**
+   * PostToolUse: the session's answer closes each question, creating it if its PreToolUse never arrived.
+   * An answer stands once seen; a later repeat changes nothing. It also replaces an orphan's close (a
+   * Stop that overtook it), since an answer is better news than "no answer seen".
+   */
+  async mirrorAnswer(items: MirrorItem[], now = new Date()): Promise<string[]> {
+    for (const it of items) {
+      let t = await this.get(it.decision.id);
+      if (!t) {
+        t = mirrorTicket(it, now);
+        await this.indexSession(it.mirror.session, it.decision.id);
+      }
+      if (!t.mirror || t.mirror.state === "answered") continue;
+      const at = now.toISOString();
+      const a = it.answer;
+      t.mirror = { ...t.mirror, closed_at: at };
+      delete t.mirror.closed_why;
+      if (a) {
+        t.mirror.state = "answered";
+        t.mirror.answer = a;
+        t.status = "answered";
+        const labels = a.keys.map((k) => t!.decision.options.find((o) => o.key === k)?.label ?? k);
+        t.answer = {
+          outcome: a.keys.length && !a.typed ? "option" : "other",
+          by: "session",
+          ...(a.keys.length ? { choice: a.keys.join(","), label: labels.join(", ") } : {}),
+          ...(a.typed ? { course: a.typed } : {}),
+          at,
+        };
+      } else {
+        t.mirror.state = "closed";
+        t.mirror.closed_why = "answered in the session; the hook didn't see the answer";
+        t.status = "closed";
+      }
+      await this.kv.put(`t:${t.decision.id}`, t);
+    }
+    return items.map((it) => it.decision.id);
+  }
+
+  /**
+   * Stop or SessionEnd, stamped `at`: the session moved on, so whatever it asked before then and nobody
+   * answered is closed. The latest end is kept, for a question whose PreToolUse arrives after it.
+   */
+  async mirrorEnd(session: string, why: string, at: number, now = new Date()): Promise<number> {
+    const prev = await this.kv.get<{ at: number; why: string }>(`me:${session}`);
+    if (!prev || prev.at <= at) await this.kv.put(`me:${session}`, { at, why });
+    let n = 0;
+    for (const id of (await this.kv.get<string[]>(`ms:${session}`)) ?? []) {
+      const t = await this.get(id);
+      if (!t?.mirror || t.mirror.state !== "pending" || t.mirror.asked_at > at) continue;
+      close(t, why, now);
+      await this.kv.put(`t:${id}`, t);
+      n++;
+    }
+    return n;
+  }
+
+  /**
+   * Routing finished: the card is shown, with any settle withheld, and the route Bug Me would have taken
+   * is recorded as the shadow; if routing failed (`unrouted`), the reason is kept instead, never passed
+   * off as a route. The ticket's state and answer are never touched.
+   */
+  async mirrorRouted(id: string, card: Card, unrouted?: string): Promise<Ticket | undefined> {
+    const t = await this.get(id);
+    if (!t?.mirror) return t;
+    const label = card.settle_option ? t.decision.options.find((o) => o.key === card.settle_option)?.label : undefined;
+    const { shadow: _old, unrouted: _was, ...rest } = t.mirror;
+    t.mirror = unrouted
+      ? { ...rest, routed: true, unrouted }
+      : {
+          ...rest,
+          routed: true,
+          shadow: { route: card.route, model_route: card.model_route, settle_option: card.settle_option, ...(label ? { label } : {}), ...(card.clearing_rule ? { rule: card.clearing_rule } : {}) },
+        };
+    t.card = card.route === "settle" ? withheld(card, "this one is answered in its session") : card;
+    await this.kv.put(`t:${id}`, t);
+    return t;
+  }
+
+  /** Mirrors still waiting for routing, oldest first. */
+  async unroutedMirrors(): Promise<Ticket[]> {
+    return (await this.all()).filter((t) => t.mirror && !t.mirror.routed);
+  }
+
+  /** Close mirrors that waited past MIRROR_ORPHAN_MS; returns when the next one would, if any. */
+  async sweepMirrors(now = new Date()): Promise<number | undefined> {
+    let next: number | undefined;
+    for (const t of await this.all()) {
+      if (!t.mirror || t.mirror.state !== "pending") continue;
+      const due = Date.parse(t.created_at) + MIRROR_ORPHAN_MS;
+      if (due <= now.getTime()) {
+        close(t, `no answer seen in ${MIRROR_ORPHAN_MS / 3_600_000} hours`, now);
+        await this.kv.put(`t:${t.decision.id}`, t);
+      } else next = Math.min(next ?? due, due);
+    }
+    return next;
+  }
+
+  /** Mirrors answered or closed in the last day: the page shows how each ended. */
+  async recentMirrors(now = new Date()): Promise<Ticket[]> {
+    const since = now.getTime() - MIRROR_KEPT_MS;
+    return (await this.all()).filter((t) => t.mirror && t.mirror.state !== "pending" && Date.parse(t.mirror.closed_at ?? t.created_at) >= since);
+  }
+
+  private async indexSession(session: string, id: string): Promise<void> {
+    const ids = (await this.kv.get<string[]>(`ms:${session}`)) ?? [];
+    if (!ids.includes(id)) await this.kv.put(`ms:${session}`, [...ids, id]);
   }
 
   /** What the page lists: open, reopened and set-aside tickets, and the most recent settled ones. */
@@ -571,6 +723,15 @@ export class LiveQueue {
     // Set-aside tickets stay, so the page can list them and Resume them.
     return all.filter((t) => t.status === "open" || t.status === "reopened" || t.status === "set-aside" || settled.includes(t));
   }
+}
+
+function mirrorTicket(it: MirrorItem, now: Date): Ticket {
+  return { decision: it.decision, card: it.card, status: "open", created_at: now.toISOString(), project_name: it.projectName, mirror: it.mirror };
+}
+
+function close(t: Ticket, why: string, now: Date): void {
+  t.status = "closed";
+  t.mirror = { ...t.mirror!, state: "closed", closed_why: why, closed_at: now.toISOString() };
 }
 
 /** A settle card the owner keeps: brought as a quick check instead, with the reason, the model's own route kept. */
@@ -587,6 +748,10 @@ function settle(t: Ticket, instruction: string, now: Date): void {
 /** What the asking session is told about a ticket: the MCP server returns this as is. */
 export function reply(t: Ticket): Record<string, unknown> {
   const a = t.answer;
+  // A mirror sends nothing down: its session asked its person directly and gets its answer there.
+  if (t.mirror) {
+    return { status: t.mirror.state, ticket: t.decision.id, mirror: true, ...(t.mirror.answer ? { answer: t.mirror.answer } : {}), ...(t.mirror.closed_why ? { why: t.mirror.closed_why } : {}) };
+  }
   if (t.status === "open") return { status: "pending", ticket: t.decision.id, route: t.card.route, why: t.card.why_here };
   if (t.status === "reopened") {
     return {

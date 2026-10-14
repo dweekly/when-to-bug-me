@@ -1,0 +1,20 @@
+{
+  "session_id": "0f0e0d0c-0000-4000-8000-000000000002",
+  "transcript_path": "/home/user/.claude/projects/-home-user-demo-app/0f0e0d0c-0000-4000-8000-000000000002.jsonl",
+  "cwd": "/home/user/demo-app",
+  "prompt_id": "00000000-0000-4000-8000-0000000000aa",
+  "permission_mode": "default",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "ExitPlanMode",
+  "tool_input": {},
+  "tool_response": {
+    "plan": "(the plan text, removed from this fixture)",
+    "isAgent": false,
+    "filePath": "/home/user/.claude/plans/demo-plan.md"
+  },
+  "tool_use_id": "toolu_01733YrZHmPrsUQqiYNk62Ja",
+  "duration_ms": 1
+}

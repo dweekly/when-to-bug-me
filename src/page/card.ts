@@ -20,6 +20,7 @@ import { type Child, $, announce, h } from "./dom";
 import { type Flow, type ShownBugTurn, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
 import { render } from "./views";
 import { OWNER_PAGE } from "./livemode";
+import { MIRRORS, renderMirror } from "./mirror";
 
 export function quoteLine(c: Card): Child {
   const q = c.rule_quoted || c.fact_quoted;
@@ -70,6 +71,9 @@ function drawNow(): void {
   }
   const d = byId.get(id)!;
   const c = S.cards[id];
+  // Mirrored from a session (docs/STAGE-10.md, 10d): shown, never decided here.
+  const mirror = MIRRORS.get(id);
+  if (mirror) return renderMirror(root, d, mirror);
   // Opened by link or Back: a decision already answered is shown, not reopened; a set-aside one
   // needs an explicit Resume before it can be answered.
   if (S.answered[id] && !S.flows[id]) return renderClosed(root, d, "answered");
