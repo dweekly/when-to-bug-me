@@ -204,7 +204,9 @@ export function parseAnswers(raw: unknown, questions: InterviewQuestion[]): Reco
   const o = (raw ?? {}) as Record<string, unknown>;
   const out: Record<string, string> = {};
   for (const q of questions) {
-    const a = str(o[q.id], MAX_ANSWER_CHARS);
+    // Too long is refused, not cut: a correction at the end of a long answer must not vanish.
+    const a = str(o[q.id], Infinity);
+    if (a.length > MAX_ANSWER_CHARS) throw new OnboardingError(`an answer is over ${MAX_ANSWER_CHARS} characters`);
     if (a) out[q.id] = a;
   }
   if (!Object.keys(out).length) throw new OnboardingError("no answers");

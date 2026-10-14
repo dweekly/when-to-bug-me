@@ -4,7 +4,7 @@
 // recorded Claude runs; the morning keeps running on Jordan's hand-written note.
 
 import historyJson from "../../fixtures/history.json";
-import { type HistoryItem, type InterviewQuestion, type NoteLine, type RevisedLine, parseHistory } from "../shared/onboarding";
+import { type HistoryItem, type InterviewQuestion, MAX_ANSWER_CHARS, type NoteLine, type RevisedLine, parseHistory } from "../shared/onboarding";
 import { ONBOARDING_ANSWERS } from "../shared/onboardingScript";
 import type { Source } from "../shared/types";
 import { api } from "./api";
@@ -108,6 +108,8 @@ async function step(kind: "draft" | "interview" | "revise"): Promise<void> {
       const sent = { ...w.answers };
       const r = await api<{ lines: RevisedLine[]; source: Source }>("/api/onboarding/revise", { note: w.note, questions: w.questions, answers: sent });
       if (g !== generation) return;
+      // An answer edited while Bug Me revised didn't make this note: leave the answers open to send again.
+      if (JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me revised; press Revise again");
       Object.assign(w, { revised: r.lines, revisedSource: r.source, submitted: sent });
     }
     announce(kind === "draft" ? "Note drafted." : kind === "interview" ? "Three questions." : "Note revised.");
@@ -199,7 +201,7 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
     ...qs.map((q) => {
       // Once the note is revised from them, the answers are locked; "Change answers" unlocks them and drops the revision.
       const locked = Boolean(w.revised);
-      const ta = h("textarea", { id: `answer-${q.id}`, rows: "2", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked }) as HTMLTextAreaElement;
+      const ta = h("textarea", { id: `answer-${q.id}`, rows: "2", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked, maxlength: String(MAX_ANSWER_CHARS) }) as HTMLTextAreaElement;
       ta.value = w.answers[q.id] ?? "";
       // The box grows with what's in it, so a spoken answer is read whole.
       const fit = () => {

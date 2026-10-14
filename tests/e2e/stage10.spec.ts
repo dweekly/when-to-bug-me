@@ -51,7 +51,7 @@ test("on a phone, onboarding fits the width @narrow", async ({ page }) => {
   expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
 });
 
-test("a revision in flight can't be sent twice", async ({ page }) => {
+test("a revision in flight can't be sent twice, and an answer edited meanwhile isn't shown as the one it used", async ({ page }) => {
   await page.goto("/app#/welcome");
   await page.locator("#draft-note").click();
   await page.locator("#start-interview").click();
@@ -68,8 +68,12 @@ test("a revision in flight can't be sent twice", async ({ page }) => {
   await page.locator("#step-interview textarea").nth(1).fill("Typing while it's out.");
   await expect(page.locator("#revise-note")).toBeDisabled();
   release();
-  await expect(page.locator("#step-note")).toBeVisible();
   expect(posts).toBe(1);
+  await expect(page.getByRole("alert")).toContainText("changed an answer while Bug Me revised");
+  await expect(page.locator("#step-interview textarea").nth(1)).toHaveValue("Typing while it's out.");
+  await page.unroute("**/api/onboarding/revise");
+  await page.locator("#revise-note").click();
+  await expect(page.locator("#step-note")).toBeVisible();
 });
 
 test.describe("speech and the interview", () => {
