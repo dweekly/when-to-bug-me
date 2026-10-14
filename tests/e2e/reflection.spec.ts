@@ -207,3 +207,17 @@ test("after starting the morning over, copying a demo brief again brings its syn
   const s = (await stored(page))!;
   expect(s.record.filter((r) => r.kind === "dispatch_report")).toHaveLength(1);
 });
+
+test("a demo Copy the clipboard refuses sends nothing: no synthetic report, nothing finished in the review", async ({ page }) => {
+  await page.goto("/app#/dispatch");
+  await page.evaluate("navigator.clipboard.writeText = () => Promise.reject(new Error('denied'))");
+  await page.locator('.demo-chip[data-example="usage-demo"]').click();
+  await page.locator("#draft-brief").click();
+  await page.locator("#copy-command").click();
+  await expect(page.locator("#brief .brief-actions .think-msg")).toContainText("Couldn't copy");
+  await expect(page.locator(".brief-outcome")).toHaveCount(0);
+  const s = (await stored(page))!;
+  expect(s.record.filter((r) => r.kind === "dispatch_report")).toHaveLength(0);
+  await page.goto("/app#/review");
+  await expect(page.locator("#rv-dispatch")).not.toContainText("38m");
+});

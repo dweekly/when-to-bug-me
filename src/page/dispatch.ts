@@ -21,6 +21,7 @@ import {
   tripwireMinutes,
 } from "../shared/dispatch";
 import { OWNER_POLL_MS } from "../shared/constants";
+import { launchCounts } from "../shared/reflection";
 import { DISPATCH_EXAMPLES } from "../shared/dispatchExamples";
 import type { Source } from "../shared/types";
 import { api } from "./api";
@@ -770,7 +771,8 @@ function noteReports(list: Brief[]): void {
   let added = false;
   for (const b of list) {
     const l = b.launch;
-    if (l && l.state !== "failed" && !S.record.some((e) => e.kind === "dispatch" && e.brief === b.id && e.launch_at === l.at)) {
+    // Only a launch that started counts: one still starting may yet fail (docs/STAGE-10.md, 10c).
+    if (l && launchCounts(l) && !S.record.some((e) => e.kind === "dispatch" && e.brief === b.id && e.launch_at === l.at)) {
       log("dispatch", { brief: b.id, headline: b.headline, what: "launch", launch_at: l.at, estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd });
       added = true;
     }
@@ -836,8 +838,11 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
     actionMsg = `Couldn't copy (${(e as Error).message}). It's under Details.`;
   }
   // The record keeps what went out against its estimate, for the weekly-review sketch (docs/STAGE-10.md, 10c).
-  log("dispatch", { brief: b.id, headline: b.headline, what, copied: actionMsg === "Copied.", estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd });
-  if (!Q.owner && what === "command" && !keep.report) {
+  const copied = actionMsg === "Copied.";
+  log("dispatch", { brief: b.id, headline: b.headline, what, copied, estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd });
+  // Only a command that actually reached the clipboard "went out", so only then does the demo show what
+  // a session would send back.
+  if (!Q.owner && what === "command" && !keep.report && copied) {
     // The public demo shows what a session would send back, labeled synthetic.
     const ex = DISPATCH_EXAMPLES.find((x) => x.task === b.task)?.report;
     if (ex) {

@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BREAK_AFTER_EST_MINUTES, FEEDBACK_EVERY_TRANSITIONS, MINUTES_PER_CHECK_IN, MINUTES_PER_DECISION } from "../../src/shared/constants";
-import { type RecordLike, SYNTHETIC_STATED_PRIORITIES, type Transition, answerMinutes, estimatedMinutesSince, planTransition, reviewOf } from "../../src/shared/reflection";
+import { type RecordLike, SYNTHETIC_STATED_PRIORITIES, type Transition, answerMinutes, estimatedMinutesSince, launchCounts, planTransition, reviewOf } from "../../src/shared/reflection";
 import { routePrompt } from "../../src/shared/prompts";
 import { decisions, facts, persona, rules } from "./helpers";
 
@@ -170,5 +170,14 @@ describe("the synthetic stated priorities stay out of routing", () => {
     expect(readFileSync("src/shared/prompts.ts", "utf8")).not.toMatch(/reflection|STATED_PRIORITIES/);
     const prompt = routePrompt(persona, rules, facts, decisions[0]);
     expect(prompt).not.toMatch(/stated priorit/i);
+  });
+});
+
+describe("what counts as sent", () => {
+  it("a runner launch counts once it is running, not while starting or after failing", () => {
+    expect(launchCounts({ state: "running" })).toBe(true);
+    expect(launchCounts({ state: "launching" })).toBe(false);
+    expect(launchCounts({ state: "failed" })).toBe(false);
+    expect(launchCounts(undefined)).toBe(false);
   });
 });

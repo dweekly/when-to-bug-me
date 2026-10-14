@@ -192,3 +192,6 @@ export function reviewOf(input: {
   }
   return { projects: list, top, asked, feedback, dispatch: [...briefs.values()] };
 }
+
+/** A runner launch counts as sent once it is running; one still starting may yet fail. */
+export const launchCounts = (l: { state: string } | undefined): boolean => l?.state === "running";
