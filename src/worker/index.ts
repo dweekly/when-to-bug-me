@@ -482,7 +482,12 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
   }
 
   if (path === "/api/me/briefs" && req.method === "GET") {
-    return json({ briefs: await q.briefs(), catalog: await q.catalog() });
+    // Asks still waiting on the owner, per brief, so a launched brief can say "waiting on you" (docs/STAGE-9.md).
+    const waiting: Record<string, string[]> = {};
+    for (const t of await q.shown()) {
+      if (t.brief && (t.status === "open" || t.status === "reopened")) (waiting[t.brief] ??= []).push(t.decision.id);
+    }
+    return json({ briefs: await q.briefs(), catalog: await q.catalog(), waiting });
   }
 
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);

@@ -278,7 +278,9 @@ export function parseBriefDraft(raw: unknown, c: Catalog, rules: Rule[], facts: 
 /** Where a task runs, from its sensitivity and urgency: code's table, not the model's call. */
 export function runWhere(sensitivity: Level, urgency: Level): { where: "cloud" | "local"; reason: string; checkIn?: string } {
   if (sensitivity === "high" && urgency === "low") {
-    return { where: "local", reason: "Sensitive and not urgent: a local model keeps the data on your machine. (Recommended only; a local route isn't wired yet.)" };
+    // Local means the work and Bug Me's record of it stay on the person's machine; Claude still sees
+    // what the session works on. A fully local model is on the ROADMAP (docs/STAGE-9.md).
+    return { where: "local", reason: "Sensitive and not urgent: run it on your own machine, where the work and its data stay. Claude still sees what it works on." };
   }
   if (sensitivity === "high") {
     return { where: "cloud", reason: "Sensitive, but it can't wait for a local run.", checkIn: "Before anything sensitive leaves this machine, ask with what would be sent and why." };

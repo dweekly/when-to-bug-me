@@ -99,11 +99,16 @@ export function run(bin: string, args: string[], cwd: string, timeout = RUNNER_L
   });
 }
 
+/** A background session as `claude agents --json --all` reports it (code.claude.com/docs/en/agent-view). */
 export interface Session {
   id: string;
   name: string;
+  /** busy, waiting or idle, while the process is alive. */
   status?: string;
+  /** working, blocked (needs the person), done, failed or stopped. */
   state?: string;
+  /** When status is waiting: permission prompt, input needed, sandbox request, worker request, dialog open. */
+  waitingFor?: string;
   cwd?: string;
 }
 
@@ -124,6 +129,7 @@ export function parseAgents(json: string): Session[] {
       name: r.name as string,
       ...(typeof r.status === "string" ? { status: r.status } : {}),
       ...(typeof r.state === "string" ? { state: r.state } : {}),
+      ...(typeof r.waitingFor === "string" ? { waitingFor: r.waitingFor } : {}),
       ...(typeof r.cwd === "string" ? { cwd: r.cwd } : {}),
     }));
 }

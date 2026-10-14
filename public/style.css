@@ -454,6 +454,13 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .brief-you label { display: flex; gap: 10px; align-items: baseline; cursor: pointer; color: var(--ink); font-size: 15px; }
 .brief-you input { accent-color: var(--glow); width: 15px; height: 15px; transform: translateY(2px); }
 .brief-actions { margin-top: 16px; }
+#launch-repo { font: 14px var(--body); color: var(--ink); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 100%; }
+.brief-session { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 16px; padding: 8px 12px; background: var(--night); border-radius: 10px; color: var(--ink); font-size: 15px; }
+.brief-session .ico { color: var(--ink-2); }
+.brief-session.ok .ico { color: var(--ok); }
+.brief-session.warn .ico { color: var(--glow); }
+.brief-session a { color: var(--glow); }
+.brief-session button code { font: 12px var(--mono); color: var(--ink-2); }
 .brief-more { margin: 12px 0 0; border-top: 1px solid var(--line); padding-top: 10px; }
 .brief-more summary { cursor: pointer; color: var(--ink-3); font-size: 14px; }
 .brief-more[open] summary { margin-bottom: 10px; }

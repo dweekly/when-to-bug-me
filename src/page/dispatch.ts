@@ -2,7 +2,8 @@
 // drafted by the Worker; this view shows it, lets the person adjust the setup (model, effort, mode,
 // time, money, tools), keeps Copy command off until every prerequisite is ticked, and shows what the
 // session reported. On the public site briefs live in this browser and the command is illustration
-// only; on /me they live in the owner's queue, and Copy starts the clock.
+// only; on /me they live in the owner's queue, and Copy starts the clock. On the runner
+// (docs/STAGE-9.md) Launch starts the session itself, and the brief shows how it's going.
 
 import {
   BUGME_PREFIX,
@@ -19,6 +20,7 @@ import {
   sizeLine,
   tripwireMinutes,
 } from "../shared/dispatch";
+import { OWNER_POLL_MS } from "../shared/constants";
 import { DISPATCH_EXAMPLES } from "../shared/dispatchExamples";
 import type { Source } from "../shared/types";
 import { api } from "./api";
@@ -52,6 +54,29 @@ const openDetails = new Set<string>();
 const ticked = new Map<string, Set<number>>();
 let actionMsg = "";
 
+/** A background session as the runner reports it (`claude agents --json --all`). */
+interface RunnerSession {
+  id: string;
+  name: string;
+  status?: string;
+  state?: string;
+  waitingFor?: string;
+}
+/** On the runner: the repos Launch can use and the sessions it started. Null anywhere else. */
+let runner: { repos: { name: string; trusted: boolean }[]; sessions: RunnerSession[] | null; note: string } | null = null;
+/** Asks waiting on the owner, per brief. */
+let waiting: Record<string, string[]> = {};
+const REPO_KEY = "bugme.runner.repo";
+let repo = (() => {
+  try {
+    return localStorage.getItem(REPO_KEY) ?? "";
+  } catch {
+    return "";
+  }
+})();
+let launching = "";
+let polling = false;
+
 const onDispatch = () => location.hash.startsWith("#/dispatch");
 
 function loadPublic(): Shown[] {
@@ -74,9 +99,46 @@ function savePublic(): void {
 
 /** The owner's briefs and catalog, from the server. (The public site's are read synchronously below.) */
 async function load(): Promise<void> {
-  const r = await api<{ briefs: Brief[]; catalog: Catalog }>("/api/me/briefs");
+  const r = await api<{ briefs: Brief[]; catalog: Catalog; waiting?: Record<string, string[]> }>("/api/me/briefs");
   briefs = r.briefs;
   catalog = r.catalog;
+  waiting = r.waiting ?? {};
+  for (const b of r.briefs) if (b.ticked && !ticked.has(b.id)) ticked.set(b.id, new Set(b.ticked));
+  // Only the runner answers this; the hosted Worker has no /runner/ routes.
+  try {
+    const st = await api<{ repos: { name: string; trusted: boolean }[]; sessions: RunnerSession[] | null; catalog_note: string }>("/runner/status");
+    runner = { repos: st.repos, sessions: st.sessions, note: st.catalog_note };
+  } catch {
+    runner = null;
+  }
+  if (runner && !polling) {
+    polling = true;
+    setInterval(() => void poll(), OWNER_POLL_MS);
+    document.addEventListener("visibilitychange", () => void poll());
+  }
+}
+
+/**
+ * On the runner, while this view is visible: briefs, waiting asks and sessions again. Redraws only when
+ * something changed and nothing is being typed, so a half-written answer keeps its text and focus.
+ */
+async function poll(): Promise<void> {
+  if (document.visibilityState !== "visible" || !onDispatch() || launching) return;
+  const before = JSON.stringify([briefs, waiting, runner?.sessions]);
+  const edits = new Map((briefs ?? []).map((b) => [b.id, b]));
+  try {
+    await load();
+  } catch {
+    return;
+  }
+  // Setup edits not yet launched or copied stay as the person left them.
+  briefs = (briefs ?? []).map((b) => {
+    const mine = edits.get(b.id);
+    return mine && !b.launch && !b.dispatched_at ? { ...b, model: mine.model, effort: mine.effort, permission_mode: mine.permission_mode, estimate_minutes: mine.estimate_minutes, budget_usd: mine.budget_usd, tools_off: mine.tools_off } : b;
+  });
+  if (JSON.stringify([briefs, waiting, runner?.sessions]) === before) return;
+  if (document.activeElement?.matches("#view input, #view textarea, #view select")) return;
+  paint();
 }
 
 /** Redraw this view if it's still the one showing, and let a running tour find its target again. */
@@ -250,7 +312,17 @@ function conversation(b: Shown): HTMLElement | null {
 }
 
 function briefRow(b: Shown, current: boolean): HTMLElement {
-  const status = b.report ? b.report.outcome : b.dispatched_at ? "copied" : "draft";
+  const status = b.report
+    ? b.report.outcome
+    : waiting[b.id]?.length
+      ? "waiting on you"
+      : b.launch?.state === "failed"
+        ? "launch failed"
+        : b.launch
+          ? "launched"
+          : b.dispatched_at
+            ? "copied"
+            : "draft";
   return h(
     "li",
     { class: current ? "current" : "" },
@@ -325,7 +397,8 @@ function metaLine(b: Shown): HTMLElement {
     chip(STAGE_ICON[b.stage], b.stage === "mvp" ? "MVP" : b.stage, "Stage: build to this and no further"),
     chip("⏱", `${duration(b.estimate_minutes)} · asks at ${duration(tripwireMinutes(b))}`, `Estimate; the session stops to ask at ${TRIPWIRE_MULTIPLE}×`),
     chip("$", money(b.budget_usd).slice(1), "Model spend it's worth (a guide: a session can't see its spend)"),
-    b.where === "local" ? chip("🔒", "local", b.where_reason, "local") : chip("☁", "cloud", "Runs in the cloud"),
+    // On the runner every launch runs on this Mac; Claude still sees what it works on.
+    runner ? chip(b.where === "local" ? "🔒" : "💻", "this Mac", b.where_reason || "Runs on this Mac", b.where === "local" ? "local" : "") : b.where === "local" ? chip("🔒", "local", b.where_reason, "local") : chip("☁", "cloud", "Runs in the cloud"),
   );
 }
 
@@ -381,6 +454,8 @@ function details(b: Shown): HTMLElement {
     b.skills.length ? h("p", { class: "quiet small" }, `Skills: ${b.skills.join(", ")}`) : null,
     ...b.guidance.map((g) => h("blockquote", {}, g)),
     h("pre", { id: "brief-cmd" }, h("code", {}, buildCommand(b, catalog))),
+    // On the runner, Launch is the main way; the command is still here to run by hand.
+    runner ? h("button", { type: "button", class: "ghost small", id: "copy-command", disabled: !copyState(b).ready, onclick: () => void copy(b, "command") }, "Copy command") : null,
     h("p", { class: "quiet small" }, [b.source ? SOURCE_LABEL[b.source] : "", Q.owner ? "" : "Illustration: Jordan's tools are made up."].filter(Boolean).join(" · ")),
   ];
   more.append(...parts.filter((x): x is HTMLElement => x !== null));
@@ -421,6 +496,12 @@ function briefCard(b: Shown): HTMLElement {
   );
   const copyBrief = h("button", { type: "button", class: local ? "primary" : "ghost", id: "copy-brief", disabled: Boolean(invalid.get(b.id)?.size), onclick: () => void copy(b, "brief") }, "Copy brief");
 
+  const actions = runner
+    ? b.launch && b.launch.state !== "failed"
+      ? sessionLine(b)
+      : launchControls(b, ready, message)
+    : h("div", { class: "think-actions brief-actions" }, h("p", { class: "think-msg", role: "status" }, actionMsg || message), copyBrief, copyCmd);
+
   return h(
     "article",
     { class: "brief", id: "brief", "aria-labelledby": "brief-h" },
@@ -430,10 +511,109 @@ function briefCard(b: Shown): HTMLElement {
     b.out_of_scope.length ? h("p", { class: "brief-skip", title: "Not this time" }, h("span", { class: "ico", "aria-label": "Not this time" }, "⊘"), b.out_of_scope.join(" · ")) : null,
     youFirst,
     b.check_ins.length ? h("p", { class: "brief-asks", title: "Comes back to you" }, h("span", { class: "ico", "aria-label": "Asks you before" }, "↩"), b.check_ins.join(" · ")) : null,
-    h("div", { class: "think-actions brief-actions" }, h("p", { class: "think-msg", role: "status" }, actionMsg || message), copyBrief, copyCmd),
+    actions,
     details(b),
     report(b),
   );
+}
+
+const tickList = (b: Shown) => [...(ticked.get(b.id) ?? [])].sort((x, y) => x - y);
+
+/** The repo picker and Launch (runner only). Untrusted repos are listed but can't be picked. */
+function launchControls(b: Shown, ready: boolean, message: string): HTMLElement {
+  const repos = runner!.repos;
+  if (repo && !repos.some((r) => r.name === repo && r.trusted)) repo = "";
+  const pick = h(
+    "select",
+    { id: "launch-repo", "aria-label": "Repo" },
+    h("option", { value: "" }, "Repo…"),
+    ...repos.map((r) => h("option", { value: r.name, selected: r.name === repo, disabled: !r.trusted, title: r.trusted ? "" : `Run claude in ${r.name} once to trust it` }, r.trusted ? r.name : `${r.name} (untrusted)`)),
+  ) as HTMLSelectElement;
+  const go = h("button", { type: "button", class: "primary", id: "launch", disabled: !ready || !repo || launching === b.id, onclick: () => void launch(b) }, launching === b.id ? "Launching…" : "Launch") as HTMLButtonElement;
+  pick.addEventListener("change", () => {
+    repo = pick.value;
+    try {
+      localStorage.setItem(REPO_KEY, repo);
+    } catch {
+      /* remembered for this page only */
+    }
+    go.disabled = !copyState(b).ready || !repo;
+  });
+  const failed = b.launch?.state === "failed" ? `Last launch failed: ${b.launch.error ?? "unknown"}.` : "";
+  return h("div", { class: "think-actions brief-actions" }, h("p", { class: "think-msg", role: "status" }, actionMsg || message || failed), pick, go);
+}
+
+/** How a launched session is doing, in one line, with the command to open it. */
+function sessionLine(b: Shown): HTMLElement {
+  const name = `bugme-${b.id}`;
+  const s = runner?.sessions?.find((x) => x.name === name);
+  const asks = waiting[b.id] ?? [];
+  const [icon, text, cls]: [string, string, string] =
+    b.launch!.state === "launching"
+      ? ["◌", "Starting…", ""]
+      : asks.length
+        ? ["↩", "Waiting on you", "warn"]
+        : b.report
+          ? ["✓", "Reported", "ok"]
+          : !s
+            ? ["?", runner?.sessions ? "Session not found" : "Can't see sessions", "warn"]
+            : s.state === "blocked"
+              ? ["✋", `Needs you in Claude${s.waitingFor ? ` · ${s.waitingFor}` : ""}`, "warn"]
+              : s.state === "working"
+                ? ["●", "Working", ""]
+                : s.state === "done"
+                  ? ["✓", "Finished · no report", "warn"]
+                  : ["⏹", s.state === "failed" ? "Failed" : "Stopped", "warn"];
+  const id = b.launch!.session_id;
+  const attach = id ? `claude attach ${id}` : "";
+  return h(
+    "div",
+    { class: `brief-session ${cls}`, role: "status" },
+    h("span", { class: "ico", "aria-hidden": "true" }, icon),
+    asks.length ? h("a", { href: `#/d/${asks[0]}` }, text) : h("span", {}, text),
+    h("span", { class: "quiet small" }, b.launch!.repo),
+    attach
+      ? h(
+          "button",
+          {
+            type: "button",
+            class: "ghost small",
+            id: "copy-attach",
+            title: "Open this session in a terminal",
+            onclick: () =>
+              void navigator.clipboard.writeText(attach).then(
+                () => announce("Copied."),
+                () => announce(attach),
+              ),
+          },
+          h("code", {}, attach),
+        )
+      : null,
+  );
+}
+
+/** Save the setup and ticks (the clock starts), then ask the runner to start the session. */
+async function launch(b: Shown): Promise<void> {
+  launching = b.id;
+  actionMsg = "";
+  paint();
+  try {
+    const { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off } = b;
+    const saved = await api<{ brief: Brief }>(`/api/me/briefs/${b.id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off, ticked: tickList(b) });
+    b.dispatched_at = saved.brief.dispatched_at;
+    b.ticked = saved.brief.ticked;
+    const r = await api<{ launch: Brief["launch"] }>("/runner/launch", { brief_id: b.id, repo });
+    b.launch = r.launch;
+    actionMsg = "";
+    announce("Launched.");
+    // The session list from before the launch doesn't have it yet.
+    await load().catch(() => {});
+  } catch (e) {
+    actionMsg = (e as Error).message;
+    announce(actionMsg);
+  }
+  launching = "";
+  paint();
 }
 
 const OUTCOME_ICON: Record<string, string> = { done: "✓", "stopped at tripwire": "⏹", partial: "◐", abandoned: "✕" };
@@ -474,7 +654,7 @@ async function copy(b: Shown, what: "command" | "brief"): Promise<void> {
       // released. The clipboard call itself stays inside the click (Safari refuses one made after an
       // await), with a promise that resolves once the save has landed.
       const { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off } = b;
-      const saved = api<{ brief: Brief }>(`/api/me/briefs/${b.id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off });
+      const saved = api<{ brief: Brief }>(`/api/me/briefs/${b.id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off, ticked: tickList(b) });
       const wrote = typeof ClipboardItem !== "undefined"
         ? navigator.clipboard.write([new ClipboardItem({ "text/plain": saved.then(() => new Blob([text], { type: "text/plain" })) })])
         : saved.then(() => navigator.clipboard.writeText(text));

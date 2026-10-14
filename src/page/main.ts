@@ -12,7 +12,8 @@ import { ownerDecisions, signIn, startOwner } from "./live";
 import { initVoice, voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
-import { type Queue, Q, S, STORE_KEY, fresh, load, save, setById, setF, setQ, setS } from "./state";
+import { type Queue, Q, S, STORE_KEY, byId, fresh, load, save, setById, setF, setQ, setS } from "./state";
+import { OWNER_POLL_MS } from "../shared/constants";
 import { plainOptions } from "../shared/titles";
 import { startTour } from "./tour";
 import { render } from "./views";
@@ -73,6 +74,7 @@ async function boot(): Promise<void> {
     window.scrollTo({ top: 0 });
   });
   render();
+  if (Q.owner) setInterval(() => void newAsks(), OWNER_POLL_MS);
   // A tour link (/app?tour=<id>, as the explainer's cards use) starts that tour.
   const tour = new URLSearchParams(location.search).get("tour");
   // The tours script Jordan's decisions; the owner's live queue has none.
@@ -80,6 +82,32 @@ async function boot(): Promise<void> {
     history.replaceState(null, "", location.pathname + location.hash);
     startTour(tour);
   }
+}
+
+/**
+ * New asks arriving while the owner's page is open (a launched session's, say: docs/STAGE-9.md) join
+ * the queue without a reload. Only additions: a decision already on the page, and any answer in
+ * progress on it, is never touched. The view redraws only when nothing is being typed.
+ */
+async function newAsks(): Promise<void> {
+  if (document.visibilityState !== "visible") return;
+  let q: Queue;
+  try {
+    q = inPlainTerms(await api<Queue>("/api/queue"));
+  } catch {
+    return; // offline or signed out: the next tick tries again
+  }
+  const arrived = q.decisions.filter((d) => !byId.has(d.id));
+  if (!arrived.length) return;
+  const ids = new Set(arrived.map((d) => d.id));
+  const cards = q.cards.filter((c) => ids.has(c.id));
+  Q.decisions = [...Q.decisions, ...arrived];
+  Q.cards = [...Q.cards, ...cards];
+  for (const c of cards) S.cards[c.id] = c;
+  for (const d of arrived) byId.set(d.id, d);
+  const typing = document.activeElement?.matches("input, textarea, select");
+  if (!typing && !location.hash.startsWith("#/dispatch")) render();
+  announce(arrived.length === 1 ? "A new ask came in." : `${arrived.length} new asks came in.`);
 }
 
 boot().catch((e) => {
