@@ -17,6 +17,8 @@ export interface RunnerConfig {
   workerPort: number;
   /** The `claude` executable (tests point this at a stub). */
   claudeBin: string;
+  /** macOS `open`, which starts "Do it with me" in Terminal (tests point this at a stub). */
+  openBin: string;
   /** Claude Code's config, read (never written) for which directories it trusts. */
   claudeJson: string;
   /** The tailnet name `tailscale serve` answers on, when set: one more allowed Host, over https. */
@@ -81,6 +83,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RunnerConfig {
     port,
     workerPort: port + 1,
     claudeBin: env.BUGME_CLAUDE_BIN ?? "claude",
+    openBin: env.BUGME_OPEN_BIN ?? "open",
     claudeJson: resolve(env.BUGME_CLAUDE_JSON ?? join(homedir(), ".claude.json")),
     ...(tailnetHost ? { tailnetHost } : {}),
     ownerKey: vars[OWNER_VAR],

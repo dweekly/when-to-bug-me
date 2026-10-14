@@ -19,6 +19,8 @@ import {
   conversePrompt,
   converseSchema,
   dispatchPrompt,
+  walkPrompt,
+  WALK_PROMPT_VERSION,
   factPrompt,
   parsePrompt,
   parseSchema,
@@ -33,6 +35,7 @@ import { enforceSettleInvariant, parseRouteOutput } from "../../src/shared/route
 import { decisions, facts, persona, rules } from "./helpers";
 import { dispatchSchema, finishBrief, parseBriefDraft, parseCatalog, runWhere } from "../../src/shared/dispatch";
 import { DISPATCH_EXAMPLES } from "../../src/shared/dispatchExamples";
+import { WALK_SCHEMA, parseWalk, walkInput } from "../../src/shared/walk";
 import catalogJson from "../../fixtures/catalog.json";
 
 const entries = (recorded as { entries: Record<string, unknown> }).entries;
@@ -175,6 +178,22 @@ describe("the Dispatch demo's recorded briefs (docs/STAGE-8.md)", () => {
 
   it("every demo task has a brief that passes today's checks", async () => {
     for (const x of DISPATCH_EXAMPLES) expect(await brief(x.task), `${x.id}: re-record with \`npm run record\``).not.toBeNull();
+  });
+
+  it("every \u201cYou first\u201d item the demo shows has recorded steps (docs/STAGE-9.md), whatever the brief's id or time", async () => {
+    for (const x of DISPATCH_EXAMPLES) {
+      const d = (await brief(x.task))!;
+      for (const id of ["b-aaaaaaaaaa", "b-zzzzzzzzzz"]) {
+        const shown = finishBrief(d, catalog, { id, task: x.task.trim(), now: new Date(Date.now() - Math.random() * 1e9), owner: false });
+        for (let i = 0; i < shown.prerequisites.length; i++) {
+          const w = walkInput(shown, i, catalog);
+          const k = await modelCacheKey({ model: MODEL, effort: EFFORT, maxTokens: MAX_TOKENS, promptVersion: WALK_PROMPT_VERSION, schema: WALK_SCHEMA, prompt: walkPrompt(w) });
+          const e = entries[k] as { output: unknown } | undefined;
+          expect(e, `${x.id} "${w.what}": re-record with \`npm run record\``).toBeDefined();
+          expect(parseWalk(e!.output).length).toBeGreaterThan(0);
+        }
+      }
+    }
   });
 
   it("the three show what they're for: a prototype with a short leash, a local run, a token up front", async () => {

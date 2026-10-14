@@ -32,8 +32,8 @@ A Node process on the Mac, with everything it owns bound to `127.0.0.1`. It is o
 - Persists to `~/.bugme/state`, outside the repo.
 - Its secrets (seal key, owner token, model-callback token) are generated on first run into `~/.bugme/runner.env` (mode 0600) and passed with `--env-file`, never on a command line.
 - Startup:
-  - build the page, start the Worker and wait until it answers, read the catalog, then listen;
-  - if the catalog read fails, say so and keep the last catalog.
+  - build the page, start the Worker and wait until it answers, then listen;
+  - read the catalog in the background; if the read fails, say so and keep the last catalog.
 - Exit: stop the Worker and any helper processes. Launched work sessions keep running.
 
 **A front server** on one port, in front of the Worker. Its guards:
@@ -148,6 +148,82 @@ Every "You first" item gets **How?**, which opens short numbered steps: at most 
 `tailscale serve --bg <port>` serves the runner on the tailnet only, over HTTPS. David runs this himself, since it changes his tailnet's configuration, and puts the tailnet name in `runner.env`.
 
 Sign-in uses the existing sign-in link. It carries a reusable owner token, so it's treated like a password. `npm run runner -- --link` prints it again without changing it.
+
+## As built (2026-10-14)
+
+Where the build differs from the plan above, and what it found.
+
+- **Startup.** The runner listens as soon as the Worker answers. Reading the tools runs `claude mcp list`, which checks every server and can take half a minute, so it runs in the background; until it lands, the last catalog stays.
+- **The Worker answers only through the runner.** The automated security review of 9a found that the loopback Worker could be reached directly, skipping the guards, by another local process or by a page using DNS rebinding. The runner now adds its model key in a header (`x-bugme-runner`) to every request it passes on. With `LOCAL_MODEL_URL` set, the Worker refuses anything without that header, the owner's own key included.
+- **wrangler is in the runner's process group,** started directly rather than through npx. SIGTERM reaches it, and it stops workerd; a group kill (Playwright's) stops all three.
+- **Waiting asks per brief.** `GET /api/me/briefs` also returns, per brief, the asks still waiting on the owner, so the brief can say "waiting on you" and link to the ask.
+- **The owner page picks up new asks** (every 8 s while visible, additions only, never redrawing while something is being typed). The Dispatch view refreshes briefs and sessions on the same beat.
+- **Session states** follow Claude Code's own (code.claude.com/docs/en/agent-view):
+  - working;
+  - blocked, which the page shows as "needs you in Claude", with its `waitingFor`;
+  - done, failed and stopped.
+
+  A pending ask on the brief comes first ("waiting on you", which links to the ask), and a report wins over everything.
+- **Copy command** quotes values but not flags, as before; the shared `commandArgs` briefly quoted both, and the stage 8 e2e tests caught it.
+- **Walk steps** came back with links only where the model was confident: the recorded PagerDuty steps link to `support.pagerduty.com` and `github.com`. Recording cost $0.025.
+- **A test broke the main checkout's git config, once.** Inside the pre-push hook, `GIT_DIR` points at the repo. A unit test's `git init` in a temporary folder inherited it and set `core.bare = true` on the main checkout. It was restored by hand. The test and the e2e fixture now strip `GIT_*` variables, so a hook can't do this again.
+
+**Verified:**
+- `npm run typecheck && npm test`: 498 tests.
+- `npx playwright test`: the full suite, with the new runner project (14 tests).
+- `npm run smoke:live`.
+- Drafting through the real Claude login: a brief in 9 s.
+- curl checks of every guard.
+- Launches on the stub:
+  - refused when unticked, untrusted, outside the dev folder, or missing a connected tool;
+  - three presses at once start one session;
+  - a failed launch is recorded and can be retried.
+
+**Waiting on David:** `smoke:runner` needs `~/dev/bugme-sandbox` trusted (`cd ~/dev/bugme-sandbox && claude`, accept, quit).
+
+## Codex code reviews (2026-10-14)
+
+Each round's findings were fixed in their own commit; new tests were shown to fail on the code before.
+
+- **9a (#38):**
+  - **Round 1, FIX (5):**
+    - a second Launch while the first was starting could start another session;
+    - the proxy's fetch gave up at 300 s;
+    - a model call's deadline ignored queue time;
+    - model helpers outlived shutdown;
+    - a failed startup left wrangler running.
+  - **Round 2, ESCALATE:**
+    - a stale recovery result could still fail a newer retry and start a second session;
+    - an `mcp list` helper outlived shutdown.
+
+    David chose attempt ids: every reservation carries one, and recovery and completion apply only to their own attempt. Sessions are named `bugme-<brief>-<attempt>`, and every helper is stopped on shutdown.
+  - **Round 3, FIX (1):** the MCP server's own fetch had the same 300 s cutoff. It now uses node:http(s).
+  - **Round 4** (past the cap, with David's go), **FIX (2):**
+    - the session was started from the brief as read before the slow tools check, so a stricter permission mode saved in that window was ignored. It now launches the brief as reserved, with its ticks checked again;
+    - a `claude --bg` that timed out was marked failed, so a retry could start a second session. It now stays "launching" for recovery.
+- **9b (#39):**
+  - **Round 1, FIX (5):**
+    - new asks lost their project;
+    - new asks lost their set-aside status;
+    - redraws held back while typing never came;
+    - a refresh detached the setup controls;
+    - Launch ignored an invalid estimate.
+  - **Round 2, ESCALATE:** edits could still be lost (a tick mid-refresh, a retry after a failed launch), and a newly trusted repo stayed disabled.
+
+    David chose separate edits: unsaved setup edits sit in their own map over the server's copy, cleared only by a successful save. The refresh also watches repos.
+  - **Round 3, FIX (3):**
+    - the secret hand-over check missed some phrasings;
+    - a refresh replaced a typed invalid number;
+    - an edit made during Launch's save was dropped.
+  - **Round 4, ESCALATE:**
+    - "Put your API key into Bug Me" still passed the secret check;
+    - the How? steps arriving replaced a typed invalid number;
+    - changing the picker during Launch's save launched in the new repo.
+
+    David chose to fix all five round 4 items and stop reviewing; he reads the fix commits and merges.
+    - Typed numbers are kept outside the page's elements.
+    - The repo is captured at the click.
+    - The secret check is a safety net, not a guarantee: no keyword list catches every phrasing. So under every walk the page also says that Bug Me never needs a secret.
 
 ## Gates
 

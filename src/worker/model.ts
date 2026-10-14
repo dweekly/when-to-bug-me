@@ -26,6 +26,7 @@ import {
   PARSE_PROMPT_VERSION,
   PROMPT_VERSION,
   TITLE_PROMPT_VERSION,
+  WALK_PROMPT_VERSION,
   askPrompt,
   conversePrompt,
   dispatchPrompt,
@@ -37,9 +38,11 @@ import {
   routeSchema,
   titlePrompt,
   titleSchema,
+  walkPrompt,
 } from "../shared/prompts";
 import { parseAskOutput } from "../shared/ask";
 import { type BriefDraft, type Catalog, dispatchSchema, parseBriefDraft } from "../shared/dispatch";
+import { type WalkInput, type WalkStep, WALK_SCHEMA, fakeWalk, parseWalk } from "../shared/walk";
 import { fakeDispatch } from "../shared/fakeDispatch";
 import { type SettleLimits, parseRouteOutput } from "../shared/route";
 import { parseFactOutput } from "../shared/fact";
@@ -293,6 +296,12 @@ export async function titlesFor(env: Env, canSpend: boolean, d: Decision, ctx: M
  * caller says whose world it is in: the owner's drafts are never read from or written to the cache or
  * the recorded run.
  */
+/** Walk me through it (docs/STAGE-9.md): steps for one "You first" item, from its canonical input. */
+export async function walkFor(env: Env, canSpend: boolean, w: WalkInput, ctx: ModelCtx): Promise<{ out: WalkStep[]; source: Source }> {
+  if (env.FAKE_MODEL) return { out: parseWalk(fakeWalk(w)), source: "code" };
+  return ask(env, canSpend, walkPrompt(w), WALK_SCHEMA, parseWalk, WALK_PROMPT_VERSION, MAIN, ctx.store);
+}
+
 export async function dispatchFor(
   env: Env,
   canSpend: boolean,

@@ -136,3 +136,10 @@ export const RUNNER_LAUNCH_TIMEOUT_MS = 60_000;
 export const RUNNER_MCP_LIST_TIMEOUT_MS = 180_000;
 /** A reservation older than this with no session is reconciled from `claude agents` before anything else. */
 export const RUNNER_STALE_LAUNCH_MS = 2 * 60_000;
+
+/**
+ * How often the owner's page looks for new asks and, on the runner, for its sessions' state
+ * (docs/STAGE-9.md): often enough that a launched session's question reaches the phone within seconds,
+ * and only while the page is visible.
+ */
+export const OWNER_POLL_MS = 8_000;

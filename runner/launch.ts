@@ -1,11 +1,11 @@
 // Launching a brief (docs/STAGE-9.md): which repos it may go into, the exact `claude --bg` argv, and
 // finding the session again. Every path comes from the server-side repo list, never from the browser.
 import { type ChildProcess, execFile } from "node:child_process";
-import { lstatSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
 import { RUNNER_LAUNCH_TIMEOUT_MS } from "../src/shared/constants";
-import { type Brief, type Catalog, REPO_NAME_RE, commandArgs } from "../src/shared/dispatch";
+import { type Brief, type Catalog, REPO_NAME_RE, commandArgs, shellQuote } from "../src/shared/dispatch";
 
 export class LaunchError extends Error {
   /** The command was stopped at its deadline rather than failing: what it did is unknown. */
@@ -119,11 +119,16 @@ export function stopHelpers(): void {
   helpers.clear();
 }
 
+/** A background session as `claude agents --json --all` reports it (code.claude.com/docs/en/agent-view). */
 export interface Session {
   id: string;
   name: string;
+  /** busy, waiting or idle, while the process is alive. */
   status?: string;
+  /** working, blocked (needs the person), done, failed or stopped. */
   state?: string;
+  /** When status is waiting: permission prompt, input needed, sandbox request, worker request, dialog open. */
+  waitingFor?: string;
   cwd?: string;
 }
 
@@ -144,10 +149,43 @@ export function parseAgents(json: string): Session[] {
       name: r.name as string,
       ...(typeof r.status === "string" ? { status: r.status } : {}),
       ...(typeof r.state === "string" ? { state: r.state } : {}),
+      ...(typeof r.waitingFor === "string" ? { waitingFor: r.waitingFor } : {}),
       ...(typeof r.cwd === "string" ? { cwd: r.cwd } : {}),
     }));
 }
 
 export async function sessions(bin: string, cwd: string): Promise<Session[]> {
   return parseAgents(await run(bin, ["agents", "--json", "--all"], cwd));
+}
+
+/**
+ * "Do it with me" (docs/STAGE-9.md): a guide, not a doer. It waits for the person to say they're at the
+ * Mac, points the way in Chrome, and stops before anything that shows or takes a secret.
+ */
+export function walkPrompt(b: Brief, item: number): string {
+  const p = b.prerequisites[item];
+  const steps = b.walks?.find((w) => w.item === item && w.what === p.what)?.steps ?? [];
+  return [
+    `You're helping a person do one thing themselves before an AI coding session starts on "${b.headline}" (${b.goal}).`,
+    `What they need to do: ${p.what}${p.why ? ` (why: ${p.why})` : ""}.`,
+    steps.length ? `Bug Me suggested these steps:\n${steps.map((s, i) => `${i + 1}. ${s.text}${s.url ? ` (${s.url})` : ""}`).join("\n")}` : "",
+    "",
+    "How to help:",
+    "- First ask them to say \"ready\" when they're at this Mac with Chrome open, and wait for it.",
+    "- Then use Claude in Chrome to open the right page and tell them what to click. They do the clicking and the typing.",
+    "- Stop before any page or step that would show or take a secret (a token, key, password or recovery code). Tell them that part is theirs, point them to the numbered step, and don't look at that page.",
+    "- Never ask them to type or paste a secret into this chat.",
+    "- When they say it's done, tell them to tick the box in Bug Me, and stop.",
+  ]
+    .filter((x) => x !== undefined)
+    .join("\n");
+}
+
+/** Write the walk's prompt and a fixed .command that runs it; no step text is ever on a command line. */
+export function writeWalk(dir: string, claudeBin: string, prompt: string): string {
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  writeFileSync(join(dir, "prompt.txt"), prompt, { mode: 0o600 });
+  const script = join(dir, "walk.command");
+  writeFileSync(script, `#!/bin/sh\ncd ${shellQuote(dir)} && exec ${shellQuote(claudeBin)} --chrome --no-session-persistence -- "$(cat prompt.txt)"\n`, { mode: 0o700 });
+  return script;
 }
