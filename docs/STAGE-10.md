@@ -115,7 +115,7 @@ python3 scripts/scan.py
 
 ## PRs
 
-Each PR is under the review cap, branched from main. 10b stacks on 10a, since they share the note screen.
+Each PR is under the review cap. 10a, 10c and 10d branch from main; 10b branches from 10a, since they share the note screen.
 
 | PR | Branch | Owner |
 | --- | --- | --- |
@@ -125,3 +125,56 @@ Each PR is under the review cap, branched from main. 10b stacks on 10a, since th
 | 10d | `stage/10d-hooks` | subagent |
 
 A polish branch from another agent (`stage/8c-polish`) also touches `src/page/`, and will be rebased after whichever lands first.
+
+## Codex plan review (gpt-6.1-sol, high, 2026-10-14)
+
+Folded in; these override the sections above where they differ.
+
+- **10a schemas first.**
+  - Note lines and interview questions get stable ids.
+  - Citations are non-empty, de-duplicated and real.
+  - Limits hold after revision too.
+  - Evidence from history is kept apart from corrections made in the interview.
+  - DEMO REPLY answers are bound to question ids, not to their position.
+  - The hand-written note is never fed to the drafting prompt as an expected answer.
+  - The labels are "Your drafted note" versus "the morning runs on the hand-written note".
+  - The 320 px and recorded e2e projects include the new specs.
+- **10b importer contract.** `npm run onboard` converts the extractor's rows:
+  - answered questions only, de-duplicated by call and question;
+  - sorted by `ts`, then the newest 200;
+  - `note` becomes the reason; free-text and multi-select answers are kept;
+  - stable ids, and a short project label.
+
+  It prints the count and the date range. The extractor's default cutoff (Oct 2) is stated, with how to move it.
+- **10b body limit:** an onboarding-specific body limit, under the runner's 1 MiB and the model's 400,000-character prompt. Every other endpoint stays at 32 KB.
+- **10b runner only.** `onboard` targets the runner and uses its own key from `~/.bugme/runner.env`, with no hosted fallback. The hosted Worker refuses owner onboarding (no `LOCAL_MODEL_URL`, no onboarding). All three calls are owner-context `store: false`, with sentinel tests on them and on their failure paths.
+- **10b storage:** an onboarding run (id, trimmed evidence, draft, questions, answers, revision) is kept in the owner's Durable Object. Keeping lines merges them into the server's facts idempotently, as facts, never as rules. Settle permission still needs a written rule.
+- **10b fact editing:** the Rules view gets a fact editor (240 characters, 30 facts, as today). The owner's note section shows the kept onboarding note and its provenance, in place of the hard-coded note in `ownerPersona()`.
+- **10c data honesty:**
+  - Time is estimated from the route (labeled as estimated), not measured.
+  - Stated priorities are an explicit synthetic order, outside the routing prompts.
+  - Dispatch snapshots enter the record with brief ids; missing cost shows as "not reported".
+  - Historical answers use the route in the answer event.
+  - Cadence and dismissals are persisted per change of project, counted at the action, not at render.
+- **10d minimum complete scope:**
+  1. A fast ingest path: persist a pending mirror, acknowledge it, then route asynchronously.
+  2. Server-side correlation by `session_id`, `tool_use_id` and question index, idempotent, with an answer that arrives before routing finishes kept.
+  3. Adapters for AskUserQuestion (multiple questions, up to 4 options, multi-select, typed) and ExitPlanMode (a minimal "Approve this session's plan?" with no plan text).
+  4. The server enforces mirror-only: no settling on add or re-route, page resolution refused, no send-down, `by: "session"`.
+  5. A cancelled, failed or unknown state for orphans.
+  6. Owner polling reconciles mirrors (updates and closes), not only additions.
+
+  Tested with slow routing and a lost acknowledgement. The claim is "best-effort mirroring of Claude Code questions and plan approvals on configured machines".
+- **Integration:**
+  - Claude owns the shared router and state changes, and runs the combined gates after rebases (polish included).
+  - 10b branches from 10a.
+  - A completion gate updates the PRD's built-versus-release table with what actually landed.
+- **Smoke:** `smoke:live` stays a fake-model integration test. Login-backed checks are named separately.
+
+ROADMAP:
+- reliable capture across outages, clients and permission prompts;
+- whether the inferred note predicts David well (the fleet spike's job);
+- measured attention and complete spend;
+- managing history over time (retention, deletion, rolling imports, a real weekly job).
+
+Declined: none.
