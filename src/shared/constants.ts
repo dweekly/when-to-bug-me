@@ -143,3 +143,23 @@ export const RUNNER_STALE_LAUNCH_MS = 2 * 60_000;
  * and only while the page is visible.
  */
 export const OWNER_POLL_MS = 8_000;
+
+/**
+ * Hooks into Bug Me (docs/STAGE-10.md, 10d): Claude Code's questions and plan approvals mirrored on /me.
+ * The hook script's whole budget, credential lookup and HTTP included (the plan's "2 s timeout"): a hook
+ * that hangs stalls the session, so past this it gives up silently and exits 0.
+ */
+export const MIRROR_HOOK_DEADLINE_MS = 2_000;
+/**
+ * A mirrored question with no answer, no Stop and no SessionEnd after this long is closed as "no answer
+ * seen" rather than shown as waiting forever. Heuristic: longer than a working day's gap, so an
+ * overnight question is still there in the morning.
+ */
+export const MIRROR_ORPHAN_MS = 18 * 60 * 60 * 1000;
+/** How long a closed mirror stays on the owner's page, matching answered tickets' day. */
+export const MIRROR_KEPT_MS = 24 * 60 * 60 * 1000;
+/** AskUserQuestion's own limits (its tool schema, checked against payloads from Claude Code 2.1.300): 1 to 4 questions of 2 to 4 options. */
+export const MIRROR_MAX_QUESTIONS = 4;
+export const MIRROR_MAX_OPTIONS = 4;
+/** The longest a test may ask mirror routing to wait (FAKE_MODEL only), to stand in for a slow model call. */
+export const MIRROR_TEST_DELAY_MAX_MS = 30_000;

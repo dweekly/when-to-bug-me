@@ -15,6 +15,7 @@ import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 import { openToursMenu, tourAfterRender } from "./tour";
+import { mirrorList } from "./mirror";
 import { renderDispatchView } from "./dispatch";
 
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
@@ -233,7 +234,7 @@ function renderHome(view: HTMLElement): void {
     link({ view: "rules" }, "Rules and what Bug Me knows"),
     link({ view: "record" }, "Your record"),
   );
-  view.replaceChildren(hero, startCard, agendaList, unfinishedList ?? "", asideList ?? "", more);
+  view.replaceChildren(hero, startCard, agendaList, mirrorList(byId) ?? "", unfinishedList ?? "", asideList ?? "", more);
 }
 
 // ---------- Focus ----------

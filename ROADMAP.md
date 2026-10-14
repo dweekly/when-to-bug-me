@@ -78,6 +78,15 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **wrangler dev as the runner's Worker.** It's a development server (with an inspector on loopback); a production build of the Worker under workerd would be leaner.
 - **"Do it with me" boundary is where the walk stops.** Claude in Chrome can read the page, so the session is told to stop before any page that shows or takes a secret; it can't be prevented from looking.
 
+## From stage 10d (hooks into Bug Me)
+
+Hardening:
+- **Reliable capture.** Mirroring is best effort: a hook that misses its 2-second deadline (network down, the keychain slow) drops the event silently, and there is no retry queue. A dismissed question or a rejected plan fires no follow-up event, so it closes on the session's next Stop ("the session moved on"), its SessionEnd, or after 18 hours. A background subagent's question could be closed by the main session's Stop; a later answer still wins.
+- **Every Stop posts.** The hook can't tell whether a session asked anything, so each turn's end makes one small request with only the session id. A local marker per session would cut that to the sessions that asked.
+- **Mirrors on the agenda.** Mirrored questions sit in their own "In your sessions" list on Home, not in the agenda, and the page doesn't re-brief them after a rule edit (the server would, and would never settle them).
+- **Other clients and machines.** Only Claude Code's AskUserQuestion and ExitPlanMode on machines where David adds the snippet; no permission prompts, no other agent CLIs.
+- **Test-only delay.** `test_delay_ms` on `/api/me/mirror` holds routing (up to 30 s) and is honored only with `FAKE_MODEL` set.
+
 ## Tech debt to schedule
 
 - Seven formatting decisions have an option labeled "Skip" (leave the code as is), the same word as the card's set-aside link. Those cards reach Jordan only after a rule change. Relabel them ("Leave as is") at the next re-recording, since the label is part of the recorded routing prompt.

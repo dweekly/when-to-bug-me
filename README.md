@@ -126,6 +126,27 @@ BUGME_URL=https://bugme.weekly.org node ~/dev/when-to-bug-me/mcp/bugme.mjs sync-
 
 Then draft a brief on `/me` → Dispatch, tick what it needs from you, and paste the copied command in a terminal where the work should happen. The session asks through `ask_bug_me` (linked to the brief) and reports with `report_to_bug_me` when it finishes or stops; the brief shows the report, how long since you copied it, and how many times it asked. `npm run smoke:dispatch` runs that whole loop against a local Worker with a real Haiku session (about a cent).
 
+## Mirror your terminal questions (hooks)
+
+Best-effort mirroring of Claude Code questions and plan approvals on configured machines ([`docs/STAGE-10.md`](docs/STAGE-10.md), 10d). When a session asks you something (AskUserQuestion) or asks to go ahead with its plan (ExitPlanMode), the question also shows on `/me` under "In your sessions", briefed and routed, marked **Answer it in the session**. You still answer in the terminal; Bug Me records your answer when the session reports it, and notes what it would have done. It never answers, settles or sends anything down for a mirrored question.
+
+What leaves the machine: the session id, the tool call's id, the project folder's name, and each question's text, header and options (with your answer, afterwards). Never the conversation, the transcript, the plan's text or the folder's path. A plan approval shows as "Approve this session's plan?" and nothing more.
+
+Add this to the `hooks` in your `~/.claude/settings.json` (merge with any you have; it uses the same keychain entry as the MCP server):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [{ "matcher": "AskUserQuestion|ExitPlanMode", "hooks": [{ "type": "command", "command": "BUGME_URL=https://bugme.weekly.org node ~/dev/when-to-bug-me/mcp/bugme-hook.mjs", "async": true }] }],
+    "PostToolUse": [{ "matcher": "AskUserQuestion|ExitPlanMode", "hooks": [{ "type": "command", "command": "BUGME_URL=https://bugme.weekly.org node ~/dev/when-to-bug-me/mcp/bugme-hook.mjs", "async": true }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "BUGME_URL=https://bugme.weekly.org node ~/dev/when-to-bug-me/mcp/bugme-hook.mjs", "async": true }] }],
+    "SessionEnd": [{ "hooks": [{ "type": "command", "command": "BUGME_URL=https://bugme.weekly.org node ~/dev/when-to-bug-me/mcp/bugme-hook.mjs", "async": true }] }]
+  }
+}
+```
+
+`async` keeps the hook off the session's path entirely; the script also gives up on its own after 2 seconds, prints nothing and always exits 0. Stop and SessionEnd send only the session id: a dismissed question or a rejected plan sends no follow-up event, so it closes when the session moves on ("Closed: the session moved on"), or after 18 hours with nothing. It posts wherever `BUGME_URL` points, with the `bugme-live` keychain key, so a runner it points at must use that same owner key. `BUGME_HOOK_DEBUG=1` prints why a delivery failed. `npm run smoke:live` runs the script against a local Worker.
+
 ## The runner: Bug Me on your own Mac
 
 `npm run runner` runs the same Worker on your Mac, owner-only, behind a small front server on `127.0.0.1:8790` ([`docs/STAGE-9.md`](docs/STAGE-9.md)). Briefs and asks stay on the Mac: Bug Me drafts and routes with your own Claude Code login (`claude -p` in safe mode, with no transcript kept), so nothing goes through Cloudflare. Claude still sees what it works on, as in any session.

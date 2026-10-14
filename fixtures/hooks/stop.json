@@ -1,0 +1,15 @@
+{
+  "session_id": "0f0e0d0c-0000-4000-8000-000000000003",
+  "transcript_path": "/home/user/.claude/projects/-home-user-demo-app/0f0e0d0c-0000-4000-8000-000000000003.jsonl",
+  "cwd": "/home/user/demo-app",
+  "prompt_id": "00000000-0000-4000-8000-0000000000aa",
+  "permission_mode": "auto",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "(the last message, removed from this fixture)",
+  "background_tasks": [],
+  "session_crons": []
+}
