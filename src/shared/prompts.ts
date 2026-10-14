@@ -6,6 +6,7 @@
 
 import { MAX_CONVERSE_QUESTIONS, MAX_TITLE_WORDS } from "./constants";
 import type { WalkInput } from "./walk";
+import type { HistoryItem, InterviewQuestion, NoteLine } from "./onboarding";
 import { type ConvTurn, questionsAsked, transcriptForPrompt } from "./converse";
 import type { Decision, Fact, Persona, RouteKind, Rule } from "./types";
 import { type Catalog, DISPATCH_MODELS, TRIPWIRE_MULTIPLE } from "./dispatch";
@@ -18,6 +19,8 @@ export const CONVERSE_PROMPT_VERSION = "2026-10-13.2";
 export const TITLE_PROMPT_VERSION = "2026-10-13.2";
 /** The dispatch prompt (docs/STAGE-8.md), versioned on its own. */
 export const DISPATCH_PROMPT_VERSION = "2026-10-13.2";
+/** Onboarding: the note, the interview and the revision (docs/STAGE-10.md). */
+export const ONBOARD_PROMPT_VERSION = "2026-10-14.1";
 /** Walk me through it (docs/STAGE-9.md). */
 export const WALK_PROMPT_VERSION = "2026-10-14.1";
 
@@ -540,4 +543,76 @@ ${w.what}${w.why ? ` (why: ${w.why})` : ""}
 - Connecting a tool to Claude Code means its MCP server: say how to add or sign in to it (for example \`claude mcp add\` or \`/mcp\` in a session), as that vendor documents.
 - The person keeps every secret. When a step makes a token, key or password, say where to store it (their password manager, the macOS keychain, the tool's own config) and never ask them to paste it into a chat, into Bug Me, or into the session.
 - End with how they can tell it worked.`;
+}
+
+/** One past decision, as one line a model can cite by id. */
+function historyLine(h: HistoryItem): string {
+  const opts = h.options.map((o) => `${o.key}) ${o.label}${o.key === h.recommended ? " (the agent recommended this)" : ""}`).join(" / ");
+  const answer = h.answer ? `${h.answer} (${h.options.find((o) => o.key === h.answer)?.label ?? ""})` : `typed: "${h.typed ?? ""}"`;
+  const words = [h.reason ? `reason: "${h.reason}"` : "", h.typed && h.answer ? `also typed: "${h.typed}"` : "", h.seconds !== undefined ? `answered after ${h.seconds}s` : ""].filter(Boolean).join("; ");
+  return `${h.id} [${h.project}, ${h.days_ago} days ago] ${h.question} Options: ${opts}. Answer: ${answer}${words ? `; ${words}` : ""}.`;
+}
+
+/**
+ * Onboarding (docs/STAGE-10.md), step 1: draft the "how to work with me" note from past decisions. The
+ * person's written rules are given so the note doesn't restate them; any existing note is NOT given, so
+ * the draft comes from the history alone.
+ */
+export function notePrompt(p: Persona, rules: Rule[], history: HistoryItem[]): string {
+  const n = p.first_name;
+  return `You are Bug Me, a chief of staff that sits between one person and their fleet of AI agents. ${head(p)}
+
+You are new to ${n}. Before you route a single question, you read ${n}'s recent decisions and draft a short "how to work with me" note: what is distinctive about how ${n} decides, so agents ask less and ask better.
+
+=== ${n}'s written rules (already known; don't restate them) ===
+${rules.map((r) => `- ${r.text}`).join("\n") || "(none)"}
+
+=== ${n}'s recent decisions (${history.length}) ===
+${history.map(historyLine).join("\n")}
+
+=== Write the note ===
+- At most 8 lines, each one short sentence (at most 25 words), in plain words, about ${n}, written so an agent can act on it.
+- Only what is distinctive: leave out what any careful person would say ("prefers correct code").
+- Each line cites the decision ids it rests on (cites). Cite only ids above; two or more where you can.
+- kind: preference (how ${n} likes to be asked or briefed), rule-like (a standing call ${n} makes the same way every time, not yet written down), or contradiction (${n}'s decisions point two ways; say both sides in one line).
+- Look at how fast ${n} answered, what ${n} typed instead of picking, and where ${n} went against the agent's recommendation.
+- ids: n1, n2, … in order.`;
+}
+
+/** Step 2: the questions to ask about the draft, built from what was seen. */
+export function interviewPrompt(p: Persona, history: HistoryItem[], note: NoteLine[]): string {
+  const n = p.first_name;
+  return `You are Bug Me, a chief of staff that sits between one person and their fleet of AI agents. ${head(p)}
+
+You drafted this note about ${n} from ${n}'s recent decisions:
+${note.map((l) => `${l.id} [${l.kind}; from ${l.cites.join(", ")}] ${l.text}`).join("\n")}
+
+The decisions it cites:
+${history.filter((h) => note.some((l) => l.cites.includes(h.id))).map(historyLine).join("\n")}
+
+=== Interview ${n} ===
+Ask at most 3 questions, the ones whose answers would most change the note. Lead with what you saw, quoting or naming the decisions, then ask: "You approved every cleanup within seconds but rewrote every pricing call. Is that the line?"
+- One question per line of doubt: a contradiction, a line resting on few decisions, or a line that would change what agents do.
+- Each at most 45 words, spoken aloud, friendly, no preamble.
+- about: the note line ids it asks about. ids: q1, q2, q3.`;
+}
+
+/** Step 3: the note revised by the person's answers. Each change names the answer behind it. */
+export function revisePrompt(p: Persona, history: HistoryItem[], note: NoteLine[], questions: InterviewQuestion[], answers: Record<string, string>): string {
+  const n = p.first_name;
+  return `You are Bug Me, a chief of staff that sits between one person and their fleet of AI agents. ${head(p)}
+
+Your draft note about ${n}:
+${note.map((l) => `${l.id} [${l.kind}; from ${l.cites.join(", ")}] ${l.text}`).join("\n")}
+
+The interview:
+${questions.map((q) => `${q.id} (about ${q.about.join(", ")}): ${q.text}\n${n}: ${answers[q.id] ?? "(not answered)"}`).join("\n\n")}
+
+=== Revise the note ===
+Return every line of the draft, each with a change:
+- kept: unchanged (copy its id, text, kind and cites).
+- changed: reworded by an answer; set because to that question's id and why to a short clause in ${n}'s own terms.
+- removed: an answer showed it was wrong; because and why as above.
+- added: a new line an answer gave you (new id n9, n10, …); because and why as above; cites may be empty.
+Keep each line one short sentence (at most 25 words). At most 8 lines remain. Use ${n}'s words where they said it better. Don't change a line no answer touched.`;
 }

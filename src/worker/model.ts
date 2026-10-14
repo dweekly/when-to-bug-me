@@ -27,6 +27,7 @@ import {
   PROMPT_VERSION,
   TITLE_PROMPT_VERSION,
   WALK_PROMPT_VERSION,
+  ONBOARD_PROMPT_VERSION,
   askPrompt,
   conversePrompt,
   dispatchPrompt,
@@ -39,10 +40,28 @@ import {
   titlePrompt,
   titleSchema,
   walkPrompt,
+  notePrompt,
+  interviewPrompt,
+  revisePrompt,
 } from "../shared/prompts";
 import { parseAskOutput } from "../shared/ask";
 import { type BriefDraft, type Catalog, dispatchSchema, parseBriefDraft } from "../shared/dispatch";
 import { type WalkInput, type WalkStep, WALK_SCHEMA, fakeWalk, parseWalk } from "../shared/walk";
+import {
+  type HistoryItem,
+  type InterviewQuestion,
+  INTERVIEW_SCHEMA,
+  NOTE_SCHEMA,
+  type NoteLine,
+  REVISION_SCHEMA,
+  type RevisedLine,
+  fakeInterview,
+  fakeNote,
+  fakeRevision,
+  parseInterview,
+  parseNote,
+  parseRevision,
+} from "../shared/onboarding";
 import { fakeDispatch } from "../shared/fakeDispatch";
 import { type SettleLimits, parseRouteOutput } from "../shared/route";
 import { parseFactOutput } from "../shared/fact";
@@ -296,6 +315,35 @@ export async function titlesFor(env: Env, canSpend: boolean, d: Decision, ctx: M
  * caller says whose world it is in: the owner's drafts are never read from or written to the cache or
  * the recorded run.
  */
+/** Onboarding (docs/STAGE-10.md), step 1: the "how to work with me" note drafted from past decisions. */
+export async function noteFor(env: Env, canSpend: boolean, rules: Rule[], history: HistoryItem[], ctx: ModelCtx): Promise<{ out: NoteLine[]; source: Source }> {
+  const check = (raw: unknown) => parseNote(raw, history);
+  if (env.FAKE_MODEL) return { out: check(fakeNote(history)), source: "code" };
+  return ask(env, canSpend, notePrompt(ctx.persona, rules, history), NOTE_SCHEMA, check, ONBOARD_PROMPT_VERSION, MAIN, ctx.store);
+}
+
+/** Step 2: the interview questions about the draft. */
+export async function interviewFor(env: Env, canSpend: boolean, history: HistoryItem[], note: NoteLine[], ctx: ModelCtx): Promise<{ out: InterviewQuestion[]; source: Source }> {
+  const check = (raw: unknown) => parseInterview(raw, note);
+  if (env.FAKE_MODEL) return { out: check(fakeInterview(note)), source: "code" };
+  return ask(env, canSpend, interviewPrompt(ctx.persona, history, note), INTERVIEW_SCHEMA, check, ONBOARD_PROMPT_VERSION, MAIN, ctx.store);
+}
+
+/** Step 3: the note revised by the interview's answers. */
+export async function reviseFor(
+  env: Env,
+  canSpend: boolean,
+  history: HistoryItem[],
+  note: NoteLine[],
+  questions: InterviewQuestion[],
+  answers: Record<string, string>,
+  ctx: ModelCtx,
+): Promise<{ out: RevisedLine[]; source: Source }> {
+  const check = (raw: unknown) => parseRevision(raw, note, history, answers);
+  if (env.FAKE_MODEL) return { out: check(fakeRevision(note, answers)), source: "code" };
+  return ask(env, canSpend, revisePrompt(ctx.persona, history, note, questions, answers), REVISION_SCHEMA, check, ONBOARD_PROMPT_VERSION, MAIN, ctx.store);
+}
+
 /** Walk me through it (docs/STAGE-9.md): steps for one "You first" item, from its canonical input. */
 export async function walkFor(env: Env, canSpend: boolean, w: WalkInput, ctx: ModelCtx): Promise<{ out: WalkStep[]; source: Source }> {
   if (env.FAKE_MODEL) return { out: parseWalk(fakeWalk(w)), source: "code" };

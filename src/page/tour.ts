@@ -5,6 +5,7 @@
 
 import { type Driver, type DriveStep, driver } from "driver.js";
 import { CONVERSATIONS, EXAMPLES, scriptWords } from "../shared/examples";
+import { resetWelcome } from "./welcome";
 import { TOURS, type Tour, type TourStep } from "../shared/tours";
 import { scriptIndex } from "./actions";
 import { voiceOff } from "./voice";
@@ -88,6 +89,8 @@ let listening = false;
 
 function begin(tour: Tour): void {
   stopTour();
+  // Onboarding keeps its own state outside the morning's: a tour starts it from the top.
+  resetWelcome();
   if (!listening) {
     window.addEventListener("keydown", freeTab, true);
     window.addEventListener("message", prototypeEscape);
@@ -308,6 +311,7 @@ function parseHash(hash: string): Parameters<typeof go>[0] {
   if (p[0] === "d" && p[1]) return { view: "focus", id: p[1] };
   if (p[0] === "settled" || p[0] === "rules" || p[0] === "record") return { view: p[0] };
   if (p[0] === "dispatch") return { view: "dispatch" };
+  if (p[0] === "welcome") return { view: "welcome" };
   return { view: "home" };
 }
 
