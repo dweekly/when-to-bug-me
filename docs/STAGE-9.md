@@ -169,8 +169,8 @@ Where the build differs from the plan above, and what it found.
 - **A test broke the main checkout's git config, once.** Inside the pre-push hook, `GIT_DIR` points at the repo. A unit test's `git init` in a temporary folder inherited it and set `core.bare = true` on the main checkout. It was restored by hand. The test and the e2e fixture now strip `GIT_*` variables, so a hook can't do this again.
 
 **Verified:**
-- `npm run typecheck && npm test`: 492 tests.
-- `npx playwright test`: the full suite, with the new runner project.
+- `npm run typecheck && npm test`: 497 tests.
+- `npx playwright test`: 337 passed, 8 skipped, with the new runner project (11 tests).
 - `npm run smoke:live`.
 - Drafting through the real Claude login: a brief in 9 s.
 - curl checks of every guard.
@@ -180,6 +180,38 @@ Where the build differs from the plan above, and what it found.
   - a failed launch is recorded and can be retried.
 
 **Waiting on David:** `smoke:runner` needs `~/dev/bugme-sandbox` trusted (`cd ~/dev/bugme-sandbox && claude`, accept, quit).
+
+## Codex code reviews (2026-10-14)
+
+Each round's findings were fixed in their own commit; new tests were shown to fail on the code before.
+
+- **9a (#38):**
+  - **Round 1, FIX (5):**
+    - a second Launch while the first was starting could start another session;
+    - the proxy's fetch gave up at 300 s;
+    - a model call's deadline ignored queue time;
+    - model helpers outlived shutdown;
+    - a failed startup left wrangler running.
+  - **Round 2, ESCALATE:**
+    - a stale recovery result could still fail a newer retry and start a second session;
+    - an `mcp list` helper outlived shutdown.
+
+    David chose attempt ids: every reservation carries one, and recovery and completion apply only to their own attempt. Sessions are named `bugme-<brief>-<attempt>`, and every helper is stopped on shutdown.
+  - **Round 3, FIX (1):** the MCP server's own fetch had the same 300 s cutoff. It now uses node:http(s).
+- **9b (#39):**
+  - **Round 1, FIX (5):**
+    - new asks lost their project;
+    - new asks lost their set-aside status;
+    - redraws held back while typing never came;
+    - a refresh detached the setup controls;
+    - Launch ignored an invalid estimate.
+  - **Round 2, ESCALATE:** edits could still be lost (a tick mid-refresh, a retry after a failed launch), and a newly trusted repo stayed disabled.
+
+    David chose separate edits: unsaved setup edits sit in their own map over the server's copy, cleared only by a successful save. The refresh also watches repos.
+  - **Round 3, FIX (3):**
+    - the secret hand-over check missed some phrasings;
+    - a refresh replaced a typed invalid number;
+    - an edit made during Launch's save was dropped.
 
 ## Gates
 
