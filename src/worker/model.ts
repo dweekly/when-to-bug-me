@@ -64,10 +64,18 @@ export interface Env {
   TURNSTILE_SITE_KEY?: string;
   /** Per-IP rate limiter on the paid endpoints (wrangler.jsonc "ratelimits"); absent locally. */
   LIMITER?: RateLimit;
+  /**
+   * Set by the runner (docs/STAGE-9.md): live calls go to the runner, which answers with the
+   * person's Claude Code login, instead of to the API. LOCAL_MODEL_TOKEN authenticates the Worker to it.
+   */
+  LOCAL_MODEL_URL?: string;
+  LOCAL_MODEL_TOKEN?: string;
 }
 
 /** Timeout for one live call, in milliseconds. A low-effort routed card measured well under this. */
 const LIVE_TIMEOUT_MS = 45_000;
+/** Timeout for one call through the runner: `claude -p` starts a whole session first (a brief measured about a minute). */
+const LOCAL_TIMEOUT_MS = 180_000;
 
 export class ModelUnavailable extends Error {}
 
@@ -144,6 +152,21 @@ async function ask<T>(
     }
   }
 
+  const raw = env.LOCAL_MODEL_URL ? await askRunner(env, env.LOCAL_MODEL_URL, m, prompt, schema, store) : await askApi(env, canSpend, m, prompt, schema, store);
+  let out: T;
+  try {
+    out = validate(raw);
+  } catch (e) {
+    // A validation message can quote the model's text; from the live queue, that is the owner's data.
+    console.error("live answer rejected", store && e instanceof Error ? e.message : "(details withheld)");
+    throw new ModelUnavailable("the model's answer did not pass validation");
+  }
+  if (store) await cache.put(cacheUrl(key), new Response(JSON.stringify(raw), { headers: { "cache-control": "max-age=604800" } }));
+  return { out, source: "live" };
+}
+
+/** One API call, paid from the day's budget; returns the parsed JSON, unvalidated. */
+async function askApi(env: Env, canSpend: boolean, m: CallModel, prompt: string, schema: object, store: boolean): Promise<unknown> {
   if (!env.ANTHROPIC_API_KEY) throw new ModelUnavailable("no API key configured; only recorded answers are available");
   if (!canSpend) throw new NeedsSession("a quick human check is needed before live calls");
   const counter = env.SPEND.get(env.SPEND.idFromName("global"));
@@ -167,18 +190,37 @@ async function ask<T>(
   if (msg.stop_reason === "refusal") throw new ModelUnavailable("the model declined this request");
   if (msg.stop_reason === "max_tokens") throw new ModelUnavailable("the model's answer was cut off");
   const text = msg.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
-  let raw: unknown;
-  let out: T;
   try {
-    raw = JSON.parse(text);
-    out = validate(raw);
+    return JSON.parse(text);
   } catch (e) {
-    // A validation message can quote the model's text; from the live queue, that is the owner's data.
     console.error("live answer rejected", store && e instanceof Error ? e.message : "(details withheld)");
     throw new ModelUnavailable("the model's answer did not pass validation");
   }
-  if (store) await cache.put(cacheUrl(key), new Response(JSON.stringify(raw), { headers: { "cache-control": "max-age=604800" } }));
-  return { out, source: "live" };
+}
+
+/**
+ * One call through the runner, on the person's own Claude Code login (no API key, no day budget).
+ * The runner answers `{output}`, or `{error}` with no model text in it.
+ */
+async function askRunner(env: Env, url: string, m: CallModel, prompt: string, schema: object, store: boolean): Promise<unknown> {
+  let r: Response;
+  try {
+    r = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${env.LOCAL_MODEL_TOKEN ?? ""}` },
+      body: JSON.stringify({ model: m.model, effort: EFFORT, schema, prompt }),
+      signal: AbortSignal.timeout(LOCAL_TIMEOUT_MS),
+    });
+  } catch (e) {
+    console.error("runner call failed", store ? e : "(details withheld)");
+    throw new ModelUnavailable("the runner's model call failed");
+  }
+  const data = (await r.json().catch(() => ({}))) as { output?: unknown; error?: string };
+  if (!r.ok || data.output === undefined) {
+    console.error("runner call failed", r.status, data.error ?? "");
+    throw new ModelUnavailable(data.error ? `the runner's model call failed: ${data.error}` : "the runner's model call failed");
+  }
+  return data.output;
 }
 
 export async function routeFor(env: Env, canSpend: boolean, d: Decision, rules: Rule[], facts: Fact[], ctx: ModelCtx = PUBLIC_CTX): Promise<{ out: RouteOutput; source: Source }> {

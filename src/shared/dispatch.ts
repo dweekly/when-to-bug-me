@@ -364,15 +364,26 @@ function delimiterFor(text: string): string {
  * ends the options: --disallowedTools takes several values and would otherwise swallow the brief as
  * one more tool name (checked with Claude Code 2.1.296).
  */
-export function buildCommand(b: Brief, c: Catalog): string {
-  const text = briefText(b, c);
-  const d = delimiterFor(text);
-  const args = ["claude", "--model", shellQuote(b.model), "--effort", shellQuote(b.effort), "--permission-mode", shellQuote(b.permission_mode)];
+/**
+ * The session's argv, starting with `claude` and ending with `--` and the brief: the one list that
+ * both the copied command and the runner's Launch are built from, so the two can't drift.
+ */
+export function commandArgs(b: Brief, c: Catalog): string[] {
+  const args = ["claude", "--model", b.model, "--effort", b.effort, "--permission-mode", b.permission_mode];
   for (const p of b.tools_off) {
     if (!PREFIX_RE.test(p)) throw new DispatchError("a tool prefix failed its pattern");
-    args.push("--disallowedTools", shellQuote(p));
+    args.push("--disallowedTools", p);
   }
-  return `${args.join(" ")} -- "$(cat <<'${d}'\n${text}\n${d}\n)"`;
+  return [...args, "--", briefText(b, c)];
+}
+
+/** `commandArgs` for a shell: every option single-quoted, the brief in a quoted heredoc. */
+export function buildCommand(b: Brief, c: Catalog): string {
+  const args = commandArgs(b, c);
+  const text = args.pop()!;
+  args.pop(); // "--"
+  const d = delimiterFor(text);
+  return `${["claude", ...args.slice(1).map(shellQuote)].join(" ")} -- "$(cat <<'${d}'\n${text}\n${d}\n)"`;
 }
 
 /** "45m", "1h", "1h 30m". */

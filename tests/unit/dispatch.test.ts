@@ -14,6 +14,7 @@ import {
   DispatchError,
   briefText,
   buildCommand,
+  commandArgs,
   dispatchSchema,
   finishBrief,
   parseBriefDraft,
@@ -173,6 +174,8 @@ describe("the command is one `claude` call, whatever the brief says", () => {
         "--disallowedTools", "mcp__GitHub", "--disallowedTools", "mcp__claude_ai_Gmail",
         "--", briefText(b, CAT),
       ]);
+      // The runner's Launch passes commandArgs with no shell: the same list.
+      expect(["claude", ...JSON.parse(out)]).toEqual(commandArgs(b, CAT));
       expect(() => execFileSync("test", ["-e", canary])).toThrow();
     });
   }
