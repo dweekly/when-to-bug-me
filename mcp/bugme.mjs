@@ -15,6 +15,8 @@
 //   claude mcp add bugme --scope user -e BUGME_URL=https://bugme.weekly.org -- node ~/dev/when-to-bug-me/mcp/bugme.mjs
 
 import { execFileSync } from "node:child_process";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
@@ -51,21 +53,45 @@ function baseUrl() {
   return u.replace(/\/+$/, "");
 }
 
-async function call(method, path, body, timeoutMs = REQUEST_TIMEOUT_MS) {
-  const res = await fetch(`${baseUrl()}${path}`, {
-    signal: AbortSignal.timeout(timeoutMs),
-    method,
-    headers: { authorization: `Bearer ${ownerToken()}`, ...(body ? { "content-type": "application/json" } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
+/**
+ * One request to Bug Me. node:http(s) rather than fetch: fetch gives up waiting for response headers
+ * after 300 s whatever its signal says, and an ask through the runner (docs/STAGE-9.md) can take longer.
+ */
+function call(method, path, body, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const url = new URL(`${baseUrl()}${path}`);
+  const payload = body ? JSON.stringify(body) : undefined;
+  const send = url.protocol === "https:" ? httpsRequest : httpRequest;
+  return new Promise((resolve, reject) => {
+    const req = send(
+      url,
+      {
+        method,
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: {
+          authorization: `Bearer ${ownerToken()}`,
+          ...(payload ? { "content-type": "application/json", "content-length": Buffer.byteLength(payload) } : {}),
+        },
+      },
+      (res) => {
+        let text = "";
+        res.setEncoding("utf8");
+        res.on("data", (d) => (text += d));
+        res.on("error", reject);
+        res.on("end", () => {
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = { error: `HTTP ${res.statusCode}` };
+          }
+          if ((res.statusCode ?? 500) >= 400) reject(new Error(data.error ?? `HTTP ${res.statusCode}`));
+          else resolve(data);
+        });
+      },
+    );
+    req.on("error", reject);
+    req.end(payload);
   });
-  let data;
-  try {
-    data = await res.json();
-  } catch {
-    data = { error: `HTTP ${res.status}` };
-  }
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-  return data;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
