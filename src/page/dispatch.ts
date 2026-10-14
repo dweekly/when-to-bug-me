@@ -50,6 +50,27 @@ const answers = new Map<string, string>();
 const invalid = new Map<string, Set<string>>();
 /** Briefs whose Details are open. */
 const openDetails = new Set<string>();
+/** The setup fields a person can change before a brief goes out. */
+type SetupEdit = Partial<Pick<Brief, "model" | "effort" | "permission_mode" | "estimate_minutes" | "budget_usd" | "tools_off">>;
+/**
+ * On /me, setup edits not saved yet, per brief, laid over the brief as the server last sent it
+ * (docs/STAGE-9.md). A refresh replaces the server's copy freely; these stay until a save succeeds. On the
+ * public site there is no server copy, so edits go onto the brief itself.
+ */
+const unsaved = new Map<string, SetupEdit>();
+const stored = (id: string) => briefs?.find((b) => b.id === id);
+/** The brief as the page should show and send it: the server's copy with any unsaved edits on top. */
+function current(id: string): Shown | undefined {
+  const b = stored(id);
+  return b && { ...b, ...unsaved.get(id) };
+}
+function edit(id: string, patch: SetupEdit): void {
+  if (!Q.owner) {
+    const b = stored(id);
+    if (b) Object.assign(b, patch);
+    savePublic();
+  } else unsaved.set(id, { ...unsaved.get(id), ...patch });
+}
 /** Prerequisites ticked, per brief, in this page only. */
 const ticked = new Map<string, Set<number>>();
 let actionMsg = "";
@@ -122,29 +143,21 @@ async function load(): Promise<void> {
 let redrawPending = false;
 
 /**
- * On the runner, while this view is visible: briefs, waiting asks and sessions again. The brief objects
- * the controls hold stay the same objects, updated in place, and a draft's setup edits (not yet launched
- * or copied) stay as the person left them. Redraws only when something changed and nothing is being
- * typed; a change held back for typing is drawn on the next quiet tick.
+ * On the runner, while this view is visible: briefs, waiting asks, sessions and repos again. Unsaved
+ * setup edits live apart from the server's copy, so nothing here can undo them. Redraws only when
+ * something changed and nothing is being typed; a change held back for typing is drawn on the next
+ * quiet tick.
  */
 async function poll(): Promise<void> {
   if (document.visibilityState !== "visible" || !onDispatch() || launching) return;
-  const before = JSON.stringify([briefs, waiting, runner?.sessions]);
-  const mine = new Map((briefs ?? []).map((b) => [b.id, b]));
+  const snapshot = () => JSON.stringify([briefs, waiting, runner?.sessions, runner?.repos]);
+  const before = snapshot();
   try {
     await load();
   } catch {
     return;
   }
-  briefs = (briefs ?? []).map((fresh) => {
-    const b = mine.get(fresh.id);
-    if (!b) return fresh;
-    const edits = !fresh.launch && !fresh.dispatched_at
-      ? { model: b.model, effort: b.effort, permission_mode: b.permission_mode, estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd, tools_off: b.tools_off }
-      : {};
-    return Object.assign(b, fresh, edits);
-  });
-  if (JSON.stringify([briefs, waiting, runner?.sessions]) !== before) redrawPending = true;
+  if (snapshot() !== before) redrawPending = true;
   if (!redrawPending || document.activeElement?.matches("#view input, #view textarea, #view select")) return;
   redrawPending = false;
   paint();
@@ -182,7 +195,7 @@ export function renderDispatchView(view: HTMLElement, id?: string): void {
       h("h1", {}, "Dispatch"),
       composer(),
       open ? conversation(open) : null,
-      open ? briefCard(open) : null,
+      open ? briefCard(current(open.id)!) : null,
       briefs.length ? h("h2", { class: "section-h" }, "Briefs") : null,
       briefs.length ? h("ol", { class: "briefs" }, ...briefs.map((b) => briefRow(b, b.id === id))) : null,
     ),
@@ -366,14 +379,15 @@ function numberInput(b: Shown, field: string, label: string, value: number, step
       bad.delete(field);
       onChange(v);
     } else bad.add(field);
-    refreshLive(b);
+    refreshLive(b.id);
   });
   return i;
 }
 
 /** After an edit: the meta line, the tripwire and the command follow without redrawing the inputs. */
-function refreshLive(b: Shown): void {
-  savePublic();
+function refreshLive(id: string): void {
+  const b = current(id);
+  if (!b) return;
   const meta = document.querySelector("#brief .brief-meta");
   if (meta) meta.replaceWith(metaLine(b));
   const cmd = document.querySelector("#brief-cmd code");
@@ -418,11 +432,11 @@ function details(b: Shown): HTMLElement {
   const setup = h(
     "div",
     { class: "brief-setup" },
-    select("Model", b.model, DISPATCH_MODELS.map((m) => ({ v: m.id, t: m.label })), (v) => ((b.model = v), refreshLive(b))),
-    select("Effort", b.effort, EFFORTS.map((e) => ({ v: e, t: `${e} effort` })), (v) => ((b.effort = v), refreshLive(b))),
-    select("Permission mode", b.permission_mode, PERMISSION_MODES.map((m) => ({ v: m, t: m })), (v) => ((b.permission_mode = v), refreshLive(b))),
-    h("label", {}, numberInput(b, "minutes", "Estimate in minutes", b.estimate_minutes, "5", (v) => v >= 1 && v <= 60 * 24 * 7, (v) => (b.estimate_minutes = Math.round(v))), " min"),
-    h("label", {}, "$", numberInput(b, "dollars", "Budget in dollars", b.budget_usd, "0.5", (v) => v >= 0 && v <= 10_000, (v) => (b.budget_usd = Math.round(v * 100) / 100))),
+    select("Model", b.model, DISPATCH_MODELS.map((m) => ({ v: m.id, t: m.label })), (v) => (edit(b.id, { model: v }), refreshLive(b.id))),
+    select("Effort", b.effort, EFFORTS.map((e) => ({ v: e, t: `${e} effort` })), (v) => (edit(b.id, { effort: v }), refreshLive(b.id))),
+    select("Permission mode", b.permission_mode, PERMISSION_MODES.map((m) => ({ v: m, t: m })), (v) => (edit(b.id, { permission_mode: v }), refreshLive(b.id))),
+    h("label", {}, numberInput(b, "minutes", "Estimate in minutes", b.estimate_minutes, "5", (v) => v >= 1 && v <= 60 * 24 * 7, (v) => edit(b.id, { estimate_minutes: Math.round(v) })), " min"),
+    h("label", {}, "$", numberInput(b, "dollars", "Budget in dollars", b.budget_usd, "0.5", (v) => v >= 0 && v <= 10_000, (v) => edit(b.id, { budget_usd: Math.round(v * 100) / 100 }))),
   );
   const offers = catalog.servers.filter((s) => s.prefix !== BUGME_PREFIX && !b.tools_off.includes(s.prefix) && !b.tools_needed.includes(s.prefix));
   const tools = h(
@@ -437,8 +451,7 @@ function details(b: Shown): HTMLElement {
           class: "tool-chip off",
           "aria-label": `${nameOf(p)} is off; turn it back on`,
           onclick: () => {
-            b.tools_off = b.tools_off.filter((x) => x !== p);
-            savePublic();
+            edit(b.id, { tools_off: (current(b.id)?.tools_off ?? []).filter((x) => x !== p) });
             paint();
           },
         },
@@ -448,8 +461,7 @@ function details(b: Shown): HTMLElement {
     offers.length
       ? select("Turn off another tool", "", [{ v: "", t: "Turn off…" }, ...offers.map((s) => ({ v: s.prefix, t: s.name }))], (v) => {
           if (!v) return;
-          b.tools_off = [...b.tools_off, v];
-          savePublic();
+          edit(b.id, { tools_off: [...(current(b.id)?.tools_off ?? []), v] });
           paint();
         })
       : null,
@@ -466,7 +478,7 @@ function details(b: Shown): HTMLElement {
     ...b.guidance.map((g) => h("blockquote", {}, g)),
     h("pre", { id: "brief-cmd" }, h("code", {}, buildCommand(b, catalog))),
     // On the runner, Launch is the main way; the command is still here to run by hand.
-    runner ? h("button", { type: "button", class: "ghost small", id: "copy-command", disabled: !copyState(b).ready, onclick: () => void copy(b, "command") }, "Copy command") : null,
+    runner ? h("button", { type: "button", class: "ghost small", id: "copy-command", disabled: !copyState(b).ready, onclick: () => void copy(b.id, "command") }, "Copy command") : null,
     h("p", { class: "quiet small" }, [b.source ? SOURCE_LABEL[b.source] : "", Q.owner ? "" : "Illustration: Jordan's tools are made up."].filter(Boolean).join(" · ")),
   ];
   more.append(...parts.filter((x): x is HTMLElement => x !== null));
@@ -502,10 +514,10 @@ function briefCard(b: Shown): HTMLElement {
 
   const copyCmd = h(
     "button",
-    { type: "button", class: local ? "ghost" : "primary", id: "copy-command", disabled: !ready, onclick: () => void copy(b, "command") },
+    { type: "button", class: local ? "ghost" : "primary", id: "copy-command", disabled: !ready, onclick: () => void copy(b.id, "command") },
     local ? "Run in cloud anyway" : "Copy command",
   );
-  const copyBrief = h("button", { type: "button", class: local ? "primary" : "ghost", id: "copy-brief", disabled: Boolean(invalid.get(b.id)?.size), onclick: () => void copy(b, "brief") }, "Copy brief");
+  const copyBrief = h("button", { type: "button", class: local ? "primary" : "ghost", id: "copy-brief", disabled: Boolean(invalid.get(b.id)?.size), onclick: () => void copy(b.id, "brief") }, "Copy brief");
 
   const actions = runner
     ? b.launch && b.launch.state !== "failed"
@@ -622,7 +634,7 @@ function launchControls(b: Shown, ready: boolean, message: string): HTMLElement 
     h("option", { value: "" }, "Repo…"),
     ...repos.map((r) => h("option", { value: r.name, selected: r.name === repo, disabled: !r.trusted, title: r.trusted ? "" : `Run claude in ${r.name} once to trust it` }, r.trusted ? r.name : `${r.name} (untrusted)`)),
   ) as HTMLSelectElement;
-  const go = h("button", { type: "button", class: "primary", id: "launch", disabled: !ready || !repo || launching === b.id, onclick: () => void launch(b) }, launching === b.id ? "Launching…" : "Launch") as HTMLButtonElement;
+  const go = h("button", { type: "button", class: "primary", id: "launch", disabled: !ready || !repo || launching === b.id, onclick: () => void launch(b.id) }, launching === b.id ? "Launching…" : "Launch") as HTMLButtonElement;
   pick.addEventListener("change", () => {
     repo = pick.value;
     try {
@@ -638,7 +650,7 @@ function launchControls(b: Shown, ready: boolean, message: string): HTMLElement 
 
 /** How a launched session is doing, in one line, with the command to open it. */
 function sessionLine(b: Shown): HTMLElement {
-  const name = `bugme-${b.id}`;
+  const name = `bugme-${b.id}-${b.launch!.attempt}`;
   const s = runner?.sessions?.find((x) => x.name === name);
   const asks = waiting[b.id] ?? [];
   const [icon, text, cls]: [string, string, string] =
@@ -686,20 +698,22 @@ function sessionLine(b: Shown): HTMLElement {
 }
 
 /** Save the setup and ticks (the clock starts), then ask the runner to start the session. */
-async function launch(b: Shown): Promise<void> {
+async function launch(id: string): Promise<void> {
+  const b = current(id);
+  const keep = stored(id);
   // The button can be stale for a moment; what's typed now decides.
-  if (!copyState(b).ready || !repo || launching) return;
-  launching = b.id;
+  if (!b || !keep || !copyState(b).ready || !repo || launching) return;
+  launching = id;
   actionMsg = "";
   paint();
   try {
     const { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off } = b;
-    const saved = await api<{ brief: Brief }>(`/api/me/briefs/${b.id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off, ticked: tickList(b) });
-    b.dispatched_at = saved.brief.dispatched_at;
-    b.ticked = saved.brief.ticked;
-    const r = await api<{ launch: Brief["launch"] }>("/runner/launch", { brief_id: b.id, repo });
-    b.launch = r.launch;
-    actionMsg = "";
+    const saved = await api<{ brief: Brief }>(`/api/me/briefs/${id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off, ticked: tickList(b) });
+    // Saved: the server's copy has these now, so they stop being unsaved edits, even if the launch fails.
+    Object.assign(keep, saved.brief);
+    unsaved.delete(id);
+    const r = await api<{ launch: Brief["launch"] }>("/runner/launch", { brief_id: id, repo });
+    keep.launch = r.launch;
     announce("Launched.");
     // The session list from before the launch doesn't have it yet.
     await load().catch(() => {});
@@ -739,7 +753,10 @@ function report(b: Shown): HTMLElement | null {
   );
 }
 
-async function copy(b: Shown, what: "command" | "brief"): Promise<void> {
+async function copy(id: string, what: "command" | "brief"): Promise<void> {
+  const b = current(id);
+  const keep = stored(id);
+  if (!b || !keep) return;
   // The text is fixed at the click, from the fields as they are now.
   const text = what === "command" ? buildCommand(b, catalog) : briefText(b, catalog);
   actionMsg = "";
@@ -753,22 +770,27 @@ async function copy(b: Shown, what: "command" | "brief"): Promise<void> {
       const wrote = typeof ClipboardItem !== "undefined"
         ? navigator.clipboard.write([new ClipboardItem({ "text/plain": saved.then(() => new Blob([text], { type: "text/plain" })) })])
         : saved.then(() => navigator.clipboard.writeText(text));
-      // Only the clock comes back: edits made while this was out stay as they are.
-      b.dispatched_at = (await saved).brief.dispatched_at;
+      // The saved fields are now the server's; edits made while this was out stay unsaved.
+      const after = (await saved).brief;
+      const sent = { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off };
+      Object.assign(keep, sent, { dispatched_at: after.dispatched_at, ticked: after.ticked });
+      const left = Object.fromEntries(Object.entries(unsaved.get(id) ?? {}).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(sent[k as keyof typeof sent])));
+      if (Object.keys(left).length) unsaved.set(id, left);
+      else unsaved.delete(id);
       await wrote;
     } else await navigator.clipboard.writeText(text);
     actionMsg = "Copied.";
   } catch (e) {
     actionMsg = `Couldn't copy (${(e as Error).message}). It's under Details.`;
   }
-  if (!Q.owner && what === "command" && !b.report) {
+  if (!Q.owner && what === "command" && !keep.report) {
     // The public demo shows what a session would send back, labeled synthetic.
     const ex = DISPATCH_EXAMPLES.find((x) => x.task === b.task)?.report;
     if (ex) {
       const { minutes, asks, ...rest } = ex;
-      b.dispatched_at = new Date().toISOString();
-      b.report = { ...rest, at: b.dispatched_at };
-      b.synthetic_report = { minutes, asks };
+      keep.dispatched_at = new Date().toISOString();
+      keep.report = { ...rest, at: keep.dispatched_at };
+      keep.synthetic_report = { minutes, asks };
     }
   }
   savePublic();

@@ -2,6 +2,7 @@
 // it, answers the Worker's model calls on the person's Claude login, and launches briefs as background
 // Claude Code sessions.
 import { type ChildProcess, spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { type IncomingMessage, type Server, type ServerResponse, createServer, request as httpRequest } from "node:http";
 import { join } from "node:path";
@@ -11,7 +12,7 @@ import { BRIEF_ID_RE } from "../src/worker/live";
 import { BUGME_PREFIX, type Brief, type Catalog, type Launch, REPO_NAME_RE, allTicked } from "../src/shared/dispatch";
 import type { RunnerConfig } from "./config";
 import { decide } from "./guard";
-import { LaunchError, backgroundId, launchArgs, listRepos, resolveRepo, run, sessionName, sessions, trustedDirs, walkPrompt, writeMcpConfig, writeWalk } from "./launch";
+import { LaunchError, backgroundId, launchArgs, listRepos, resolveRepo, run, sessionName, sessions, stopHelpers, trustedDirs, walkPrompt, writeMcpConfig, writeWalk } from "./launch";
 import { ModelCallError, ModelRunner, parseModelRequest } from "./model";
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -130,9 +131,11 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
     } catch {
       return; // can't tell; leave it for the next look
     }
+    // Each write names the attempt it's about; one that's no longer current is refused, and that's fine.
     for (const b of stale) {
-      const s = live.find((x) => x.name === sessionName(b.id));
-      await record(b.id, s ? { state: "running", repo: b.launch!.repo, session_id: s.id } : { state: "failed", repo: b.launch!.repo, error: "the launch was interrupted" });
+      const { repo, attempt } = b.launch!;
+      const s = live.find((x) => x.name === sessionName(b.id, attempt));
+      await record(b.id, s ? { state: "running", repo, attempt, session_id: s.id } : { state: "failed", repo, attempt, error: "the launch was interrupted" });
     }
   }
 
@@ -165,20 +168,21 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
         return { status: 409, body: { error: `Not connected in ${repo}: ${names.join(", ")}.` } };
       }
     }
-    const reserved = await record(b.id, { state: "launching", repo });
+    const attempt = randomBytes(4).toString("hex");
+    const reserved = await record(b.id, { state: "launching", repo, attempt });
     if (reserved.status === 409) return { status: 200, body: { launch: reserved.data.brief.launch, existing: true } };
     if (reserved.status !== 200) return { status: 502, body: { error: "Bug Me couldn't record the launch" } };
     let id: string | undefined;
     try {
-      id = backgroundId(await run(cfg.claudeBin, launchArgs(b, catalog, mcpConfig), path));
+      id = backgroundId(await run(cfg.claudeBin, launchArgs(b, catalog, mcpConfig, attempt), path));
     } catch {
       id = undefined;
     }
     if (!id) {
-      await record(b.id, { state: "failed", repo, error: "the session didn't start" });
+      await record(b.id, { state: "failed", repo, attempt, error: "the session didn't start" });
       return { status: 502, body: { error: "The session didn't start." } };
     }
-    const started = await record(b.id, { state: "running", repo, session_id: id });
+    const started = await record(b.id, { state: "running", repo, attempt, session_id: id });
     return { status: 200, body: { launch: started.data.brief.launch } };
   }
 
@@ -288,6 +292,7 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
   } catch (e) {
     // The port is taken, say: the Worker started for nothing, so it goes too.
     models.stopAll();
+    stopHelpers();
     stopWorker();
     throw e;
   }
@@ -297,8 +302,9 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
   return {
     server,
     close: async () => {
-      // Model helpers stop with the runner; launched work sessions are the person's and keep running.
+      // Helpers stop with the runner; launched work sessions are the person's and keep running.
       models.stopAll();
+      stopHelpers();
       server.closeAllConnections();
       await new Promise<void>((r) => server.close(() => r()));
       stopWorker();

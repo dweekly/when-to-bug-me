@@ -48,32 +48,53 @@ describe("ticks are saved on the brief", () => {
 describe("one launch per brief", () => {
   it("a second reservation gets the first one back", async () => {
     const { q, b } = await stored();
-    const first = await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox" }));
+    const first = await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "bbbbbbbb" }));
     expect(first!.ok).toBe(true);
-    const second = await q.launch(b.id, parseLaunch({ state: "launching", repo: "other" }));
+    const second = await q.launch(b.id, parseLaunch({ state: "launching", repo: "other", attempt: "cccccccc" }));
     expect(second!.ok).toBe(false);
     expect(second!.brief.launch).toMatchObject({ state: "launching", repo: "sandbox" });
   });
 
   it("running keeps the reservation's clock; a failed launch can be tried again", async () => {
     const { q, b } = await stored();
-    const r = await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox" }, new Date("2026-10-14T10:00:00Z")));
-    const run = await q.launch(b.id, parseLaunch({ state: "running", repo: "sandbox", session_id: "4e653586" }, new Date("2026-10-14T10:05:00Z")));
+    const r = await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "aaaaaaaa" }, new Date("2026-10-14T10:00:00Z")));
+    const run = await q.launch(b.id, parseLaunch({ state: "running", repo: "sandbox", attempt: "aaaaaaaa", session_id: "4e653586" }, new Date("2026-10-14T10:05:00Z")));
     expect(run!.brief.launch).toMatchObject({ state: "running", session_id: "4e653586", at: r!.brief.launch!.at });
-    expect((await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox" })))!.ok).toBe(false);
-    await q.launch(b.id, parseLaunch({ state: "failed", repo: "sandbox", error: "the session didn't start" }));
-    expect((await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox" })))!.ok).toBe(true);
+    // A running launch is final: no new reservation, and no late "failed" for it.
+    expect((await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "bbbbbbbb" })))!.ok).toBe(false);
+    expect((await q.launch(b.id, parseLaunch({ state: "failed", repo: "sandbox", attempt: "aaaaaaaa", error: "x" })))!.ok).toBe(false);
+  });
+
+  it("a launch that failed while reserved can be tried again", async () => {
+    const { q, b } = await stored();
+    await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "aaaaaaaa" }));
+    expect((await q.launch(b.id, parseLaunch({ state: "failed", repo: "sandbox", attempt: "aaaaaaaa", error: "the session didn't start" })))!.ok).toBe(true);
+    expect((await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "bbbbbbbb" })))!.ok).toBe(true);
   });
 
   it("running or failed without a reservation, or for another repo, is refused", async () => {
     const { q, b } = await stored();
-    expect((await q.launch(b.id, parseLaunch({ state: "running", repo: "sandbox" })))!.ok).toBe(false);
-    await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox" }));
-    expect((await q.launch(b.id, parseLaunch({ state: "running", repo: "other" })))!.ok).toBe(false);
+    expect((await q.launch(b.id, parseLaunch({ state: "running", repo: "sandbox", attempt: "bbbbbbbb" })))!.ok).toBe(false);
+    await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "bbbbbbbb" }));
+    expect((await q.launch(b.id, parseLaunch({ state: "running", repo: "other", attempt: "bbbbbbbb" })))!.ok).toBe(false);
+  });
+
+  it("a late result for an older attempt changes nothing", async () => {
+    const { q, b } = await stored();
+    // Attempt one is reserved, then two recoveries both see it as stale.
+    await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "aaaaaaaa" }));
+    expect((await q.launch(b.id, parseLaunch({ state: "failed", repo: "sandbox", attempt: "aaaaaaaa", error: "interrupted" })))!.ok).toBe(true);
+    // A retry reserves attempt two; the second recovery's late "failed" for attempt one is refused.
+    expect((await q.launch(b.id, parseLaunch({ state: "launching", repo: "sandbox", attempt: "bbbbbbbb" })))!.ok).toBe(true);
+    const late = await q.launch(b.id, parseLaunch({ state: "failed", repo: "sandbox", attempt: "aaaaaaaa", error: "interrupted" }));
+    expect(late!.ok).toBe(false);
+    expect(late!.brief.launch).toMatchObject({ state: "launching", attempt: "bbbbbbbb" });
+    // Attempt two's own completion still lands.
+    expect((await q.launch(b.id, parseLaunch({ state: "running", repo: "sandbox", attempt: "bbbbbbbb", session_id: "4e653586" })))!.ok).toBe(true);
   });
 
   it("the record comes in clean", () => {
-    for (const bad of [{ state: "done", repo: "x" }, { state: "launching", repo: "../etc" }, { state: "launching", repo: "a/b" }, { state: "running", repo: "x", session_id: "$(id)" }]) {
+    for (const bad of [{ state: "done", repo: "x", attempt: "aaaaaaaa" }, { state: "launching", repo: "../etc", attempt: "aaaaaaaa" }, { state: "launching", repo: "a/b", attempt: "aaaaaaaa" }, { state: "running", repo: "x", attempt: "aaaaaaaa", session_id: "$(id)" }, { state: "launching", repo: "x" }, { state: "launching", repo: "x", attempt: "A$" }]) {
       expect(() => parseLaunch(bad)).toThrow(DispatchError);
     }
   });

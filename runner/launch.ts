@@ -1,6 +1,6 @@
 // Launching a brief (docs/STAGE-9.md): which repos it may go into, the exact `claude --bg` argv, and
 // finding the session again. Every path comes from the server-side repo list, never from the browser.
-import { execFile } from "node:child_process";
+import { type ChildProcess, execFile } from "node:child_process";
 import { lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
@@ -59,7 +59,8 @@ export function resolveRepo(devRoot: string, name: string, trusted = trustedDirs
   return real;
 }
 
-export const sessionName = (briefId: string) => `bugme-${briefId}`;
+/** A launch's session and worktree name: the brief and the attempt, so a retry never meets an older one. */
+export const sessionName = (briefId: string, attempt: string) => `bugme-${briefId}-${attempt}`;
 
 /**
  * Bug Me's server for launched sessions: this runner, with its token stated outright so it never falls
@@ -83,8 +84,8 @@ export function writeMcpConfig(path: string, repoRoot: string, port: number, tok
 }
 
 /** `claude --bg …`: the brief's own arguments (shared with Copy command), ending with `--` and the brief. */
-export function launchArgs(b: Brief, c: Catalog, mcpConfigPath: string): string[] {
-  const name = sessionName(b.id);
+export function launchArgs(b: Brief, c: Catalog, mcpConfigPath: string, attempt: string): string[] {
+  const name = sessionName(b.id, attempt);
   return ["--bg", "--worktree", name, "-n", name, "--mcp-config", mcpConfigPath, ...commandArgs(b, c).slice(1)];
 }
 
@@ -93,10 +94,26 @@ export function backgroundId(stdout: string): string | undefined {
   return stdout.match(/backgrounded\s*·\s*([a-z0-9-]{4,64})\s*·/)?.[1];
 }
 
+/** Helper processes in flight (mcp list, agents, open): stopped with the runner. */
+const helpers = new Set<ChildProcess>();
+
 export function run(bin: string, args: string[], cwd: string, timeout = RUNNER_LAUNCH_TIMEOUT_MS): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(bin, args, { cwd, timeout, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => (err ? reject(new LaunchError("claude failed")) : resolve(stdout)));
+    const child = execFile(bin, args, { cwd, timeout, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
+      helpers.delete(child);
+      if (err) reject(new LaunchError("claude failed"));
+      else resolve(stdout);
+    });
+    // `claude --bg` hands its session to Claude Code's own background service and returns; it isn't a
+    // helper, and the session it starts is the person's, so it's never stopped here.
+    if (args[0] !== "--bg") helpers.add(child);
   });
+}
+
+/** Stop every helper still running (the runner is shutting down). */
+export function stopHelpers(): void {
+  for (const c of helpers) c.kill("SIGKILL");
+  helpers.clear();
 }
 
 /** A background session as `claude agents --json --all` reports it (code.claude.com/docs/en/agent-view). */
@@ -112,7 +129,7 @@ export interface Session {
   cwd?: string;
 }
 
-/** Bug Me's sessions from `claude agents --json --all`: only those named bugme-<brief id>. */
+/** Bug Me's sessions from `claude agents --json --all`: only those named bugme-<brief id>-<attempt>. */
 export function parseAgents(json: string): Session[] {
   let rows: unknown;
   try {
@@ -123,7 +140,7 @@ export function parseAgents(json: string): Session[] {
   if (!Array.isArray(rows)) return [];
   return rows
     .map((r) => (r ?? {}) as Record<string, unknown>)
-    .filter((r) => typeof r.id === "string" && typeof r.name === "string" && /^bugme-b-[a-z0-9]{10}$/.test(r.name))
+    .filter((r) => typeof r.id === "string" && typeof r.name === "string" && /^bugme-b-[a-z0-9]{10}-[a-z0-9]{8,32}$/.test(r.name))
     .map((r) => ({
       id: r.id as string,
       name: r.name as string,

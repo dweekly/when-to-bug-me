@@ -2,7 +2,7 @@
 // `open` (tests/fixtures/start-runner.mjs). Launch waits for every tick and a trusted repo, passes the
 // brief's argv, launches once however often it's pressed, and then shows how the session is doing; an
 // ask that arrives shows without a reload; How? shows steps; Do it with me opens Terminal.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type Page, expect, test } from "@playwright/test";
 
@@ -63,7 +63,9 @@ test("Launch waits for every tick and a trusted repo, then starts one session wi
   const bg = fake().calls.filter((c) => c.args[0] === "--bg");
   expect(bg).toHaveLength(1);
   const args = bg[0].args;
-  expect(args.slice(0, 6)).toEqual(["--bg", "--worktree", `bugme-${id}`, "-n", `bugme-${id}`, "--mcp-config"]);
+  expect(args[0]).toBe("--bg");
+  expect(args[2]).toMatch(new RegExp(`^bugme-${id}-[a-z0-9]{8}$`));
+  expect(args.slice(3, 6)).toEqual(["-n", args[2], "--mcp-config"]);
   expect(args).toEqual(expect.arrayContaining(["--allowedTools", "mcp__bugme", "--permission-mode"]));
   expect(args.at(-2)).toBe("--");
   expect(args.at(-1)).toContain(`Bug Me brief ${id}`);
@@ -149,4 +151,37 @@ test("the first ask from a project this page hasn't seen reaches Home without a 
   });
   expect(ask.ok()).toBe(true);
   await expect(page.locator("#view")).toContainText("Export Tool", { timeout: 20_000 });
+});
+
+test("after a failed launch, a changed setup is what the retry sends", async ({ page }) => {
+  const id = await draft(page, "Rename the CLI flag --verbose to --debug everywhere it's documented.");
+  for (const box of await page.locator("#brief .brief-you input").all()) await box.check();
+  await page.locator("#launch-repo").selectOption("sandbox");
+  setFake((x) => (x.failLaunch = true));
+  await page.locator("#launch").click();
+  await expect(page.locator("#brief .brief-actions .think-msg")).toContainText("didn't start");
+  setFake((x) => (x.failLaunch = false));
+  await page.locator("#brief .brief-more summary").click();
+  await page.getByLabel("Model").selectOption("claude-haiku-5-5");
+  // Two refreshes, then a redraw: the edit is still there, and the retry sends it.
+  await page.waitForTimeout(17_000);
+  await page.goto("/me#/dispatch");
+  await page.goto(`/me#/dispatch/${id}`);
+  await expect(page.getByLabel("Model")).toHaveValue("claude-haiku-5-5");
+  await page.locator("#launch").click();
+  await expect(page.locator(".brief-session")).toContainText("Working");
+  const bg = fake().calls.filter((c) => c.args[0] === "--bg" && c.args[2].startsWith(`bugme-${id}-`));
+  expect(bg).toHaveLength(2);
+  expect(bg[1].args[bg[1].args.indexOf("--model") + 1]).toBe("claude-haiku-5-5");
+});
+
+test("a repo trusted while the page is open becomes pickable without a reload", async ({ page }) => {
+  await draft(page, "Add a CONTRIBUTING file with the test command.");
+  const option = page.locator("#launch-repo option", { hasText: "untrusted" });
+  await expect(option).toBeDisabled();
+  const cj = `${ROOT}/claude.json`;
+  const conf = JSON.parse(readFileSync(cj, "utf8"));
+  conf.projects[realpathSync(`${ROOT}/dev/untrusted`)] = { hasTrustDialogAccepted: true };
+  writeFileSync(cj, JSON.stringify(conf));
+  await expect(page.locator('#launch-repo option[value="untrusted"]')).toBeEnabled({ timeout: 20_000 });
 });
