@@ -527,5 +527,6 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .interview .iq { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
 .interview .iq .composer { position: relative; }
 .interview textarea { min-height: 3.2em; padding-bottom: 32px; font-size: 15px; line-height: 1.5; overflow: hidden; resize: none; }
+.onboard-cmd { margin: 10px 0; padding: 10px 12px; background: var(--night); border: 1px solid var(--line); border-radius: 8px; font: 12.5px/1.55 var(--mono); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .draft-was summary { cursor: pointer; color: var(--ink-3); font-size: 14px; margin-bottom: 8px; }
 @media (max-width: 560px) { .welcome-steps > li { padding-left: 0; } .welcome-steps > li::before { position: static; display: inline-block; margin-bottom: 6px; } }
