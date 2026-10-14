@@ -143,3 +143,12 @@ export const RUNNER_STALE_LAUNCH_MS = 2 * 60_000;
  * and only while the page is visible.
  */
 export const OWNER_POLL_MS = 8_000;
+
+/**
+ * Onboarding on the owner's own history (docs/STAGE-10.md, 10b): at most this many past decisions, the
+ * newest, and a body limit for that one import. 200 trimmed rows measured about 54 KB in the plan review;
+ * the limit leaves room for long questions, and stays far under the runner's 1 MiB and the model adapter's
+ * 400,000-character prompt.
+ */
+export const MAX_ONBOARD_HISTORY = 200;
+export const ONBOARD_MAX_BODY_BYTES = 300_000;

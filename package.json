@@ -21,6 +21,7 @@
     "eval:converse": "esbuild scripts/eval-converse.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/eval-converse.mjs --log-level=warning && node dist/eval-converse.mjs",
     "runner": "npm run build && esbuild runner/main.ts --bundle --platform=node --format=esm --packages=external --external:../mcp/bugme.mjs --outfile=dist/runner.mjs --log-level=warning && node dist/runner.mjs",
     "smoke:runner": "npm run build && esbuild runner/main.ts --bundle --platform=node --format=esm --packages=external --external:../mcp/bugme.mjs --outfile=dist/runner.mjs --log-level=warning && esbuild scripts/smoke-runner.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/smoke-runner.mjs --log-level=warning && node dist/smoke-runner.mjs",
+    "onboard": "esbuild scripts/onboard.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/onboard.mjs --log-level=warning && node dist/onboard.mjs",
     "preview:visuals": "node scripts/build-visuals-preview.mjs"
   },
   "dependencies": {

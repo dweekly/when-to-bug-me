@@ -3,7 +3,8 @@
 // re-route can't interleave. The logic is in live.ts; this only adapts the object's storage to it.
 
 import { DurableObject } from "cloudflare:workers";
-import { AskError, type KV, LiveQueue, type Resolution, type Ticket } from "./live";
+import { AskError, type KV, LiveQueue, type OwnerNote, type Resolution, type Ticket } from "./live";
+import type { OnboardingRun } from "../shared/onboarding";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
 import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
 
@@ -45,6 +46,23 @@ export class OwnerQueue extends DurableObject {
 
   async add(decision: Decision, card: Card, instruction: string, rev: number, unrouted?: string, projectName?: string, brief?: string): Promise<Ticket> {
     return this.q().add(decision, card, instruction, rev, new Date(), unrouted, projectName, brief);
+  }
+
+  // Onboarding (docs/STAGE-10.md).
+  async onboarding(): Promise<OnboardingRun | undefined> {
+    return this.q().onboarding();
+  }
+
+  async setOnboarding(run: OnboardingRun): Promise<void> {
+    return this.q().setOnboarding(run);
+  }
+
+  async note(): Promise<OwnerNote | undefined> {
+    return this.q().note();
+  }
+
+  async keepNote(run: OnboardingRun, facts: Fact[], note: OwnerNote, maxFacts: number): Promise<{ ok: true; added: number } | { ok: false; error: string }> {
+    return this.q().keepNote(run, facts, note, maxFacts);
   }
 
   // Dispatch (docs/STAGE-8.md): the catalog and the briefs.

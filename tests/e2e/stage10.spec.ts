@@ -44,3 +44,9 @@ test("on a phone, onboarding fits the width @narrow", async ({ page }) => {
   await expect(page.locator("#step-note")).toBeVisible();
   expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
 });
+
+test("the hosted owner page refuses onboarding on your own history: it runs on the runner", async ({ request }) => {
+  const r = await request.post("/api/me/onboarding", { headers: { authorization: `Bearer ${process.env.BUGME_E2E_LIVE_TOKEN}` }, data: { history: [] } });
+  expect(r.status()).toBe(404);
+  expect((await r.json()).error).toContain("runner");
+});

@@ -285,3 +285,32 @@ test("a stricter permission mode saved during the tools check is what launches",
   const bg = fake().calls.filter((c) => c.args[0] === "--bg" && c.args[2].startsWith(`bugme-${id}-`));
   expect(bg[0].args[bg[0].args.indexOf("--permission-mode") + 1]).toBe("plan");
 });
+
+test("onboarding on your own history: imported on the runner, interviewed, kept as facts and your note", async ({ page, request }) => {
+  const history = JSON.parse(readFileSync("fixtures/history.json", "utf8")).decisions.slice(0, 12);
+  const imported = await request.post("/api/me/onboarding", { headers: { authorization: `Bearer ${KEY}` }, data: { history } });
+  expect(imported.ok()).toBe(true);
+  await page.goto("/me#/welcome");
+  await expect(page.locator(".welcome h1")).toHaveText("Getting to know you");
+  await expect(page.locator("#step-read .welcome-stats")).toContainText("12 decisions");
+  await expect(page.locator("#step-draft .note-line").first()).toBeVisible();
+  // No DEMO REPLY on your own page: these are your answers.
+  await page.locator("#start-interview").click();
+  await expect(page.locator("#step-interview .demo-reply")).toHaveCount(0);
+  await page.locator("#answer-q1").fill("Yes, always: that's how I work.");
+  await page.locator("#revise-note").click();
+  await expect(page.locator("#step-note .note-line").first()).toBeVisible();
+  await page.locator("#keep-note").click();
+  await expect(page.locator("#step-note")).toContainText("It's your note now");
+  // Rules: the kept lines are facts you can edit, and the note is yours.
+  await page.goto("/me#/rules");
+  await expect(page.locator("#facts")).toContainText("onboarding");
+  await expect(page.locator("#note-source")).toContainText("Drafted by Bug Me from 12 of your decisions");
+  await page.locator("#facts .rtext").first().click();
+  const ta = page.locator("#facts li.editing textarea");
+  await ta.fill("Previews, not diffs. Always.");
+  await page.locator("#facts li.editing").getByRole("button", { name: "Save" }).click();
+  await expect(page.locator("#facts")).toContainText("Previews, not diffs. Always.");
+  await page.reload();
+  await expect(page.locator("#facts")).toContainText("Previews, not diffs. Always.");
+});
