@@ -34,9 +34,10 @@ import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
 import { type Titles, plainOptions } from "../shared/titles";
-import { byId, decisions, defaultFacts, defaultRules, persona, publicCatalog, publicDecision } from "./data";
+import { byId, decisions, defaultFacts, defaultRules, jordanHistory, persona, publicCatalog, publicDecision } from "./data";
+import { OnboardingError, parseAnswers, parseInterview, parseNote } from "../shared/onboarding";
 import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishBrief, parseCatalog, parseEdits, parseLaunch, parseReport } from "../shared/dispatch";
-import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, parseFor, routeFor, titlesFor, walkFor } from "./model";
+import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, interviewFor, noteFor, parseFor, reviseFor, routeFor, titlesFor, walkFor } from "./model";
 import { type WalkInput, walkInput } from "../shared/walk";
 import { WALK_PROMPT_VERSION } from "../shared/prompts";
 import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, type MirrorItem, OWNER_SETTLE_LIMITS, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
@@ -339,6 +340,30 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
     const { rules, facts } = context(b, { rules: defaultRules, facts: defaultFacts });
     const { out, source } = await dispatchFor(env, canSpend, task, answers, publicCatalog, rules, facts, PUBLIC_CTX);
     return json({ brief: finishBrief(out, publicCatalog, { id: briefId(), task, answers, now: new Date(), owner: false }), source });
+  }
+
+  if (path === "/api/onboarding/draft" || path === "/api/onboarding/interview" || path === "/api/onboarding/revise") {
+    // Jordan's onboarding (docs/STAGE-10.md): the history is the fixture; the page sends back what the
+    // earlier steps returned, checked again here against that history.
+    try {
+      const history = jordanHistory;
+      if (path === "/api/onboarding/draft") {
+        const { out, source } = await noteFor(env, canSpend, defaultRules, history, PUBLIC_CTX);
+        return json({ history, note: out, source });
+      }
+      // The page sends back the lists the earlier steps returned; each is checked again against the history.
+      const note = parseNote({ lines: b.note }, history);
+      if (path === "/api/onboarding/interview") {
+        const { out, source } = await interviewFor(env, canSpend, history, note, PUBLIC_CTX);
+        return json({ questions: out, source });
+      }
+      const questions = parseInterview({ questions: b.questions }, note);
+      const { out, source } = await reviseFor(env, canSpend, history, note, questions, parseAnswers(b.answers, questions), PUBLIC_CTX);
+      return json({ lines: out, source });
+    } catch (e) {
+      if (e instanceof OnboardingError) throw new BadRequest(e.message);
+      throw e;
+    }
   }
 
   if (path === "/api/walk") {

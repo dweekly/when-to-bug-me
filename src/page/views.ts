@@ -17,6 +17,7 @@ import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 import { openToursMenu, tourAfterRender } from "./tour";
 import { mirrorList } from "./mirror";
 import { renderDispatchView } from "./dispatch";
+import { renderWelcomeView } from "./welcome";
 
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
 let ruleDraft: { id: string; text: string; error: string; focus: boolean } | null = null;
@@ -112,6 +113,7 @@ function renderHome(view: HTMLElement): void {
       h("span", { class: "quiet" }, ` · ${Q.decisions.length} questions overnight, `),
       link({ view: "settled" }, `${settledCount} decided for you`),
     ),
+    Q.owner ? null : h("p", { class: "quiet small welcome-link" }, link({ view: "welcome" }, "How Bug Me got to know Jordan →")),
   );
 
   // The queue, in the order to work it: one project at a time (projects by how many agents their
@@ -439,6 +441,7 @@ function renderRulesView(view: HTMLElement): void {
       h("h2", { class: "section-h" }, "How to work with me"),
       h("ul", { id: "note", class: "note" }, ...Q.persona.how_to_work_with_me.map((t) => h("li", {}, t))),
       h("p", { class: "quiet", id: "note-source" }, Q.persona.how_to_work_with_me_source),
+      Q.owner ? null : h("p", { class: "small" }, link({ view: "welcome" }, "See how Bug Me drafts a note like this →")),
     ),
   );
   renderRules();
@@ -510,6 +513,7 @@ export function render(): void {
   else if (route.view === "settled") renderSettledView(view);
   else if (route.view === "rules") renderRulesView(view);
   else if (route.view === "dispatch") renderDispatchView(view, route.id);
+  else if (route.view === "welcome") renderWelcomeView(view);
   else renderRecordView(view);
   tourAfterRender();
 }
