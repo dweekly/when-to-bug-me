@@ -293,8 +293,8 @@ async function onboardingRoute(req: Request, env: Env, path: string, q: ReturnTy
     }
     const history = parseHistory(b.history, MAX_ONBOARD_HISTORY);
     const { rules } = await q.context();
-    const { out } = await noteFor(env, true, rules, history, ctx);
-    const run: OnboardingRun = { id: crypto.randomUUID().slice(0, 8), created_at: new Date().toISOString(), history, note: out };
+    const { out, source } = await noteFor(env, true, rules, history, ctx);
+    const run: OnboardingRun = { id: crypto.randomUUID().slice(0, 8), created_at: new Date().toISOString(), history, note: out, sources: { note: source } };
     await q.setOnboarding(run);
     return json({ run });
   }
@@ -302,16 +302,16 @@ async function onboardingRoute(req: Request, env: Env, path: string, q: ReturnTy
   if (!run) return json({ error: "no onboarding run yet: npm run onboard on the runner" }, 404);
   const b = await body(req);
   if (path === "/api/me/onboarding/interview") {
-    const { out } = await interviewFor(env, true, run.history, run.note, ctx);
-    const next: OnboardingRun = { ...run, questions: out, answers: undefined, revised: undefined };
+    const { out, source } = await interviewFor(env, true, run.history, run.note, ctx);
+    const next: OnboardingRun = { ...run, questions: out, answers: undefined, revised: undefined, sources: { note: run.sources?.note ?? "live", questions: source } };
     await q.setOnboarding(next);
     return json({ run: next });
   }
   if (path === "/api/me/onboarding/revise") {
     if (!run.questions) throw new BadRequest("interview first");
     const answers = parseAnswers(b.answers, run.questions);
-    const { out } = await reviseFor(env, true, run.history, run.note, run.questions, answers, ctx);
-    const next: OnboardingRun = { ...run, answers, revised: out };
+    const { out, source } = await reviseFor(env, true, run.history, run.note, run.questions, answers, ctx);
+    const next: OnboardingRun = { ...run, answers, revised: out, sources: { note: run.sources?.note ?? "live", questions: run.sources?.questions, revised: source } };
     await q.setOnboarding(next);
     return json({ run: next });
   }

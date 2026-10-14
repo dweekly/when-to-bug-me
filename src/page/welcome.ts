@@ -30,7 +30,7 @@ function useRun(r: OnboardingRun | null): void {
   if (!r) return;
   history = r.history;
   byId = new Map(history.map((x) => [x.id, x]));
-  Object.assign(w, { note: r.note, noteSource: "live", questions: r.questions ?? null, questionsSource: r.questions ? "live" : null, answers: { ...(r.answers ?? {}) }, submitted: { ...(r.answers ?? {}) }, revised: r.revised ?? null, revisedSource: r.revised ? "live" : null });
+  Object.assign(w, { note: r.note, noteSource: r.sources?.note ?? null, questions: r.questions ?? null, questionsSource: r.questions ? (r.sources?.questions ?? null) : null, answers: { ...(r.answers ?? {}) }, submitted: { ...(r.answers ?? {}) }, revised: r.revised ?? null, revisedSource: r.revised ? (r.sources?.revised ?? null) : null });
 }
 
 /** Where the person is in onboarding, kept outside the DOM so a redraw never loses it. */
@@ -220,14 +220,13 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
     ...qs.map((q) => {
       // Once the note is revised from them, the answers are locked; "Change answers" unlocks them and drops the revision.
       const locked = Boolean(w.revised);
-      const ta = h("textarea", { id: `answer-${q.id}`, rows: "2", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked }) as HTMLTextAreaElement;
+      const ta = h("textarea", { id: `answer-${q.id}`, rows: "1", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked }) as HTMLTextAreaElement;
       ta.value = w.answers[q.id] ?? "";
       // The box grows with what's in it, so a spoken answer is read whole.
       const fit = () => {
         ta.style.height = "auto";
         ta.style.height = `${ta.scrollHeight}px`;
       };
-      requestAnimationFrame(fit);
       ta.addEventListener("input", () => {
         fit();
         w.answers[q.id] = ta.value;
@@ -284,8 +283,8 @@ export function renderWelcomeView(view: HTMLElement): void {
         { class: "page welcome" },
         h("h1", {}, "Getting to know you"),
         h("p", { class: "quiet" }, "Bug Me drafts your note from your own decisions, on the runner, with your Claude login. On this Mac:"),
-        h("pre", { class: "onboard-cmd" }, h("code", {}, "npm run onboard -- ~/dev/labs-takehome/data/<machine>.jsonl")),
-        h("p", { class: "quiet small" }, "Rows from spike/extract.py; only projects on the fleet's allow list are read."),
+        h("pre", { class: "onboard-cmd" }, h("code", {}, "npm run onboard -- --allow <allow-list.json> <rows.jsonl>")),
+        h("p", { class: "quiet small" }, "Rows extracted from your transcripts; only projects on your allow list are read."),
         w.error ? h("p", { class: "think-msg", role: "alert" }, w.error) : null,
       ),
     );
@@ -362,4 +361,9 @@ export function renderWelcomeView(view: HTMLElement): void {
     ),
   );
   if (!w.questions) setVoiceTarget(null);
+  // Size the answer boxes to what's in them now that they're on the page (a box measures nothing detached).
+  for (const ta of view.querySelectorAll<HTMLTextAreaElement>(".interview textarea")) {
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }
 }

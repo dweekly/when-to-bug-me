@@ -290,6 +290,8 @@ export interface OnboardingRun {
   revised?: RevisedLine[];
   /** When the person kept the revised note as facts. */
   kept_at?: string;
+  /** Where each step's words came from (live Claude on the runner, or code in tests). */
+  sources?: { note: "live" | "cached" | "recorded" | "code"; questions?: "live" | "cached" | "recorded" | "code"; revised?: "live" | "cached" | "recorded" | "code" };
 }
 
 /** The facts a kept note becomes: one per line still standing, ids tied to the run so keeping twice is a no-op. */

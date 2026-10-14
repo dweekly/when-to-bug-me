@@ -1,12 +1,12 @@
-// Onboarding on your own history (docs/STAGE-10.md, 10b): turn the rows the research repo's
-// `spike/extract.py` pulls from your Claude Code transcripts into onboarding's history, and send them to
-// the runner, which drafts your "how to work with me" note with your Claude login. Nothing it reads or
-// sends is written to this repo, a log, the cache or the recordings.
+// Onboarding on your own history (docs/STAGE-10.md, 10b): turn rows extracted from your Claude Code
+// transcripts (one JSON object per question, as the research repo's extractor writes them) into
+// onboarding's history, and send them to the runner, which drafts your "how to work with me" note with
+// your Claude login. Nothing it reads or sends is written to this repo, a log, the cache or the recordings.
 //
-//   npm run onboard -- ~/dev/labs-takehome/data/monster4.jsonl [more.jsonl …]
+//   npm run onboard -- --allow <allow-list.json> <rows.jsonl> [more.jsonl …]
 //
-// Only projects on the fleet's allow list (~/.claude/fleet-cos/eligibility.json) are read: the same
-// list that decides which questions may reach a model at all. Without it, nothing is sent. A deny file
+// Only projects on the allow list are read (a JSON file {"allow": [<transcript folder names>]}: the same
+// list that decides which questions may reach a model at all). Without it, nothing is sent. A deny file
 // (private/onboard-deny.txt, gitignored: one project marker or "machine session" per line) excludes more.
 // It talks only to the runner on this machine, with the runner's own key; there is no hosted fallback.
 import { createHash } from "node:crypto";
@@ -16,7 +16,7 @@ import { join, resolve } from "node:path";
 import { MAX_ONBOARD_HISTORY, RUNNER_PORT } from "../src/shared/constants";
 import type { HistoryItem } from "../src/shared/onboarding";
 
-/** One row as spike/extract.py writes it (only the fields used here). */
+/** One row as the extractor writes it (only the fields used here). */
 export interface ExtractRow {
   machine?: string;
   project?: string;
@@ -39,7 +39,7 @@ export interface ExtractRow {
 
 const KEYS = ["A", "B", "C", "D", "E", "F"];
 
-/** "-Users-dew-dev-nwx" → "nwx": the last part of the transcript-folder name, for a short label. */
+/** "-Users-someone-dev-app" → "app": the last part of the transcript-folder name, for a short label. */
 export function projectLabel(folder: string): string {
   const parts = folder.split("-").filter(Boolean);
   const dev = parts.lastIndexOf("dev");
@@ -90,9 +90,11 @@ export function toHistory(rows: ExtractRow[], now: Date, max = MAX_ONBOARD_HISTO
 }
 
 async function main(): Promise<void> {
-  const files = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-  if (!files.length) throw new Error("usage: npm run onboard -- <rows.jsonl> [more.jsonl …] (rows from labs-takehome's spike/extract.py)");
-  const eligibility = join(homedir(), ".claude", "fleet-cos", "eligibility.json");
+  const args = process.argv.slice(2);
+  const at = args.indexOf("--allow");
+  const eligibility = at >= 0 ? args.at(at + 1) : undefined;
+  const files = args.filter((a, i) => !a.startsWith("--") && i !== at + 1);
+  if (!eligibility || !files.length) throw new Error("usage: npm run onboard -- --allow <allow-list.json> <rows.jsonl> [more.jsonl …]");
   if (!existsSync(eligibility)) throw new Error(`no allow list at ${eligibility}: nothing is sent without it`);
   const allow = (JSON.parse(readFileSync(eligibility, "utf8")) as { allow?: string[] }).allow ?? [];
   const denyFile = resolve("private/onboard-deny.txt");
@@ -112,7 +114,7 @@ async function main(): Promise<void> {
   if (!history.length) throw new Error("no answered questions from allowed projects in those rows");
   const dates = eligible.map((r) => r.ts!).filter(Boolean).sort();
   console.log(`${rows.length} rows; ${eligible.length} from allowed projects; sending the newest ${history.length} answered questions`);
-  console.log(`rows span ${dates[0]?.slice(0, 10)} to ${dates.at(-1)?.slice(0, 10)} (extract.py freezes at its own cutoff; rerun it with a later one for newer history)`);
+  console.log(`rows span ${dates[0]?.slice(0, 10)} to ${dates.at(-1)?.slice(0, 10)} (the extractor freezes at its own cutoff; rerun it with a later one for newer history)`);
 
   // The runner's own key, from the runner's own env file: this never talks to the hosted site.
   const home = resolve(process.env.BUGME_HOME ?? join(homedir(), ".bugme"));

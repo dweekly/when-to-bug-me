@@ -136,6 +136,14 @@ Then draft a brief on `/me` → Dispatch, tick what it needs from you, and paste
 - **From your phone.** Run `tailscale serve --bg 8790`, put the tailnet name in `~/.bugme/runner.env` as `BUGME_TAILNET_HOST`, restart, and open the sign-in link from `npm run runner -- --link`.
 - **Repos.** Launch lists the git repos directly under `~/dev`. Claude Code must trust a repo before it can launch there: run `claude` in it once.
 
+**Onboarding on your own history** ([`docs/STAGE-10.md`](docs/STAGE-10.md), runner only): draft your own "how to work with me" note from your past decisions. Rows come from a transcript extractor (one JSON object per question); only projects on your allow list (the file that decides which projects may reach a model at all) are read, and `private/onboard-deny.txt` (gitignored) can exclude more:
+
+```bash
+npm run onboard -- --allow <allow-list.json> <rows.jsonl>   # the newest 200 answered questions, to the runner only
+```
+
+Then open `/me#/welcome` on the runner, do the interview, and press **Keep it**: the lines become facts you can edit in Rules, and your note. The hosted site refuses this; nothing is cached, recorded or logged.
+
 `npm run smoke:runner` runs the whole loop with the real CLI in `~/dev/bugme-sandbox` (setup at the top of `scripts/smoke-runner.ts`): draft, launch, ask, your answer, report.
 
 ## Limitations
