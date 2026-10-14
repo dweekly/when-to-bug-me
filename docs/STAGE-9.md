@@ -169,8 +169,8 @@ Where the build differs from the plan above, and what it found.
 - **A test broke the main checkout's git config, once.** Inside the pre-push hook, `GIT_DIR` points at the repo. A unit test's `git init` in a temporary folder inherited it and set `core.bare = true` on the main checkout. It was restored by hand. The test and the e2e fixture now strip `GIT_*` variables, so a hook can't do this again.
 
 **Verified:**
-- `npm run typecheck && npm test`: 497 tests.
-- `npx playwright test`: 337 passed, 8 skipped, with the new runner project (11 tests).
+- `npm run typecheck && npm test`: 498 tests.
+- `npx playwright test`: the full suite, with the new runner project (14 tests).
 - `npm run smoke:live`.
 - Drafting through the real Claude login: a brief in 9 s.
 - curl checks of every guard.
@@ -198,6 +198,9 @@ Each round's findings were fixed in their own commit; new tests were shown to fa
 
     David chose attempt ids: every reservation carries one, and recovery and completion apply only to their own attempt. Sessions are named `bugme-<brief>-<attempt>`, and every helper is stopped on shutdown.
   - **Round 3, FIX (1):** the MCP server's own fetch had the same 300 s cutoff. It now uses node:http(s).
+  - **Round 4** (past the cap, with David's go), **FIX (2):**
+    - the session was started from the brief as read before the slow tools check, so a stricter permission mode saved in that window was ignored. It now launches the brief as reserved, with its ticks checked again;
+    - a `claude --bg` that timed out was marked failed, so a retry could start a second session. It now stays "launching" for recovery.
 - **9b (#39):**
   - **Round 1, FIX (5):**
     - new asks lost their project;
@@ -212,6 +215,15 @@ Each round's findings were fixed in their own commit; new tests were shown to fa
     - the secret hand-over check missed some phrasings;
     - a refresh replaced a typed invalid number;
     - an edit made during Launch's save was dropped.
+  - **Round 4, ESCALATE:**
+    - "Put your API key into Bug Me" still passed the secret check;
+    - the How? steps arriving replaced a typed invalid number;
+    - changing the picker during Launch's save launched in the new repo.
+
+    David chose to fix all five round 4 items and stop reviewing; he reads the fix commits and merges.
+    - Typed numbers are kept outside the page's elements.
+    - The repo is captured at the click.
+    - The secret check is a safety net, not a guarantee: no keyword list catches every phrasing. So under every walk the page also says that Bug Me never needs a secret.
 
 ## Gates
 

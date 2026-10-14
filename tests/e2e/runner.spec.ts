@@ -219,3 +219,69 @@ test("a typed number that isn't valid survives a refresh", async ({ page, reques
   await expect(est).toHaveValue("0");
   await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Fix the time or $ first.");
 });
+
+test("a number being typed survives the How? steps arriving", async ({ page }) => {
+  const id = await draft(page, "Hook the release bot up to PagerDuty so a failed release pages whoever is on call.");
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(`**/api/me/briefs/${id}/walk`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.locator("#brief .brief-you .how").first().click();
+  await page.locator("#brief .brief-more summary").click();
+  const est = page.getByLabel("Estimate in minutes");
+  await est.fill("0");
+  release();
+  await expect(page.locator("#brief .walk ol li").first()).toBeVisible();
+  await expect(est).toHaveValue("0");
+  await expect(page.locator("#brief .walk-note")).toContainText("never needs your secrets");
+});
+
+test("the repo picked at the click is where it launches, even if the picker changes during the save", async ({ page }) => {
+  // Two trusted repos to choose from.
+  const cj = `${ROOT}/claude.json`;
+  const conf = JSON.parse(readFileSync(cj, "utf8"));
+  conf.projects[realpathSync(`${ROOT}/dev/untrusted`)] = { hasTrustDialogAccepted: true };
+  writeFileSync(cj, JSON.stringify(conf));
+  const id = await draft(page, "Add a CHANGELOG entry for the last release.");
+  await expect(page.locator('#launch-repo option[value="untrusted"]')).toBeEnabled();
+  for (const box of await page.locator("#brief .brief-you input").all()) await box.check();
+  await page.locator("#launch-repo").selectOption("sandbox");
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(`**/api/me/briefs/${id}/dispatched`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.locator("#launch").click();
+  await page.locator("#launch-repo").selectOption("untrusted");
+  release();
+  await expect(page.locator(".brief-session")).toBeVisible();
+  const bg = fake().calls.filter((c) => c.args[0] === "--bg" && c.args[2].startsWith(`bugme-${id}-`));
+  expect(bg).toHaveLength(1);
+  expect(bg[0].cwd).toMatch(/\/dev\/sandbox$/);
+});
+
+test("a stricter permission mode saved during the tools check is what launches", async ({ page, request }) => {
+  const id = await draft(page, "Hook the release bot up to PagerDuty so a failed release pages whoever is on call.");
+  for (const box of await page.locator("#brief .brief-you input").all()) await box.check();
+  await page.locator("#launch-repo").selectOption("sandbox");
+  setFake((x) => {
+    x.mcp = { default: [["bugme", "connected"], ["PagerDuty", "connected"]] };
+    (x as Fake & { mcpSleepMs?: number }).mcpSleepMs = 3000;
+  });
+  await page.locator("#launch").click();
+  // While the runner checks the tools, another device saves the brief in plan mode.
+  await page.waitForTimeout(800);
+  const b = (await (await request.get("/api/me/briefs", { headers: { authorization: `Bearer ${KEY}` } })).json()).briefs.find((x: { id: string }) => x.id === id);
+  const saved = await request.post(`/api/me/briefs/${id}/dispatched`, {
+    headers: { authorization: `Bearer ${KEY}` },
+    data: { model: b.model, effort: b.effort, permission_mode: "plan", estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd, tools_off: b.tools_off, ticked: b.ticked },
+  });
+  expect(saved.ok()).toBe(true);
+  await expect(page.locator(".brief-session")).toBeVisible({ timeout: 15_000 });
+  setFake((x) => delete (x as Fake & { mcpSleepMs?: number }).mcpSleepMs);
+  const bg = fake().calls.filter((c) => c.args[0] === "--bg" && c.args[2].startsWith(`bugme-${id}-`));
+  expect(bg[0].args[bg[0].args.indexOf("--permission-mode") + 1]).toBe("plan");
+});

@@ -204,7 +204,7 @@ describe("walk me through it", () => {
     const withCreds = (host: string) => `https://${["someone", "hunter2"].join(":")}${String.fromCharCode(64)}${host}/`;
     for (const bad of ["http://example.com", "javascript:alert(1)", withCreds("example.com"), "https://localhost/x", "", "ftp://x.com"]) expect(safeLink(bad)).toBeUndefined();
     expect(parseWalk({ steps: [{ text: "Open it", url: withCreds("evil.example") }] })[0].url).toBeUndefined();
-    for (const bad of ["Copy the token and paste it here so I can finish.", "Paste your token into Bug Me.", "Send me your password.", "Paste the API key into the Claude Code session.", "Share the secret in this chat."]) {
+    for (const bad of ["Copy the token and paste it here so I can finish.", "Paste your token into Bug Me.", "Send me your password.", "Paste the API key into the Claude Code session.", "Share the secret in this chat.", "Put your API key into Bug Me.", "Upload the credentials file here.", "Add your password to this session."]) {
       expect(() => parseWalk({ steps: [{ text: bad, url: "" }] }), bad).toThrow(WalkError);
     }
     // Keeping a secret where it belongs is fine.

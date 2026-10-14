@@ -381,18 +381,26 @@ function select<T extends string>(label: string, value: T, options: readonly { v
  * A setup number. A value outside the field's range (the same ranges the Worker accepts) is marked,
  * keeps the last good value in the brief, and holds Copy until it's fixed.
  */
+/** What's typed in a number box that isn't valid yet, per brief and field, so no redraw replaces it. */
+const typed = new Map<string, string>();
+
 function numberInput(b: Shown, field: string, label: string, value: number, step: string, ok: (v: number) => boolean, onChange: (v: number) => void): HTMLElement {
   const bad = invalid.get(b.id) ?? new Set<string>();
   invalid.set(b.id, bad);
-  const i = h("input", { type: "number", min: "0", step, value: String(value), "aria-label": label, inputmode: "decimal", "aria-invalid": bad.has(field) ? "true" : "false" }) as HTMLInputElement;
+  const key = `${b.id}:${field}`;
+  const i = h("input", { type: "number", min: "0", step, value: typed.get(key) ?? String(value), "aria-label": label, inputmode: "decimal", "aria-invalid": bad.has(field) ? "true" : "false" }) as HTMLInputElement;
   i.addEventListener("input", () => {
     const v = Number(i.value);
     const good = i.value.trim() !== "" && Number.isFinite(v) && ok(v);
     i.setAttribute("aria-invalid", good ? "false" : "true");
     if (good) {
       bad.delete(field);
+      typed.delete(key);
       onChange(v);
-    } else bad.add(field);
+    } else {
+      bad.add(field);
+      typed.set(key, i.value);
+    }
     refreshLive(b.id);
   });
   return i;
@@ -615,6 +623,7 @@ function walkPanel(b: Shown, i: number): HTMLElement | null {
         h("li", {}, st.text, st.url ? h("a", { href: st.url, target: "_blank", rel: "noopener noreferrer", class: "walk-link" }, `${new URL(st.url).hostname} ↗`) : null),
       ),
     ),
+    h("p", { class: "walk-note quiet small" }, "Bug Me never needs your secrets: they stay where the steps say."),
     h(
       "p",
       { class: "walk-foot" },
@@ -715,8 +724,10 @@ function sessionLine(b: Shown): HTMLElement {
 async function launch(id: string): Promise<void> {
   const b = current(id);
   const keep = stored(id);
+  // The repo as picked at the click: the picker can change while the save is out.
+  const into = repo;
   // The button can be stale for a moment; what's typed now decides.
-  if (!b || !keep || !copyState(b).ready || !repo || launching) return;
+  if (!b || !keep || !copyState(b).ready || !into || launching) return;
   launching = id;
   actionMsg = "";
   paint();
@@ -725,9 +736,15 @@ async function launch(id: string): Promise<void> {
     const saved = await api<{ brief: Brief }>(`/api/me/briefs/${id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off, ticked: tickList(b) });
     // Saved: the server's copy has these now, so they stop being unsaved edits, even if the launch fails.
     saved_(id, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off }, saved.brief);
-    const r = await api<{ launch: Brief["launch"] }>("/runner/launch", { brief_id: id, repo });
-    keep.launch = r.launch;
-    announce("Launched.");
+    const r = await api<{ launch?: Brief["launch"]; error?: string }>("/runner/launch", { brief_id: id, repo: into });
+    if (r.launch) {
+      keep.launch = r.launch;
+      announce("Launched.");
+    } else {
+      // Accepted but not confirmed: the runner checks for the session and settles it shortly.
+      actionMsg = r.error ?? "";
+      announce(actionMsg);
+    }
     // The session list from before the launch doesn't have it yet.
     await load().catch(() => {});
   } catch (e) {

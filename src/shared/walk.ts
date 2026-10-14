@@ -61,11 +61,13 @@ export function safeLink(raw: unknown): string | undefined {
 }
 
 /**
- * A step that hands a secret to Bug Me, a chat or the session is refused outright: an action word, a
- * secret, and one of those destinations in the same step. Storing a key in a password manager, the
- * keychain or a tool's own config is fine, and says none of these.
+ * A safety net, not a guarantee: a step that hands a secret to Bug Me, a chat or the session is refused
+ * (an action word, a secret, and one of those destinations in the same step). No keyword list catches
+ * every phrasing, so the page also says, under every walk, that Bug Me never needs a secret, and the
+ * prompt tells the model where secrets go. Storing a key in a password manager, the keychain or a
+ * tool's own config says none of these, and passes.
  */
-const HAND_OVER = /\b(paste|send|share|give|type|enter|provide|copy)\b/i;
+const HAND_OVER = /\b(paste|put|send|share|give|type|enter|provide|copy|upload|submit|drop|add|insert)\b/i;
 const SECRET_WORD = /\b(token|key|secret|password|passphrase|credential)s?\b/i;
 const TO_US = /\bbug me\b|\bchat\b|\bhere\b|\b(this|the|your|claude code) session\b|\b(send|give|tell|show) me\b/i;
 const handsOver = (text: string) => HAND_OVER.test(text) && SECRET_WORD.test(text) && TO_US.test(text);

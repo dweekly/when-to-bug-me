@@ -460,6 +460,7 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .walk ol { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
 .walk-link { margin-left: 6px; color: var(--glow); font-size: 13px; white-space: nowrap; }
 .walk-foot { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; }
+.walk-note { margin: 6px 0 0; }
 .brief-actions { margin-top: 16px; }
 #launch-repo { font: 14px var(--body); color: var(--ink); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 100%; }
 .brief-session { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 16px; padding: 8px 12px; background: var(--night); border-radius: 10px; color: var(--ink); font-size: 15px; }
