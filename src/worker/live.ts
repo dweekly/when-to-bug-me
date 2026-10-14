@@ -2,7 +2,7 @@
 // it in Node: turning an agent's ask into a Decision, the owner's persona and starting rules, and the
 // ticket lifecycle over a small key-value store (the owner's Durable Object in production, a Map in tests).
 
-import type { Brief, BriefEdits, Catalog, Report } from "../shared/dispatch";
+import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import type { Card, Decision, Fact, Persona, Reversible, Rule } from "../shared/types";
 
@@ -338,7 +338,35 @@ export class LiveQueue {
   async dispatched(id: string, edits: BriefEdits, now = new Date()): Promise<Brief | undefined> {
     const b = await this.brief(id);
     if (!b) return undefined;
-    const next: Brief = { ...b, ...edits, dispatched_at: now.toISOString() };
+    const { ticked, ...rest } = edits;
+    const next: Brief = { ...b, ...rest, dispatched_at: now.toISOString() };
+    if (ticked) next.ticked = ticked.filter((i) => i < b.prerequisites.length);
+    await this.kv.put(`b:${id}`, next);
+    return next;
+  }
+
+  /**
+   * The runner's launch record (docs/STAGE-9.md). "launching" is a reservation: refused, with the record
+   * as it stands, unless the brief has none or its last launch failed. "running" and "failed" apply only
+   * to the current reservation of the same attempt, so a late recovery or completion for an older attempt
+   * changes nothing. One Durable Object serializes these, so a double tap launches once.
+   */
+  async launch(id: string, l: Launch): Promise<{ brief: Brief; ok: boolean } | undefined> {
+    const b = await this.brief(id);
+    if (!b) return undefined;
+    const cur = b.launch;
+    const ok = l.state === "launching" ? !cur || cur.state === "failed" : cur?.state === "launching" && cur.attempt === l.attempt && cur.repo === l.repo;
+    if (!ok) return { brief: b, ok: false };
+    const next: Brief = { ...b, launch: l.state === "launching" ? l : { ...l, at: cur!.at } };
+    await this.kv.put(`b:${id}`, next);
+    return { brief: next, ok: true };
+  }
+
+  /** "Walk me through it" steps for one item, replacing any earlier ones for it. */
+  async walk(id: string, w: StoredWalk): Promise<Brief | undefined> {
+    const b = await this.brief(id);
+    if (!b) return undefined;
+    const next: Brief = { ...b, walks: [...(b.walks ?? []).filter((x) => x.item !== w.item), w] };
     await this.kv.put(`b:${id}`, next);
     return next;
   }

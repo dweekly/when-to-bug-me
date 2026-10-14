@@ -5,7 +5,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { AskError, type KV, LiveQueue, type Resolution, type Ticket } from "./live";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
-import type { Brief, BriefEdits, Catalog, Report } from "../shared/dispatch";
+import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
 
 export class OwnerQueue extends DurableObject {
   private q(): LiveQueue {
@@ -70,6 +70,14 @@ export class OwnerQueue extends DurableObject {
 
   async dispatched(id: string, edits: BriefEdits): Promise<Brief | undefined> {
     return this.q().dispatched(id, edits);
+  }
+
+  async launch(id: string, l: Launch): Promise<{ brief: Brief; ok: boolean } | undefined> {
+    return this.q().launch(id, l);
+  }
+
+  async walk(id: string, w: StoredWalk): Promise<Brief | undefined> {
+    return this.q().walk(id, w);
   }
 
   async report(id: string, r: Report): Promise<Brief | undefined> {

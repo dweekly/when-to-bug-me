@@ -27,14 +27,16 @@
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
 
-import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES } from "../shared/constants";
+import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES, RUNNER_HEADER } from "../shared/constants";
 import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
 import { type Titles, plainOptions } from "../shared/titles";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicCatalog, publicDecision } from "./data";
-import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishBrief, parseCatalog, parseEdits, parseReport } from "../shared/dispatch";
-import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, parseFor, routeFor, titlesFor } from "./model";
+import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishBrief, parseCatalog, parseEdits, parseLaunch, parseReport } from "../shared/dispatch";
+import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, parseFor, routeFor, titlesFor, walkFor } from "./model";
+import { type WalkInput, walkInput } from "../shared/walk";
+import { WALK_PROMPT_VERSION } from "../shared/prompts";
 import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
 import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
@@ -266,6 +268,18 @@ async function cardFromRoute(
   };
 }
 
+/** The public walk's input, from the visitor's copy of a demo brief: trimmed and capped like any input. */
+function walkInputFrom(b: Record<string, unknown>): WalkInput {
+  const t = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
+  const what = t(b.what, 200);
+  if (!what) throw new BadRequest("what is required");
+  const tools = Array.isArray(b.tools) ? b.tools.map((x) => t(x, 80)).filter(Boolean).slice(0, 10).sort() : [];
+  return { what, why: t(b.why, 200), headline: t(b.headline, 120), goal: t(b.goal, 200), tools };
+}
+
+/** Live calls can be made: an API key, or the runner's Claude login (docs/STAGE-9.md). */
+const liveAvailable = (env: Env) => Boolean(env.ANTHROPIC_API_KEY || env.LOCAL_MODEL_URL) && !env.FAKE_MODEL;
+
 async function handleApi(req: Request, env: Env, path: string): Promise<Response> {
   // The live queue doesn't exist without its token, whatever else is configured.
   if (path === "/api/me" || path.startsWith("/api/me/")) {
@@ -292,8 +306,8 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
       decisions: decisions.map(publicDecision),
       cards,
       catalog: publicCatalog,
-      live_available: Boolean(env.ANTHROPIC_API_KEY) && !env.FAKE_MODEL,
-      mode: env.FAKE_MODEL ? "fake" : env.ANTHROPIC_API_KEY ? "live" : "recorded",
+      live_available: liveAvailable(env),
+      mode: env.FAKE_MODEL ? "fake" : liveAvailable(env) ? "live" : "recorded",
       turnstile_site_key: env.TURNSTILE_SECRET ? (env.TURNSTILE_SITE_KEY ?? null) : null,
     });
   }
@@ -322,6 +336,13 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
     const { rules, facts } = context(b, { rules: defaultRules, facts: defaultFacts });
     const { out, source } = await dispatchFor(env, canSpend, task, answers, publicCatalog, rules, facts, PUBLIC_CTX);
     return json({ brief: finishBrief(out, publicCatalog, { id: briefId(), task, answers, now: new Date(), owner: false }), source });
+  }
+
+  if (path === "/api/walk") {
+    // Jordan's demo (docs/STAGE-9.md): the brief lives in the visitor's browser, so the canonical input
+    // comes from it; the three demo tasks' items are recorded.
+    const { out, source } = await walkFor(env, canSpend, walkInputFrom(b), PUBLIC_CTX);
+    return json({ steps: out, source });
   }
   return (await modelCall(env, key, path.slice("/api".length), b, publicWorld(env, canSpend))) ?? json({ error: "not found" }, 404);
 }
@@ -471,15 +492,20 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       aside: shown.filter((t) => t.status === "set-aside" && t.aside).map((t) => ({ id: t.decision.id, ...t.aside })),
       // Answered in the last day: not waiting, but the page keeps their follow-ups (a late reason, guidance) working.
       answered: answered.map((t) => ({ decision: publicDecision(t.decision), card: t.card })),
-      live_available: Boolean(env.ANTHROPIC_API_KEY) && !env.FAKE_MODEL,
-      mode: env.FAKE_MODEL ? "fake" : env.ANTHROPIC_API_KEY ? "live" : "recorded",
+      live_available: liveAvailable(env),
+      mode: env.FAKE_MODEL ? "fake" : liveAvailable(env) ? "live" : "recorded",
       owner: true,
       turnstile_site_key: null,
     });
   }
 
   if (path === "/api/me/briefs" && req.method === "GET") {
-    return json({ briefs: await q.briefs(), catalog: await q.catalog() });
+    // Asks still waiting on the owner, per brief, so a launched brief can say "waiting on you" (docs/STAGE-9.md).
+    const waiting: Record<string, string[]> = {};
+    for (const t of await q.shown()) {
+      if (t.brief && (t.status === "open" || t.status === "reopened")) (waiting[t.brief] ??= []).push(t.decision.id);
+    }
+    return json({ briefs: await q.briefs(), catalog: await q.catalog(), waiting });
   }
 
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -509,12 +535,32 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     return json({ brief, source });
   }
 
-  const briefPath = path.match(/^\/api\/me\/briefs\/(b-[a-z0-9]{10})\/(dispatched|report)$/);
+  const walkPath = path.match(/^\/api\/me\/briefs\/(b-[a-z0-9]{10})\/walk$/);
+  if (walkPath) {
+    const brief = await q.brief(walkPath[1]);
+    if (!brief) return json({ error: "unknown brief" }, 404);
+    const item = Number(b.item);
+    if (!Number.isInteger(item) || !brief.prerequisites[item]) return json({ error: "no such item" }, 400);
+    const kept = brief.walks?.find((w) => w.item === item && w.what === brief.prerequisites[item].what && w.version === WALK_PROMPT_VERSION);
+    if (kept) return json({ steps: kept.steps, source: kept.source });
+    // The owner's item never reaches the recorded run or the cache.
+    const { out, source } = await walkFor(env, true, walkInput(brief, item, await q.catalog()), { persona: ownerPersonaOf([]), store: false });
+    await q.walk(brief.id, { item, what: brief.prerequisites[item].what, steps: out, source, version: WALK_PROMPT_VERSION });
+    return json({ steps: out, source });
+  }
+
+  const briefPath = path.match(/^\/api\/me\/briefs\/(b-[a-z0-9]{10})\/(dispatched|report|launch)$/);
   if (briefPath && BRIEF_ID_RE.test(briefPath[1])) {
     try {
       if (briefPath[2] === "dispatched") {
         const next = await q.dispatched(briefPath[1], parseEdits(b, await q.catalog()));
         return next ? json({ brief: next }) : json({ error: "unknown brief" }, 404);
+      }
+      if (briefPath[2] === "launch") {
+        // The runner's record of its launch (docs/STAGE-9.md); 409 with the record as it stands when refused.
+        const r = await q.launch(briefPath[1], parseLaunch(b));
+        if (!r) return json({ error: "unknown brief" }, 404);
+        return json({ brief: r.brief, ok: r.ok }, r.ok ? 200 : 409);
       }
       const next = await q.report(briefPath[1], parseReport(b));
       return next ? json({ ok: true, brief: briefPath[1] }) : json({ error: "unknown brief" }, 404);
@@ -580,6 +626,11 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    // Under the runner (docs/STAGE-9.md) the Worker listens on loopback behind the runner's guards; a
+    // request that didn't come through the runner (another local process, a DNS-rebound page) gets nothing.
+    if (env.LOCAL_MODEL_URL && (!usableToken(env.LOCAL_MODEL_TOKEN) || !sameString(req.headers.get(RUNNER_HEADER) ?? "", env.LOCAL_MODEL_TOKEN))) {
+      return new Response("Not found", { status: 404 });
+    }
     const url = new URL(req.url);
     // The owner's page is the same app in live mode (docs/STAGE-7.md); it doesn't exist without LIVE_TOKEN.
     if (url.pathname === "/me") {

@@ -14,6 +14,7 @@ import {
   DispatchError,
   briefText,
   buildCommand,
+  commandArgs,
   dispatchSchema,
   finishBrief,
   parseBriefDraft,
@@ -169,10 +170,12 @@ describe("the command is one `claude` call, whatever the brief says", () => {
       const b = hostile();
       const out = execFileSync(shell, ["-c", buildCommand(b, CAT)], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}` }, encoding: "utf8" });
       expect(JSON.parse(out)).toEqual([
-        "--model", b.model, "--effort", b.effort, "--permission-mode", b.permission_mode,
+        "--model", b.model, "--effort", b.effort, "--permission-mode", b.permission_mode, "--allowedTools", "mcp__bugme",
         "--disallowedTools", "mcp__GitHub", "--disallowedTools", "mcp__claude_ai_Gmail",
         "--", briefText(b, CAT),
       ]);
+      // The runner's Launch passes commandArgs with no shell: the same list.
+      expect(["claude", ...JSON.parse(out)]).toEqual(commandArgs(b, CAT));
       expect(() => execFileSync("test", ["-e", canary])).toThrow();
     });
   }
@@ -243,6 +246,34 @@ describe("the owner's drafts are never stored outside the owner's queue", () => 
     expect((await dispatchFor(env, true, SENTINEL, "", CAT, [], [], ctx)).source).toBe("live");
 
     expect(create).toHaveBeenCalledTimes(2);
+    expect(cache.match).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
+    expect(JSON.stringify(logged)).not.toContain(SENTINEL);
+  });
+
+  it("through the runner (docs/STAGE-9.md): its token, the same validation, nothing cached or logged", async () => {
+    const cache = { match: vi.fn(), put: vi.fn(), delete: vi.fn() };
+    vi.stubGlobal("caches", { default: cache });
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ output: { ...draft(), headline: "", goal: SENTINEL } })));
+    vi.stubGlobal("fetch", fetch);
+    const logged: unknown[] = [];
+    vi.spyOn(console, "error").mockImplementation((...a) => void logged.push(...a));
+    const { dispatchFor, ModelUnavailable } = await import("../../src/worker/model");
+    const spend = { get: () => ({ reserve: vi.fn(), reconcile: vi.fn() }), idFromName: () => "x" };
+    // No API key: the runner's Claude login is the only way to a live answer.
+    const env = { ...Object.fromEntries([["LOCAL_MODEL_URL", "http://127.0.0.1:8790/runner/model"], ["LOCAL_MODEL_TOKEN", "tok"]]), SPEND: spend } as never;
+    const ctx = { persona: { first_name: "David", name: "David", pronouns: "they/them", role: "Founder", company: "c", company_blurb: "b", fleet_size: 1, projects: [], how_to_work_with_me: [] } as never, store: false };
+
+    await expect(dispatchFor(env, true, SENTINEL, "", CAT, [], [], ctx)).rejects.toBeInstanceOf(ModelUnavailable);
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ output: draft() })));
+    expect((await dispatchFor(env, true, SENTINEL, "", CAT, [], [], ctx)).source).toBe("live");
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: "the model call timed out" }), { status: 502 }));
+    await expect(dispatchFor(env, true, SENTINEL, "", CAT, [], [], ctx)).rejects.toBeInstanceOf(ModelUnavailable);
+
+    const [url, init] = fetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://127.0.0.1:8790/runner/model");
+    expect(new Headers(init.headers).get("authorization")).toBe("Bearer tok");
+    expect(JSON.parse(String(init.body))).toMatchObject({ model: "claude-opus-5-5", effort: "low", schema: expect.any(Object) });
     expect(cache.match).not.toHaveBeenCalled();
     expect(cache.put).not.toHaveBeenCalled();
     expect(JSON.stringify(logged)).not.toContain(SENTINEL);

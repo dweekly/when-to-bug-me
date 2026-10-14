@@ -12,7 +12,9 @@ import { ownerDecisions, signIn, startOwner } from "./live";
 import { initVoice, voiceOff } from "./voice";
 import { $, announce, h } from "./dom";
 import { go } from "./router";
-import { type Queue, Q, S, STORE_KEY, fresh, load, save, setById, setF, setQ, setS } from "./state";
+import { type Queue, Q, S, STORE_KEY, byId, fresh, load, save, setById, setF, setQ, setS } from "./state";
+import { OWNER_POLL_MS } from "../shared/constants";
+import type { PuntKind } from "../shared/punt";
 import { plainOptions } from "../shared/titles";
 import { startTour } from "./tour";
 import { render } from "./views";
@@ -73,12 +75,54 @@ async function boot(): Promise<void> {
     window.scrollTo({ top: 0 });
   });
   render();
+  if (Q.owner) setInterval(() => void newAsks(), OWNER_POLL_MS);
   // A tour link (/app?tour=<id>, as the explainer's cards use) starts that tour.
   const tour = new URLSearchParams(location.search).get("tour");
   // The tours script Jordan's decisions; the owner's live queue has none.
   if (tour && !Q.owner) {
     history.replaceState(null, "", location.pathname + location.hash);
     startTour(tour);
+  }
+}
+
+/**
+ * New asks arriving while the owner's page is open (a launched session's, say: docs/STAGE-9.md) join
+ * the queue without a reload. Only additions: a decision already on the page, and any answer in
+ * progress on it, is never touched. The view redraws only when nothing is being typed.
+ */
+/** An arrival that couldn't be drawn because something was being typed: drawn on the next quiet tick. */
+let redrawPending = false;
+
+async function newAsks(): Promise<void> {
+  if (document.visibilityState !== "visible") return;
+  let q: Queue;
+  try {
+    q = inPlainTerms(await api<Queue>("/api/queue"));
+  } catch {
+    return; // offline or signed out: the next tick tries again
+  }
+  const arrived = q.decisions.filter((d) => !byId.has(d.id));
+  if (arrived.length) {
+    const ids = new Set(arrived.map((d) => d.id));
+    const cards = q.cards.filter((c) => ids.has(c.id));
+    // A new ask can name a project this page hasn't seen; the agenda and the card need its definition.
+    const known = new Set(Q.persona.projects.map((p) => p.id));
+    Q.persona = { ...Q.persona, projects: [...Q.persona.projects, ...q.persona.projects.filter((p) => !known.has(p.id))] };
+    Q.decisions = [...Q.decisions, ...arrived];
+    Q.cards = [...Q.cards, ...cards];
+    for (const c of cards) S.cards[c.id] = c;
+    for (const d of arrived) byId.set(d.id, d);
+    // Set aside on another device before this page saw it: it arrives set aside, with its reason.
+    for (const a of q.aside ?? []) {
+      if (ids.has(a.id)) S.punts[a.id] = { id: a.id, kind: a.kind as PuntKind, reason: a.reason, instruction: a.instruction, at: a.at };
+    }
+    redrawPending = true;
+    announce(arrived.length === 1 ? "A new ask came in." : `${arrived.length} new asks came in.`);
+  }
+  const typing = document.activeElement?.matches("input, textarea, select");
+  if (redrawPending && !typing && !location.hash.startsWith("#/dispatch")) {
+    redrawPending = false;
+    render();
   }
 }
 

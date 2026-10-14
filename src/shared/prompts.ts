@@ -5,6 +5,7 @@
 // part of every cache key and saved-run key.
 
 import { MAX_CONVERSE_QUESTIONS, MAX_TITLE_WORDS } from "./constants";
+import type { WalkInput } from "./walk";
 import { type ConvTurn, questionsAsked, transcriptForPrompt } from "./converse";
 import type { Decision, Fact, Persona, RouteKind, Rule } from "./types";
 import { type Catalog, DISPATCH_MODELS, TRIPWIRE_MULTIPLE } from "./dispatch";
@@ -17,6 +18,8 @@ export const CONVERSE_PROMPT_VERSION = "2026-10-13.2";
 export const TITLE_PROMPT_VERSION = "2026-10-13.2";
 /** The dispatch prompt (docs/STAGE-8.md), versioned on its own. */
 export const DISPATCH_PROMPT_VERSION = "2026-10-13.2";
+/** Walk me through it (docs/STAGE-9.md). */
+export const WALK_PROMPT_VERSION = "2026-10-14.1";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -514,4 +517,27 @@ ${answers ? `\n=== ${n}'s answers to your earlier questions ===\n${answers}\n` :
 - check_ins: up to 4 decisions the session must bring back to ${n} rather than make itself, from ${n}'s rules and the task, each at most 6 words.
 
 Write in plain words ${n} would use, as short as a sticky note: ${n} scans this on a phone. The session also gets ${n}'s own words, so nothing here has to carry every detail. Reply with the JSON object only.`;
+}
+
+/**
+ * Walk me through it (docs/STAGE-9.md): steps for one thing the person must do before a session starts.
+ * Only the canonical input goes in (no persona, ids or times), so a recorded walk matches every draft
+ * of the same demo task.
+ */
+export function walkPrompt(w: WalkInput): string {
+  return `A person is about to hand a task to an AI coding session. Before it starts, they have one thing to do themselves. Write the steps that walk them through it.
+
+=== The task ===
+${w.headline}: ${w.goal}
+Tools it uses: ${w.tools.join(", ") || "(none listed)"}
+
+=== What they must do first ===
+${w.what}${w.why ? ` (why: ${w.why})` : ""}
+
+=== Write the steps ===
+- At most 5 steps, each one short sentence (at most 20 words), in the order they do them.
+- Concrete: name the page, menu or command. When a step has a page to open, put its https link in url; otherwise url is "". Only links you are confident exist; a vendor's documented settings or docs page is better than a guessed deep link.
+- Connecting a tool to Claude Code means its MCP server: say how to add or sign in to it (for example \`claude mcp add\` or \`/mcp\` in a session), as that vendor documents.
+- The person keeps every secret. When a step makes a token, key or password, say where to store it (their password manager, the macOS keychain, the tool's own config) and never ask them to paste it into a chat, into Bug Me, or into the session.
+- End with how they can tell it worked.`;
 }

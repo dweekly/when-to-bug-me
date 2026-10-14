@@ -7293,6 +7293,108 @@
         "output": 706
       },
       "ms": 6750
+    },
+    "bfb8f4b7a984724abaae770c4e0108212f9e9a92608be882aea0661cc51e6827": {
+      "label": "walk usage-demo 0",
+      "output": {
+        "steps": [
+          {
+            "text": "Open Figma and find the file containing last week's three usage chart sketches.",
+            "url": "https://www.figma.com/files/recents-and-sharing"
+          },
+          {
+            "text": "Click Share, set link access to 'Anyone with the link can view', then Copy link.",
+            "url": ""
+          },
+          {
+            "text": "Optionally select the frame holding the three charts and use Copy link to selection for precision.",
+            "url": ""
+          },
+          {
+            "text": "Paste the link into the task description before starting the session.",
+            "url": ""
+          },
+          {
+            "text": "Open the link in a private browser window; seeing the three charts confirms it works.",
+            "url": ""
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-14T15:49:34.859Z",
+      "usage": {
+        "input": 721,
+        "output": 196
+      },
+      "ms": 4989
+    },
+    "1e86227e85f3a846a5e210c8cf9eb9d2e8daa7a137b8c68a54b169d00301d9c1": {
+      "label": "walk pagerduty 0",
+      "output": {
+        "steps": [
+          {
+            "text": "In PagerDuty, open My Profile > User Settings and create a User API Token; save it in your password manager.",
+            "url": "https://support.pagerduty.com/main/docs/api-access-keys"
+          },
+          {
+            "text": "In a terminal, set the token as an environment variable, e.g. export PAGERDUTY_USER_API_KEY from your keychain, not in chat.",
+            "url": ""
+          },
+          {
+            "text": "Add PagerDuty's MCP server with `claude mcp add`, following PagerDuty's MCP server setup docs.",
+            "url": "https://github.com/PagerDuty/pagerduty-mcp-server"
+          },
+          {
+            "text": "Start Claude Code and run `/mcp` to confirm the PagerDuty server shows as connected.",
+            "url": ""
+          },
+          {
+            "text": "Ask the session who is currently on call; a correct name from PagerDuty means it worked.",
+            "url": ""
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-14T15:49:39.104Z",
+      "usage": {
+        "input": 728,
+        "output": 293
+      },
+      "ms": 4243
+    },
+    "84aa06380d956008bf90bc48cbe6043d381fdb55e75d54d79a45e9a2e627ddea": {
+      "label": "walk pagerduty 1",
+      "output": {
+        "steps": [
+          {
+            "text": "In PagerDuty, open Services > Service Directory and select the on-call service for releases.",
+            "url": "https://support.pagerduty.com/main/docs/services-and-integrations"
+          },
+          {
+            "text": "On the Integrations tab, click Add an integration, choose Events API V2, and copy the Integration Key.",
+            "url": "https://support.pagerduty.com/main/docs/services-and-integrations"
+          },
+          {
+            "text": "Store the key in your password manager, then add it as a GitHub Actions secret named PAGERDUTY_INTEGRATION_KEY.",
+            "url": "https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions"
+          },
+          {
+            "text": "Tell the session only the secret's name, never the key itself.",
+            "url": ""
+          },
+          {
+            "text": "Confirm the secret appears under repo Settings > Secrets and variables > Actions; a test failed release should page on-call.",
+            "url": ""
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-14T15:49:43.885Z",
+      "usage": {
+        "input": 734,
+        "output": 316
+      },
+      "ms": 4781
     }
   }
 }

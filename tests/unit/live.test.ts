@@ -262,8 +262,9 @@ describe("only the owner gets in", () => {
 
 describe("nothing from the live queue reaches a recording or the cache", () => {
   it("the recorder and the evals import nothing from the live queue", () => {
-    // smoke-dispatch.ts drives the owner's API on purpose, against a throwaway local Worker only.
-    for (const f of readdirSync("scripts").filter((x) => x.endsWith(".ts") && x !== "smoke-dispatch.ts")) {
+    // smoke-dispatch.ts and smoke-runner.ts drive the owner's API on purpose, against a throwaway local
+    // Worker (or runner) only.
+    for (const f of readdirSync("scripts").filter((x) => x.endsWith(".ts") && x !== "smoke-dispatch.ts" && x !== "smoke-runner.ts")) {
       const src = readFileSync(`scripts/${f}`, "utf8");
       expect(src, f).not.toMatch(/worker\/(live|owner|liveAuth)|\/api\/me\//);
     }
