@@ -483,7 +483,7 @@ function briefCard(b: Shown): HTMLElement {
               else ticks.delete(i);
               paint();
             });
-            return h("li", {}, h("label", { title: p.why }, box, h("span", {}, p.what)));
+            return h("li", {}, h("div", { class: "you-row" }, h("label", { title: p.why }, box, h("span", {}, p.what)), howButton(b, i)), walkPanel(b, i));
           }),
         ),
       )
@@ -515,6 +515,88 @@ function briefCard(b: Shown): HTMLElement {
     details(b),
     report(b),
   );
+}
+
+/** "Walk me through it" (docs/STAGE-9.md): steps per item, fetched once and kept for the page's life. */
+type Walk = { steps: { text: string; url?: string }[]; source: Source } | { error: string } | "loading";
+const walks = new Map<string, Walk>();
+const openWalks = new Set<string>();
+const walkKey = (b: Shown, i: number) => `${b.id}:${i}:${b.prerequisites[i]?.what ?? ""}`;
+
+function howButton(b: Shown, i: number): HTMLElement {
+  const k = walkKey(b, i);
+  const open = openWalks.has(k);
+  return h(
+    "button",
+    {
+      type: "button",
+      class: "ghost small how",
+      "aria-expanded": open ? "true" : "false",
+      "aria-controls": `walk-${i}`,
+      onclick: () => {
+        if (open) openWalks.delete(k);
+        else {
+          openWalks.add(k);
+          const w = walks.get(k);
+          if (!w || (w !== "loading" && "error" in w)) void fetchWalk(b, i);
+        }
+        paint();
+      },
+    },
+    "How?",
+  );
+}
+
+async function fetchWalk(b: Shown, i: number): Promise<void> {
+  const k = walkKey(b, i);
+  walks.set(k, "loading");
+  try {
+    const p = b.prerequisites[i];
+    const r = Q.owner
+      ? await api<{ steps: { text: string; url?: string }[]; source: Source }>(`/api/me/briefs/${b.id}/walk`, { item: i })
+      : await api<{ steps: { text: string; url?: string }[]; source: Source }>("/api/walk", { what: p.what, why: p.why, headline: b.headline, goal: b.goal, tools: b.tools_needed.map(nameOf).filter((n) => n !== "bugme") });
+    walks.set(k, r);
+  } catch (e) {
+    walks.set(k, { error: (e as Error).message });
+  }
+  paint();
+}
+
+function walkPanel(b: Shown, i: number): HTMLElement | null {
+  const k = walkKey(b, i);
+  if (!openWalks.has(k)) return null;
+  const w = walks.get(k);
+  if (!w || w === "loading") return h("p", { class: "walk quiet small", id: `walk-${i}` }, "Working out the steps…");
+  if ("error" in w) return h("p", { class: "walk quiet small", id: `walk-${i}` }, `Couldn't get the steps: ${w.error}`);
+  return h(
+    "div",
+    { class: "walk", id: `walk-${i}` },
+    h(
+      "ol",
+      {},
+      ...w.steps.map((st) =>
+        h("li", {}, st.text, st.url ? h("a", { href: st.url, target: "_blank", rel: "noopener noreferrer", class: "walk-link" }, `${new URL(st.url).hostname} ↗`) : null),
+      ),
+    ),
+    h(
+      "p",
+      { class: "walk-foot" },
+      runner ? h("button", { type: "button", class: "ghost small", id: `walk-with-${i}`, onclick: () => void doItWithMe(b, i) }, "Do it with me") : null,
+      h("span", { class: "quiet small" }, SOURCE_LABEL[w.source]),
+    ),
+  );
+}
+
+/** Runner only: a Claude in Chrome session on the Mac that points the way and stops before any secret. */
+async function doItWithMe(b: Shown, i: number): Promise<void> {
+  try {
+    await api("/runner/walk", { brief_id: b.id, item: i });
+    actionMsg = "Opened a Terminal on the Mac: say you're ready there.";
+  } catch (e) {
+    actionMsg = (e as Error).message;
+  }
+  paint();
+  announce(actionMsg);
 }
 
 const tickList = (b: Shown) => [...(ticked.get(b.id) ?? [])].sort((x, y) => x - y);

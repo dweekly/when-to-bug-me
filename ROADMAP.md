@@ -60,12 +60,23 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 
 ## From stage 8 (Dispatch)
 
-- **A real local route.** Sensitive work that isn't urgent is marked "run locally", but nothing runs locally yet: a local model behind Claude Code (Ollama is installed on David's laptop, with no models pulled), with the catch that its MCP tools must stay local too.
+- **A fully local model.** The runner keeps the work and Bug Me's record on the Mac, but Claude still sees what it works on. A local model behind Claude Code (Ollama is installed on David's laptop, with no models pulled), with the catch that its MCP tools must stay local too.
 - **A hard budget for dispatched work.** `--max-budget-usd` only works headless (`-p`); interactive sessions get a time tripwire and an advisory dollar figure. Read the session's spend from its transcript, or run bounded work headless.
 - **Calibrate estimates from reports.** Reports are shown, not learned from: "minutes since copied" isn't work time. With a start signal from the session, feed estimate vs. actual into the next draft.
-- **A launcher.** Make the worktree and start the session, instead of copy and paste; hand off from the phone to the laptop beyond the clipboard.
 - **Check statuses at dispatch time.** The catalog's statuses are as of the last sync; a server can lose its login after.
 - **Dispatch on the explainer page.** The front page tells the Respond story only.
+
+## From stage 9 (the runner)
+
+- **Push notifications.** A launched session's ask reaches the phone by polling while the page is open; nothing taps you on the shoulder.
+- **Answer Claude's own prompts from Bug Me.** A session blocked on a permission prompt says "needs you in Claude"; you attach to answer it.
+- **Session and worktree lifecycle.** Cancel, archive, clean up, and merge what a launched session made; today `claude rm <id>` by hand.
+- **Narrower credentials.** Launched sessions get the owner key in their MCP config (0600, on the Mac); a per-session key that can only ask and report on its brief, device revocation, and Keychain storage for the runner's secrets.
+- **Other machines, and running unattended.** One runner per machine with a picker; start at login (launchd); recover across sleep and reboot.
+- **Check tools continuously.** Launch checks the tools in the chosen repo at launch time; a server can lose its login mid-session.
+- **The hosted page handing work to the runner.** Today the runner is its own page; the public site and `/me` don't launch.
+- **wrangler dev as the runner's Worker.** It's a development server (with an inspector on loopback); a production build of the Worker under workerd would be leaner.
+- **"Do it with me" boundary is where the walk stops.** Claude in Chrome can read the page, so the session is told to stop before any page that shows or takes a secret; it can't be prevented from looking.
 
 ## Tech debt to schedule
 

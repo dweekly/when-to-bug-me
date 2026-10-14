@@ -111,6 +111,17 @@ export interface Brief extends BriefDraft {
   ticked?: number[];
   /** The runner's launch of this brief (docs/STAGE-9.md): one session per brief. Owner only. */
   launch?: Launch;
+  /** "Walk me through it" steps, per "You first" item, kept with the item text they were written for. Owner only. */
+  walks?: StoredWalk[];
+}
+
+export interface StoredWalk {
+  item: number;
+  /** The item's text when the steps were written: a changed item gets new steps. */
+  what: string;
+  steps: { text: string; url?: string }[];
+  source: "live" | "cached" | "recorded" | "code";
+  version: string;
 }
 
 export const LAUNCH_STATES = ["launching", "running", "failed"] as const;

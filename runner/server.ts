@@ -11,7 +11,7 @@ import { BRIEF_ID_RE } from "../src/worker/live";
 import { BUGME_PREFIX, type Brief, type Catalog, type Launch, REPO_NAME_RE, allTicked } from "../src/shared/dispatch";
 import type { RunnerConfig } from "./config";
 import { decide } from "./guard";
-import { LaunchError, backgroundId, launchArgs, listRepos, resolveRepo, run, sessionName, sessions, trustedDirs, writeMcpConfig } from "./launch";
+import { LaunchError, backgroundId, launchArgs, listRepos, resolveRepo, run, sessionName, sessions, trustedDirs, walkPrompt, writeMcpConfig, writeWalk } from "./launch";
 import { ModelCallError, ModelRunner, parseModelRequest } from "./model";
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -52,7 +52,8 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
   writeMcpConfig(mcpConfig, cfg.repoRoot, cfg.port, cfg.ownerKey);
   const models = new ModelRunner(cfg.claudeBin, scratch);
 
-  // Its own process group, so stopping the runner stops wrangler and the workerd under it.
+  // Started directly (not through npx), so a SIGTERM reaches wrangler, which stops its workerd; and in
+  // the runner's own process group, so whatever stops the runner's group stops it too.
   const worker: ChildProcess = spawn(
     join(cfg.repoRoot, "node_modules", ".bin", "wrangler"),
     [
@@ -67,11 +68,11 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
       "--show-interactive-dev-session=false",
       ...(process.env.BUGME_RUNNER_FAKE_MODEL ? ["--var", "FAKE_MODEL:1"] : []),
     ],
-    { cwd: cfg.repoRoot, detached: true, stdio: ["ignore", process.env.BUGME_RUNNER_LOG ? "inherit" : "ignore", process.env.BUGME_RUNNER_LOG ? "inherit" : "ignore"] },
+    { cwd: cfg.repoRoot, stdio: ["ignore", process.env.BUGME_RUNNER_LOG ? "inherit" : "ignore", process.env.BUGME_RUNNER_LOG ? "inherit" : "ignore"] },
   );
   const stopWorker = () => {
     try {
-      if (worker.pid) process.kill(-worker.pid, "SIGTERM");
+      worker.kill("SIGTERM");
     } catch {
       // already gone
     }
@@ -235,6 +236,26 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
           }
           const r = await launch(String(b.brief_id ?? ""), String(b.repo ?? ""));
           return send(res, r.status, r.body);
+        }
+        if (url.pathname === "/runner/walk" && req.method === "POST") {
+          let body: Record<string, unknown>;
+          try {
+            body = JSON.parse((await readBody(req)).toString("utf8"));
+          } catch {
+            return send(res, 400, { error: "expected JSON" });
+          }
+          const id = String(body.brief_id ?? "");
+          const item = Number(body.item);
+          if (!BRIEF_ID_RE.test(id) || !Number.isInteger(item)) return send(res, 400, { error: "unknown brief or item" });
+          const b = (await briefsAndCatalog()).briefs.find((x) => x.id === id);
+          if (!b?.prerequisites[item]) return send(res, 404, { error: "unknown brief or item" });
+          const script = writeWalk(join(cfg.home, "walk", `${id}-${item}`), cfg.claudeBin, walkPrompt(b, item));
+          try {
+            await run(cfg.openBin, ["-a", "Terminal", script], cfg.home);
+          } catch {
+            return send(res, 502, { error: "Couldn't open Terminal on the Mac." });
+          }
+          return send(res, 200, { ok: true });
         }
         if (url.pathname === "/runner/catalog" && req.method === "POST") {
           await refreshCatalog();

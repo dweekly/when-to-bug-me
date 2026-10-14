@@ -40,6 +40,8 @@ import {
   conversePrompt,
   converseSchema,
   dispatchPrompt,
+  walkPrompt,
+  WALK_PROMPT_VERSION,
   factPrompt,
   parsePrompt,
   parseSchema,
@@ -54,7 +56,8 @@ import { MAX_REASON_CHARS } from "../src/shared/constants";
 import { enforceSettleInvariant, parseRouteOutput } from "../src/shared/route";
 import type { Decision, Fact, Persona, Rule } from "../src/shared/types";
 import { CONVERSATIONS, EXAMPLES, scriptTurn } from "../src/shared/examples";
-import { dispatchSchema, parseBriefDraft, parseCatalog, runWhere } from "../src/shared/dispatch";
+import { dispatchSchema, finishBrief, parseBriefDraft, parseCatalog, runWhere } from "../src/shared/dispatch";
+import { WALK_SCHEMA, parseWalk, walkInput } from "../src/shared/walk";
 import { DISPATCH_EXAMPLES } from "../src/shared/dispatchExamples";
 
 /** Hard ceiling on what one recording run may spend, in dollars. About 60 low-effort calls fit well under it. */
@@ -235,6 +238,13 @@ async function main(): Promise<void> {
     if (!raw) continue;
     const b = parseBriefDraft(raw, catalog, rules, facts);
     console.log(`  dispatch ${x.id}: ${b.stage} ~${b.estimate_minutes}min $${b.budget_usd} ${b.model}/${b.effort}/${b.permission_mode} ${b.sensitivity}/${b.urgency} → ${runWhere(b.sensitivity, b.urgency).where}; off ${b.tools_off.join(",")}; needs ${b.tools_needed.join(",")}; prereqs ${b.prerequisites.map((p) => p.what).join(" | ")}; questions ${b.questions.length}`);
+    // Walk me through it (docs/STAGE-9.md): every "You first" item the page shows, code's included.
+    const shown = finishBrief(b, catalog, { id: "b-recordxxxx", task, now: new Date(), owner: false });
+    for (let i = 0; i < shown.prerequisites.length; i++) {
+      const w = walkInput(shown, i, catalog);
+      const steps = await ask(`walk ${x.id} ${i}`, walkPrompt(w), WALK_SCHEMA, parseWalk, WALK_PROMPT_VERSION);
+      if (steps) console.log(`  walk ${x.id} "${w.what}": ${parseWalk(steps).map((st) => st.text).join(" / ")}`);
+    }
   }
   for (const s of CONVERSATIONS) await playConversation(s);
   for (const ex of EXAMPLES) {

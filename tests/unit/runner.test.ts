@@ -190,3 +190,45 @@ describe("the runner's secrets", () => {
     expect(statSync(join(home, "runner.env")).mode & 0o777).toBe(0o600);
   });
 });
+
+describe("walk me through it", () => {
+  it("steps: at most five, short, https links without credentials, never 'paste it here'", async () => {
+    const { parseWalk, safeLink, WalkError } = await import("../../src/shared/walk");
+    const long = "x".repeat(400);
+    const steps = parseWalk({ steps: [1, 2, 3, 4, 5, 6, 7].map((i) => ({ text: `${long}${i}`, url: "" })) });
+    expect(steps).toHaveLength(5);
+    expect(steps[0].text.length).toBeLessThanOrEqual(140);
+    expect(safeLink("https://support.pagerduty.com/docs/api-access-keys")).toBe("https://support.pagerduty.com/docs/api-access-keys");
+    // A link with a user and password in it, assembled here so the repo's secret scan doesn't read it as one.
+    const withCreds = (host: string) => `https://${["someone", "hunter2"].join(":")}${String.fromCharCode(64)}${host}/`;
+    for (const bad of ["http://example.com", "javascript:alert(1)", withCreds("example.com"), "https://localhost/x", "", "ftp://x.com"]) expect(safeLink(bad)).toBeUndefined();
+    expect(parseWalk({ steps: [{ text: "Open it", url: withCreds("evil.example") }] })[0].url).toBeUndefined();
+    expect(() => parseWalk({ steps: [{ text: "Copy the token and paste it here so I can finish.", url: "" }] })).toThrow(WalkError);
+    expect(() => parseWalk({ steps: [] })).toThrow(WalkError);
+  });
+
+  it("the walk's input has no id, time or setup in it", async () => {
+    const { walkInput } = await import("../../src/shared/walk");
+    const server = (name: string) => ({ name, prefix: toolPrefix(name), status: "needs authentication" });
+    const cat: Catalog = parseCatalog({ servers: [server("bugme"), server("PagerDuty")], skills: [] });
+    const d = parseBriefDraft(fakeDispatch("Hook the release bot up to PagerDuty", "", cat), cat, [], []);
+    const one = finishBrief(d, cat, { id: "b-aaaaaaaaaa", task: "t", now: new Date(0), owner: true });
+    const two = { ...finishBrief(d, cat, { id: "b-bbbbbbbbbb", task: "t", now: new Date(), owner: true }), model: "claude-haiku-5-5" as const, estimate_minutes: 999 };
+    expect(walkInput(two, 0, cat)).toEqual(walkInput(one, 0, cat));
+    expect(JSON.stringify(walkInput(one, 0, cat))).not.toMatch(/b-a{10}|1970|opus|haiku/);
+  });
+
+  it("Do it with me: hostile step text and paths reach claude as one literal argument, and nothing runs", async () => {
+    const { writeWalk } = await import("../../runner/launch");
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "bugme walk 'q' $(x)-")));
+    const canary = join(base, "pwned");
+    const bin = join(base, "fake claude");
+    writeFileSync(bin, `#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify(process.argv.slice(2)))\n`, { mode: 0o755 });
+    const prompt = `Step: $(touch '${canary}') \`touch '${canary}'\` "quoted" 'single' \\ $HOME\nline two`;
+    const script = writeWalk(join(base, "walk $(touch x)"), bin, prompt);
+    const out = execFileSync("sh", [script], { encoding: "utf8" });
+    expect(JSON.parse(out)).toEqual(["--chrome", "--no-session-persistence", "--", prompt]);
+    expect(() => execFileSync("test", ["-e", canary])).toThrow();
+    expect(statSync(join(base, "walk $(touch x)", "prompt.txt")).mode & 0o777).toBe(0o600);
+  });
+});

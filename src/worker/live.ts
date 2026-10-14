@@ -2,7 +2,7 @@
 // it in Node: turning an agent's ask into a Decision, the owner's persona and starting rules, and the
 // ticket lifecycle over a small key-value store (the owner's Durable Object in production, a Map in tests).
 
-import type { Brief, BriefEdits, Catalog, Launch, Report } from "../shared/dispatch";
+import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import type { Card, Decision, Fact, Persona, Reversible, Rule } from "../shared/types";
 
@@ -359,6 +359,15 @@ export class LiveQueue {
     const next: Brief = { ...b, launch: l.state === "launching" ? l : { ...l, at: cur!.at } };
     await this.kv.put(`b:${id}`, next);
     return { brief: next, ok: true };
+  }
+
+  /** "Walk me through it" steps for one item, replacing any earlier ones for it. */
+  async walk(id: string, w: StoredWalk): Promise<Brief | undefined> {
+    const b = await this.brief(id);
+    if (!b) return undefined;
+    const next: Brief = { ...b, walks: [...(b.walks ?? []).filter((x) => x.item !== w.item), w] };
+    await this.kv.put(`b:${id}`, next);
+    return next;
   }
 
   /** The session's report. A later report replaces an earlier one (a stop at the tripwire, then done). */

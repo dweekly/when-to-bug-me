@@ -8,6 +8,8 @@ import { randomBytes } from "node:crypto";
 const PORT = 8799;
 /** A second server with no fake model and no API key: the recorded Claude run, as a keyless deployment serves it. */
 const RECORDED_PORT = 8798;
+/** The runner (docs/STAGE-9.md) on stubs: its Worker takes the next port and its inspector the one after. */
+const RUNNER_PORT = 8793;
 /** A throwaway sealing key per test run, so a fresh clone needs no .dev.vars to run the suite. */
 const SEAL_KEY = randomBytes(32).toString("base64");
 /**
@@ -46,13 +48,23 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
     },
+    {
+      // The runner with the stand-in model, a stub claude and a stub open (tests/fixtures/start-runner.mjs).
+      command: `npx esbuild runner/main.ts --bundle --platform=node --format=esm --packages=external --external:../mcp/bugme.mjs --outfile=dist/runner.mjs --log-level=warning && BUGME_RUNNER_PORT=${RUNNER_PORT} node tests/fixtures/start-runner.mjs`,
+      url: `http://localhost:${RUNNER_PORT}/me`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
   ],
   projects: [
-    { name: "desktop", testIgnore: /tours.*\.spec\.ts/, use: { viewport: { width: 1440, height: 1000 } } },
-    { name: "phone", testIgnore: /tours.*\.spec\.ts/, use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    { name: "desktop", testIgnore: /(tours.*|runner)\.spec\.ts/, use: { viewport: { width: 1440, height: 1000 } } },
+    { name: "phone", testIgnore: /(tours.*|runner)\.spec\.ts/, use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
     // Every tour, start to finish, on the recorded run with no key: what a reviewer gets from a keyless deploy.
     { name: "recorded-desktop", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 1440, height: 1000 } } },
     { name: "recorded-phone", testMatch: /tours.*\.spec\.ts/, use: { baseURL: `http://localhost:${RECORDED_PORT}`, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+    // The runner, owner-only (its specs only). One project: its tests share the runner's state and stubs,
+    // so they run in order, and the phone layout is checked inside them.
+    { name: "runner", testMatch: /runner\.spec\.ts/, use: { baseURL: `http://localhost:${RUNNER_PORT}`, viewport: { width: 1440, height: 1000 } } },
     // The narrowest phone the layout promises (no horizontal scroll at 320px): the layout checks only.
     { name: "narrow", testMatch: /(stage(2|6[ef]?|8)|settled)\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
   ],
