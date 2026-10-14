@@ -7395,6 +7395,251 @@
         "output": 316
       },
       "ms": 4781
+    },
+    "abda4febe05ffc8f0b7bed3080726796d0037368ac544804335c363a27e0a59e": {
+      "label": "onboarding note",
+      "output": {
+        "lines": [
+          {
+            "id": "n1",
+            "text": "For anything visual or shippable, send a clickable preview link, never a pasted diff or two-sentence description.",
+            "kind": "preference",
+            "cites": [
+              "h08",
+              "h23",
+              "h29",
+              "h21"
+            ]
+          },
+          {
+            "id": "n2",
+            "text": "Frame options by what customers experience, not internal names or algorithms; Jordan won't decode jargon like shim names.",
+            "kind": "preference",
+            "cites": [
+              "h06",
+              "h27",
+              "h19"
+            ]
+          },
+          {
+            "id": "n3",
+            "text": "In billing, always pick the slower, safer option; never trade review, timing, or accuracy for speed.",
+            "kind": "rule-like",
+            "cites": [
+              "h05",
+              "h09",
+              "h25",
+              "h14"
+            ]
+          },
+          {
+            "id": "n4",
+            "text": "No new runtime dependencies in the SDKs; hand-write it instead, since every customer installs them.",
+            "kind": "rule-like",
+            "cites": [
+              "h16",
+              "h04"
+            ]
+          },
+          {
+            "id": "n5",
+            "text": "Never break fields or behaviour integrators rely on today; consistency or tidiness alone is not a reason.",
+            "kind": "rule-like",
+            "cites": [
+              "h11",
+              "h06",
+              "h19"
+            ]
+          },
+          {
+            "id": "n6",
+            "text": "When recommending a risky change, include the strongest case for it and the worst-case downside up front.",
+            "kind": "preference",
+            "cites": [
+              "h11",
+              "h14",
+              "h19",
+              "h22"
+            ]
+          },
+          {
+            "id": "n7",
+            "text": "Prefer a one-page written summary Jordan can comment on over booking a meeting to align.",
+            "kind": "preference",
+            "cites": [
+              "h18"
+            ]
+          },
+          {
+            "id": "n8",
+            "text": "For access requests, propose the narrowest grant that works and note who else has asked.",
+            "kind": "preference",
+            "cites": [
+              "h22"
+            ]
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-14T19:31:48.374Z",
+      "usage": {
+        "input": 4454,
+        "output": 532
+      },
+      "ms": 8097
+    },
+    "b07887c7830ebec211c0e8eb7a59bc45084cee7c5d859e6e68a01d9fb3537ea1": {
+      "label": "onboarding interview",
+      "output": {
+        "questions": [
+          {
+            "id": "q1",
+            "text": "You let date-fns into the SDK in nine seconds, then on zod said no new runtime dependencies and you regret date-fns. Is that a hard rule now, and should agents propose ripping date-fns out?",
+            "about": [
+              "n4"
+            ]
+          },
+          {
+            "id": "q2",
+            "text": "Billing safety came up four times, and you asked for worst cases on the annual plan and backfill. But you approved exponential retries quickly. Is slow-and-safe only for billing, or anything touching customer money and data?",
+            "about": [
+              "n3",
+              "n6"
+            ]
+          },
+          {
+            "id": "q3",
+            "text": "The meeting and access lines each rest on one decision. You said access is yours, always. Should agents never grant access themselves, and is skipping meetings a firm rule or just that once?",
+            "about": [
+              "n7",
+              "n8"
+            ]
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-14T19:31:54.500Z",
+      "usage": {
+        "input": 3090,
+        "output": 265
+      },
+      "ms": 6126
+    },
+    "1eef6186a9bfa122ce57ee555d6e06b67eade0234e6f36fc7fee5b84a8b2aec7": {
+      "label": "onboarding revision",
+      "output": {
+        "lines": [
+          {
+            "id": "n1",
+            "text": "For anything visual or shippable, send a clickable preview link, never a pasted diff or two-sentence description.",
+            "kind": "preference",
+            "cites": [
+              "h08",
+              "h23",
+              "h29",
+              "h21"
+            ],
+            "change": "kept",
+            "because": "",
+            "why": ""
+          },
+          {
+            "id": "n2",
+            "text": "Frame options by what customers experience, not internal names or algorithms; Jordan won't decode jargon like shim names.",
+            "kind": "preference",
+            "cites": [
+              "h06",
+              "h27",
+              "h19"
+            ],
+            "change": "kept",
+            "because": "",
+            "why": ""
+          },
+          {
+            "id": "n3",
+            "text": "Anything touching customer money or customer data: pick the slower, safer option and show the worst case; plumbing like retries is exempt.",
+            "kind": "rule-like",
+            "cites": [
+              "h05",
+              "h09",
+              "h25",
+              "h14"
+            ],
+            "change": "changed",
+            "because": "q2",
+            "why": "if a wrong call means a customer sees a wrong number or loses something, go slow"
+          },
+          {
+            "id": "n4",
+            "text": "Hard rule: no new runtime dependencies in the SDKs; hand-write it instead. After v2 ships, replace date-fns with ten lines of our own.",
+            "kind": "rule-like",
+            "cites": [
+              "h16",
+              "h04"
+            ],
+            "change": "changed",
+            "because": "q1",
+            "why": "date-fns was a mistake, but don't rip it out mid-launch"
+          },
+          {
+            "id": "n5",
+            "text": "Never break fields or behaviour integrators rely on today; consistency or tidiness alone is not a reason.",
+            "kind": "rule-like",
+            "cites": [
+              "h11",
+              "h06",
+              "h19"
+            ],
+            "change": "kept",
+            "because": "",
+            "why": ""
+          },
+          {
+            "id": "n6",
+            "text": "When recommending a risky change, include the strongest case for it and the worst-case downside up front.",
+            "kind": "preference",
+            "cites": [
+              "h11",
+              "h14",
+              "h19",
+              "h22"
+            ],
+            "change": "kept",
+            "because": "",
+            "why": ""
+          },
+          {
+            "id": "n7",
+            "text": "Start with a short written summary Jordan can comment on; book a meeting only if the comments don't settle a real debate.",
+            "kind": "preference",
+            "cites": [
+              "h18"
+            ],
+            "change": "changed",
+            "because": "q3",
+            "why": "meetings aren't a hard rule; fine for a real debate"
+          },
+          {
+            "id": "n8",
+            "text": "Never grant access on your own, ever; propose the narrowest grant that works to Jordan and note who else has asked.",
+            "kind": "rule-like",
+            "cites": [
+              "h22"
+            ],
+            "change": "changed",
+            "because": "q3",
+            "why": "access is Jordan's, always"
+          }
+        ]
+      },
+      "model": "claude-opus-5-5",
+      "recorded_at": "2026-10-14T19:32:16.579Z",
+      "usage": {
+        "input": 1801,
+        "output": 781
+      },
+      "ms": 8343
     }
   }
 }

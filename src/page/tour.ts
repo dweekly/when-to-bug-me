@@ -308,6 +308,7 @@ function parseHash(hash: string): Parameters<typeof go>[0] {
   if (p[0] === "d" && p[1]) return { view: "focus", id: p[1] };
   if (p[0] === "settled" || p[0] === "rules" || p[0] === "record") return { view: p[0] };
   if (p[0] === "dispatch") return { view: "dispatch" };
+  if (p[0] === "welcome") return { view: "welcome" };
   return { view: "home" };
 }
 

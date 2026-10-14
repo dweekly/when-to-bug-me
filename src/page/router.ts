@@ -9,7 +9,8 @@ export type Route =
   | { view: "settled" }
   | { view: "rules" }
   | { view: "record" }
-  | { view: "dispatch"; id?: string };
+  | { view: "dispatch"; id?: string }
+  | { view: "welcome" };
 
 export function parseRoute(hash: string, knownIds: Set<string>): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
@@ -18,6 +19,7 @@ export function parseRoute(hash: string, knownIds: Set<string>): Route {
   if (parts[0] === "settled") return { view: "settled" };
   if (parts[0] === "rules") return { view: "rules" };
   if (parts[0] === "record") return { view: "record" };
+  if (parts[0] === "welcome") return { view: "welcome" };
   if (parts[0] === "dispatch") return parts[1] ? { view: "dispatch", id: parts[1] } : { view: "dispatch" };
   return { view: "home" };
 }
