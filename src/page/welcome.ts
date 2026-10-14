@@ -1,22 +1,45 @@
 // Onboarding (docs/STAGE-10.md): how Bug Me gets to know a person before it routes anything. It reads
 // their recent decisions, drafts a "how to work with me" note whose every line cites the decisions behind
 // it, interviews them about what it saw, and revises the note. On the public site this is Jordan, on
-// recorded Claude runs; the morning keeps running on Jordan's hand-written note.
+// recorded Claude runs; the morning keeps running on Jordan's hand-written note. On the runner's /me it
+// is the owner's own history (10b): imported with `npm run onboard`, and kept as facts and their note.
 
 import historyJson from "../../fixtures/history.json";
-import { type HistoryItem, type InterviewQuestion, MAX_ANSWER_CHARS, type NoteLine, type RevisedLine, parseHistory } from "../shared/onboarding";
+import { type HistoryItem, type InterviewQuestion, MAX_ANSWER_CHARS, type NoteLine, type OnboardingRun, type RevisedLine, parseHistory } from "../shared/onboarding";
 import { ONBOARDING_ANSWERS } from "../shared/onboardingScript";
 import type { Source } from "../shared/types";
 import { api } from "./api";
 import { SOURCE_LABEL } from "./derive";
 import { $, announce, h } from "./dom";
 import { hrefFor } from "./router";
-import { Q } from "./state";
+import { Q, S, save } from "./state";
+import { reroute } from "./actions";
+import { waitingIds } from "./derive";
 import { tourAfterRender } from "./tour";
 import { drainVoice, setVoiceTarget } from "./voice";
 
-const history: HistoryItem[] = parseHistory(historyJson.decisions);
-const byId = new Map(history.map((x) => [x.id, x]));
+const jordan: HistoryItem[] = parseHistory(historyJson.decisions);
+/** The history on screen: Jordan's, or on /me the owner's run. */
+let history: HistoryItem[] = jordan;
+let byId = new Map(history.map((x) => [x.id, x]));
+/** On /me: the owner's run, once loaded ("none" when there isn't one yet). */
+let run: OnboardingRun | "none" | null = null;
+let kept = 0;
+const who = () => (Q.owner ? "you" : Q.persona.first_name);
+/** The run on the page: every owner step names it, so a newer import can't be acted on unseen. */
+const runId = () => (run && run !== "none" ? run.id : "");
+const kept_ = () => Boolean(run && run !== "none" && run.kept_at);
+
+/** The version of the run this page shows: a step from an older one is refused (another tab moved it on). */
+const runRev = () => (run && run !== "none" ? (run.rev ?? 0) : 0);
+
+function useRun(r: OnboardingRun | null): void {
+  run = r ?? "none";
+  if (!r) return;
+  history = r.history;
+  byId = new Map(history.map((x) => [x.id, x]));
+  Object.assign(w, { note: r.note, noteSource: r.sources?.note ?? null, questions: r.questions ?? null, questionsSource: r.questions ? (r.sources?.questions ?? null) : null, answers: { ...(r.answers ?? {}) }, submitted: { ...(r.answers ?? {}) }, revised: r.revised ?? null, revisedSource: r.revised ? (r.sources?.revised ?? null) : null });
+}
 
 /** Where the person is in onboarding, kept outside the DOM so a redraw never loses it. */
 const w = {
@@ -29,16 +52,16 @@ const w = {
   revisedSource: null as Source | null,
   /** The answers as sent with the revision: what each change's "why" quotes, whatever the boxes say now. */
   submitted: {} as Record<string, string>,
-  busy: "" as "" | "draft" | "interview" | "revise",
+  busy: "" as "" | "draft" | "interview" | "revise" | "keep",
   error: "",
   /** Note lines whose cited decisions are showing. */
   open: new Set<string>(),
 };
 
 const KIND_ICON: Record<NoteLine["kind"], [string, string]> = {
-  preference: ["◇", "How Jordan likes to be asked"],
-  "rule-like": ["◆", "A call Jordan makes the same way every time"],
-  contradiction: ["⇄", "Jordan's decisions point two ways"],
+  preference: ["◇", "How they like to be asked"],
+  "rule-like": ["◆", "A call made the same way every time"],
+  contradiction: ["⇄", "Decisions that point two ways"],
 };
 const CHANGE_ICON: Record<RevisedLine["change"], [string, string]> = {
   kept: ["·", "kept"],
@@ -85,7 +108,7 @@ function paint(): void {
   tourAfterRender();
 }
 
-async function step(kind: "draft" | "interview" | "revise"): Promise<void> {
+async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<void> {
   // One step at a time: a second press while one is out would race it (and, live, pay twice).
   if (w.busy) return;
   if (kind === "revise" && !canRevise().ok) return;
@@ -95,7 +118,34 @@ async function step(kind: "draft" | "interview" | "revise"): Promise<void> {
   w.open.clear();
   paint();
   try {
-    if (kind === "draft") {
+    if (Q.owner) {
+      if (kind === "keep") {
+        const r = await api<{ added: number; run: OnboardingRun }>("/api/me/onboarding/keep", { run: runId(), rev: runRev() });
+        kept = r.added;
+        useRun(r.run);
+        // The kept lines are facts and the note now: take the server's copy of both, and check the waiting
+        // decisions again under them, as for any change of guidance.
+        const q = await api<{ facts: typeof S.facts; persona: typeof Q.persona }>("/api/queue");
+        S.facts = q.facts;
+        Q.persona = q.persona;
+        S.version++;
+        save();
+        void reroute(waitingIds(), "because you kept your onboarding note");
+      } else if (kind !== "draft") {
+        if (kind === "revise") await drainVoice();
+        const sent = { ...w.answers };
+        const r = await api<{ run: OnboardingRun }>(`/api/me/onboarding/${kind}`, kind === "revise" ? { run: runId(), rev: runRev(), answers: sent } : { run: runId(), rev: runRev() });
+        if (kind === "revise" && JSON.stringify(w.answers) !== JSON.stringify(sent)) {
+          // The server saved a revision of the answers sent; take its version (so Revise again isn't stale)
+          // but keep the answers as edited, and show no revision until they're the ones it used.
+          const edited = { ...w.answers };
+          useRun(r.run);
+          Object.assign(w, { answers: edited, revised: null, revisedSource: null });
+          throw new Error("you changed an answer while Bug Me revised; press Revise again");
+        }
+        useRun(r.run);
+      }
+    } else if (kind === "draft") {
       const r = await api<{ note: NoteLine[]; source: Source }>("/api/onboarding/draft", {});
       if (g !== generation) return;
       Object.assign(w, { note: r.note, noteSource: r.source, questions: null, revised: null, answers: {} });
@@ -112,7 +162,7 @@ async function step(kind: "draft" | "interview" | "revise"): Promise<void> {
       if (JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me revised; press Revise again");
       Object.assign(w, { revised: r.lines, revisedSource: r.source, submitted: sent });
     }
-    announce(kind === "draft" ? "Note drafted." : kind === "interview" ? "Three questions." : "Note revised.");
+    announce(kind === "draft" ? "Note drafted." : kind === "interview" ? "Questions ready." : kind === "keep" ? "Kept." : "Note revised.");
   } catch (e) {
     if (g !== generation) return;
     w.error = (e as Error).message;
@@ -131,8 +181,9 @@ function stats(): HTMLElement {
   return h(
     "p",
     { class: "brief-meta welcome-stats" },
-    chip("▤", `${history.length} decisions · ${span} days`, "Jordan's recent decisions (synthetic)"),
-    chip("⚡", `${pct(quick)} answered in ≤5 s`, "Answered almost without reading"),
+    chip("▤", `${history.length} decisions · ${span} days`, Q.owner ? "Your recent decisions, from allowed projects" : "Jordan's recent decisions (synthetic)"),
+    // Imported history carries no timings: say nothing rather than "0".
+    history.some((x) => x.seconds !== undefined) ? chip("⚡", `${pct(quick)} answered in ≤5 s`, "Answered almost without reading") : null,
     chip("✍", `${pct(worded)} with reasons`, "Jordan typed a reason or an answer of their own"),
     chip("↺", `${pct(against)} against the agent`, "Went against the agent's recommendation"),
   );
@@ -168,7 +219,7 @@ function noteLine(l: NoteLine | RevisedLine, revised = false): HTMLElement {
       change && change.change !== "kept"
         ? h(
             "p",
-            { class: "note-why", title: because ? `Jordan: “${w.submitted[because.id] ?? ""}”` : "" },
+            { class: "note-why", title: because ? `${Q.owner ? "You" : "Jordan"}: “${w.submitted[because.id] ?? ""}”` : "" },
             h("span", { class: "ico", "aria-hidden": "true" }, CHANGE_ICON[change.change][0]),
             change.why ?? CHANGE_ICON[change.change][1],
           )
@@ -201,14 +252,13 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
     ...qs.map((q) => {
       // Once the note is revised from them, the answers are locked; "Change answers" unlocks them and drops the revision.
       const locked = Boolean(w.revised);
-      const ta = h("textarea", { id: `answer-${q.id}`, rows: "2", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked, maxlength: String(MAX_ANSWER_CHARS) }) as HTMLTextAreaElement;
+      const ta = h("textarea", { id: `answer-${q.id}`, rows: "1", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked, maxlength: String(MAX_ANSWER_CHARS) }) as HTMLTextAreaElement;
       ta.value = w.answers[q.id] ?? "";
       // The box grows with what's in it, so a spoken answer is read whole.
       const fit = () => {
         ta.style.height = "auto";
         ta.style.height = `${ta.scrollHeight}px`;
       };
-      requestAnimationFrame(fit);
       ta.addEventListener("input", () => {
         fit();
         w.answers[q.id] = ta.value;
@@ -251,13 +301,35 @@ const busyLabel = (k: typeof w.busy, idle: string, busy: string) => (w.busy === 
 const source = (s: Source | null) => (s ? h("p", { class: "quiet small" }, SOURCE_LABEL[s]) : null);
 
 export function renderWelcomeView(view: HTMLElement): void {
+  if (Q.owner && run === null) {
+    view.replaceChildren(h("section", { class: "page welcome" }, h("h1", {}, "Getting to know you"), h("p", { class: "quiet" }, "Loading…")));
+    void api<{ run: OnboardingRun | null }>("/api/me/onboarding").then(
+      (r) => (useRun(r.run), paint()),
+      (e) => ((run = "none"), (w.error = (e as Error).message), paint()),
+    );
+    return;
+  }
+  if (Q.owner && run === "none") {
+    view.replaceChildren(
+      h(
+        "section",
+        { class: "page welcome" },
+        h("h1", {}, "Getting to know you"),
+        h("p", { class: "quiet" }, "Bug Me drafts your note from your own decisions, on the runner, with your Claude login. On this Mac:"),
+        h("pre", { class: "onboard-cmd" }, h("code", {}, "npm run onboard -- --allow <allow-list.json> <rows.jsonl>")),
+        h("p", { class: "quiet small" }, "Rows extracted from your transcripts; only projects on your allow list are read."),
+        w.error ? h("p", { class: "think-msg", role: "alert" }, w.error) : null,
+      ),
+    );
+    return;
+  }
   const lines = w.revised?.filter((l) => l.change !== "removed") ?? null;
   view.replaceChildren(
     h(
       "section",
       { class: "page welcome" },
-      h("h1", {}, "Getting to know Jordan"),
-      h("p", { class: "quiet" }, "Before it routes anything, Bug Me learns how Jordan decides."),
+      h("h1", {}, Q.owner ? "Getting to know you" : "Getting to know Jordan"),
+      h("p", { class: "quiet" }, Q.owner ? "From your own decisions, drafted on this Mac with your Claude login." : "Before it routes anything, Bug Me learns how Jordan decides."),
       h(
         "ol",
         { class: "welcome-steps" },
@@ -266,7 +338,7 @@ export function renderWelcomeView(view: HTMLElement): void {
           { id: "step-read" },
           h("h2", {}, "Read"),
           stats(),
-          w.note ? null : h("button", { type: "button", class: "primary", id: "draft-note", disabled: Boolean(w.busy), onclick: () => void step("draft") }, busyLabel("draft", "Draft the note", "Reading…")),
+          w.note || Q.owner ? null : h("button", { type: "button", class: "primary", id: "draft-note", disabled: Boolean(w.busy), onclick: () => void step("draft") }, busyLabel("draft", "Draft the note", "Reading…")),
         ),
         w.note
           ? h(
@@ -277,7 +349,7 @@ export function renderWelcomeView(view: HTMLElement): void {
                 ? h("details", { class: "draft-was" }, h("summary", {}, `The first draft, ${w.note.length} lines`), h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))))
                 : h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))),
               source(w.noteSource),
-              w.questions ? null : h("button", { type: "button", class: "primary", id: "start-interview", disabled: Boolean(w.busy), onclick: () => void step("interview") }, busyLabel("interview", "Interview Jordan", "Thinking…")),
+              w.questions ? null : h("button", { type: "button", class: "primary", id: "start-interview", disabled: Boolean(w.busy), onclick: () => void step("interview") }, busyLabel("interview", Q.owner ? "Interview me" : "Interview Jordan", "Thinking…")),
             )
           : null,
         w.questions
@@ -288,7 +360,9 @@ export function renderWelcomeView(view: HTMLElement): void {
               interview(w.questions),
               source(w.questionsSource),
               w.revised
-                ? h("button", { type: "button", class: "ghost small", id: "change-answers", onclick: () => ((w.revised = null), (w.submitted = {}), paint()) }, "Change answers")
+                ? kept_()
+                  ? null
+                  : h("button", { type: "button", class: "ghost small", id: "change-answers", onclick: () => ((w.revised = null), (w.submitted = {}), paint()) }, "Change answers")
                 : h(
                     "div",
                     { class: "row" },
@@ -301,16 +375,20 @@ export function renderWelcomeView(view: HTMLElement): void {
           ? h(
               "li",
               { id: "step-note" },
-              h("h2", {}, "Jordan's drafted note"),
+              h("h2", {}, Q.owner ? "Your drafted note" : "Jordan's drafted note"),
               h("ol", { class: "wnote revised" }, ...w.revised.map((l) => noteLine(l, true))),
               source(w.revisedSource),
-              h(
-                "p",
-                { class: "quiet small" },
-                "The morning runs on Jordan's hand-written note (",
-                h("a", { href: hrefFor({ view: "rules" }) }, "Rules"),
-                "), so its recordings stay exact. Next, in a real release: a week of guessing before every answer, acting on none.",
-              ),
+              Q.owner
+                ? run && run !== "none" && run.kept_at
+                  ? h("p", { class: "quiet small" }, `Kept${kept ? `: ${kept} new facts` : ""}. It's your note now; edit any line in `, h("a", { href: hrefFor({ view: "rules" }) }, "Rules"), ".")
+                  : h("button", { type: "button", class: "primary", id: "keep-note", disabled: Boolean(w.busy), onclick: () => void step("keep") }, busyLabel("keep", "Keep it", "Keeping…"))
+                : h(
+                    "p",
+                    { class: "quiet small" },
+                    "The morning runs on Jordan's hand-written note (",
+                    h("a", { href: hrefFor({ view: "rules" }) }, "Rules"),
+                    "), so its recordings stay exact. Next, in a real release: a week of guessing before every answer, acting on none.",
+                  ),
             )
           : null,
       ),
@@ -318,4 +396,9 @@ export function renderWelcomeView(view: HTMLElement): void {
     ),
   );
   if (!w.questions || w.revised) setVoiceTarget(null);
+  // Size the answer boxes to what's in them now that they're on the page (a box measures nothing detached).
+  for (const ta of view.querySelectorAll<HTMLTextAreaElement>(".interview textarea")) {
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }
 }

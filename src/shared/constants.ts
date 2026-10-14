@@ -145,6 +145,15 @@ export const RUNNER_STALE_LAUNCH_MS = 2 * 60_000;
 export const OWNER_POLL_MS = 8_000;
 
 /**
+ * Onboarding on the owner's own history (docs/STAGE-10.md, 10b): at most this many past decisions, the
+ * newest, and a body limit for that one import. 200 trimmed rows measured about 54 KB in the plan review;
+ * the limit leaves room for long questions, and stays far under the runner's 1 MiB and the model adapter's
+ * 400,000-character prompt.
+ */
+export const MAX_ONBOARD_HISTORY = 200;
+export const ONBOARD_MAX_BODY_BYTES = 300_000;
+
+/**
  * Hooks into Bug Me (docs/STAGE-10.md, 10d): Claude Code's questions and plan approvals mirrored on /me.
  * The hook script's whole budget, credential lookup and HTTP included (the plan's "2 s timeout"): a hook
  * that hangs stalls the session, so past this it gives up silently and exits 0.

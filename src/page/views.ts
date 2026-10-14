@@ -7,13 +7,14 @@
 import { estimateMinutes, nextInSession } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
-import { editRule, resume, startSession, undo } from "./actions";
+import { editFact, editRule, resume, startSession, undo } from "./actions";
 import { markButton, renderNow } from "./card";
 import { type Mood as Mood6, setGlowMood, setVoiceTarget } from "./voice";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
+import { MAX_RULE_CHARS } from "../shared/constants";
 import { openToursMenu, tourAfterRender } from "./tour";
 import { mirrorList } from "./mirror";
 import { renderDispatchView } from "./dispatch";
@@ -114,7 +115,7 @@ function renderHome(view: HTMLElement): void {
       h("span", { class: "quiet" }, ` · ${Q.decisions.length} questions overnight, `),
       link({ view: "settled" }, `${settledCount} decided for you`),
     ),
-    Q.owner ? null : h("p", { class: "quiet small welcome-link" }, link({ view: "welcome" }, "How Bug Me got to know Jordan →")),
+    h("p", { class: "quiet small welcome-link" }, link({ view: "welcome" }, Q.owner ? "Getting to know you →" : "How Bug Me got to know Jordan →")),
   );
 
   // The queue, in the order to work it: one project at a time (projects by how many agents their
@@ -429,9 +430,49 @@ function settledRow(id: string): HTMLElement {
 
 // ---------- Rules and what Bug Me knows ----------
 
+/** A fact being edited on /me (docs/STAGE-10.md), kept outside the DOM so a redraw never wipes it. */
+let factDraft: { id: string; text: string; error: string } | null = null;
+
+async function saveFact(id: string, text: string | null): Promise<void> {
+  const error = await editFact(id, text);
+  factDraft = error ? { id, text: text ?? "", error } : null;
+  render();
+}
+
 function renderRulesView(view: HTMLElement): void {
   const facts = h("ul", { id: "facts", class: "facts" });
-  for (const f of S.facts) facts.append(h("li", { class: S.newFacts.includes(f.id) ? "new" : "" }, f.text, h("span", { class: "src" }, f.source)));
+  for (const f of S.facts) {
+    if (Q.owner && factDraft?.id === f.id) {
+      const draft = factDraft;
+      const ta = h("textarea", { "aria-label": "Edit this fact", maxlength: String(MAX_RULE_CHARS) }) as HTMLTextAreaElement;
+      ta.value = draft.text;
+      ta.addEventListener("input", () => (draft.text = ta.value));
+      facts.append(
+        h(
+          "li",
+          { class: "editing" },
+          ta,
+          draft.error ? h("p", { class: "change-note", role: "alert" }, draft.error) : null,
+          h(
+            "div",
+            { class: "row" },
+            h("button", { type: "button", class: "linkish", onclick: () => ((factDraft = null), render()) }, "cancel"),
+            h("button", { type: "button", class: "linkish danger", onclick: () => void saveFact(f.id, null) }, "delete"),
+            h("button", { type: "button", class: "ghost", onclick: () => void saveFact(f.id, ta.value) }, "Save"),
+          ),
+        ),
+      );
+      continue;
+    }
+    facts.append(
+      h(
+        "li",
+        { class: S.newFacts.includes(f.id) ? "new" : "" },
+        Q.owner ? h("button", { type: "button", class: "rtext", title: "Edit this fact", "aria-label": `Edit: ${f.text}`, onclick: () => ((factDraft = { id: f.id, text: f.text, error: "" }), render()) }, f.text) : f.text,
+        h("span", { class: "src" }, f.source),
+      ),
+    );
+  }
   view.replaceChildren(
     h(
       "section",
@@ -444,7 +485,7 @@ function renderRulesView(view: HTMLElement): void {
       h("h2", { class: "section-h" }, "How to work with me"),
       h("ul", { id: "note", class: "note" }, ...Q.persona.how_to_work_with_me.map((t) => h("li", {}, t))),
       h("p", { class: "quiet", id: "note-source" }, Q.persona.how_to_work_with_me_source),
-      Q.owner ? null : h("p", { class: "small" }, link({ view: "welcome" }, "See how Bug Me drafts a note like this →")),
+      h("p", { class: "small" }, link({ view: "welcome" }, Q.owner ? "Draft yours from your own decisions →" : "See how Bug Me drafts a note like this →")),
     ),
   );
   renderRules();

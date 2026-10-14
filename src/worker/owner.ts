@@ -3,7 +3,8 @@
 // re-route can't interleave. The logic is in live.ts; this only adapts the object's storage to it.
 
 import { DurableObject } from "cloudflare:workers";
-import { AskError, type KV, LiveQueue, type MirrorItem, type Resolution, type Ticket } from "./live";
+import { AskError, type KV, LiveQueue, type MirrorItem, type OwnerNote, type Resolution, type Ticket } from "./live";
+import type { OnboardingRun } from "../shared/onboarding";
 // A cycle (index.ts re-exports this class), safe because routeMirrorTicket is only called at run time.
 import { routeMirrorTicket } from "./index";
 import type { Env } from "./model";
@@ -48,6 +49,31 @@ export class OwnerQueue extends DurableObject {
 
   async add(decision: Decision, card: Card, instruction: string, rev: number, unrouted?: string, projectName?: string, brief?: string): Promise<Ticket> {
     return this.q().add(decision, card, instruction, rev, new Date(), unrouted, projectName, brief);
+  }
+
+  // Onboarding (docs/STAGE-10.md).
+  async onboarding(): Promise<OnboardingRun | undefined> {
+    return this.q().onboarding();
+  }
+
+  async setOnboarding(run: OnboardingRun): Promise<void> {
+    return this.q().setOnboarding(run);
+  }
+
+  async commitOnboarding(from: OnboardingRun, next: OnboardingRun): Promise<{ ok: true; run: OnboardingRun } | { ok: false; error: string }> {
+    return this.q().commitOnboarding(from, next);
+  }
+
+  async editFact(id: string, text: string | null): Promise<Fact[]> {
+    return this.q().editFact(id, text);
+  }
+
+  async note(): Promise<OwnerNote | undefined> {
+    return this.q().note();
+  }
+
+  async keepNote(run: OnboardingRun, facts: Fact[], note: OwnerNote, maxFacts: number): Promise<{ ok: true; added: number } | { ok: false; error: string }> {
+    return this.q().keepNote(run, facts, note, maxFacts);
   }
 
   // Dispatch (docs/STAGE-8.md): the catalog and the briefs.
@@ -132,10 +158,10 @@ export class OwnerQueue extends DurableObject {
    */
   async alarm(): Promise<void> {
     const q = this.q();
-    const [snap, shown] = [await q.snapshot(), await q.shown()];
+    const [snap, shown, note] = [await q.snapshot(), await q.shown(), await q.note()];
     await Promise.all(
       (await q.unroutedMirrors()).map(async (t) => {
-        const r = await routeMirrorTicket(this.env as Env, t, snap, shown);
+        const r = await routeMirrorTicket(this.env as Env, t, snap, shown, note);
         await q.mirrorRouted(t.decision.id, r.card, r.unrouted);
       }),
     );

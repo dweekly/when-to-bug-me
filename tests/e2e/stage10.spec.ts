@@ -51,6 +51,12 @@ test("on a phone, onboarding fits the width @narrow", async ({ page }) => {
   expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
 });
 
+test("the hosted owner page refuses onboarding on your own history: it runs on the runner", async ({ request }) => {
+  const r = await request.post("/api/me/onboarding", { headers: { authorization: `Bearer ${process.env.BUGME_E2E_LIVE_TOKEN}` }, data: { history: [] } });
+  expect(r.status()).toBe(404);
+  expect((await r.json()).error).toContain("runner");
+});
+
 test("a revision in flight can't be sent twice, and an answer edited meanwhile isn't shown as the one it used", async ({ page }) => {
   await page.goto("/app#/welcome");
   await page.locator("#draft-note").click();

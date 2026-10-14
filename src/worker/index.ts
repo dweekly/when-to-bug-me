@@ -19,6 +19,7 @@
 //   GET  /api/me/queue          the owner's queue, in /api/queue's shape
 //   POST /api/me/resolve        the owner's answer, sent back to the asking session
 //   POST /api/me/context        save the owner's rules and facts
+//   POST /api/me/facts/edit     edit (text) or delete (text: null) one fact by id
 //   POST /api/me/{route,answer,fact,ask,parse,converse}  the same calls as above, in the owner's world
 //   POST /api/me/catalog        the owner's tool and skill names and statuses (mcp/bugme.mjs sync-catalog)
 //   GET  /api/me/briefs         the owner's briefs and catalog
@@ -29,18 +30,18 @@
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
 
-import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES, RUNNER_HEADER } from "../shared/constants";
+import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_ONBOARD_HISTORY, MAX_RULES, ONBOARD_MAX_BODY_BYTES, RUNNER_HEADER } from "../shared/constants";
 import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
 import { type Titles, plainOptions } from "../shared/titles";
 import { byId, decisions, defaultFacts, defaultRules, jordanHistory, persona, publicCatalog, publicDecision } from "./data";
-import { OnboardingError, parseAnswers, parseInterview, parseNote } from "../shared/onboarding";
+import { OnboardingError, type OnboardingRun, factsFromNote, parseAnswers, parseHistory, parseInterview, parseNote } from "../shared/onboarding";
 import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishBrief, parseCatalog, parseEdits, parseLaunch, parseReport } from "../shared/dispatch";
 import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, interviewFor, noteFor, parseFor, reviseFor, routeFor, titlesFor, walkFor } from "./model";
 import { type WalkInput, walkInput } from "../shared/walk";
 import { WALK_PROMPT_VERSION } from "../shared/prompts";
-import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, type MirrorItem, OWNER_SETTLE_LIMITS, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
+import { ALREADY_KEPT, AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, type MirrorItem, OWNER_SETTLE_LIMITS, type OwnerNote, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, STALE_IMPORT, STALE_STEP, ticketId, waitingMinutes } from "./live";
 import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
@@ -118,9 +119,9 @@ function ownerQueue(env: Env) {
 }
 
 /** The owner's persona, with the projects their tickets name. */
-function ownerPersonaOf(tickets: Pick<Ticket, "decision" | "project_name">[]): Persona {
+function ownerPersonaOf(tickets: Pick<Ticket, "decision" | "project_name">[], note?: OwnerNote): Persona {
   const byId = new Map(tickets.map((t) => [t.decision.project, t.project_name ?? t.decision.project]));
-  return ownerPersona([...byId].map(([id, name]) => ({ id, name })));
+  return ownerPersona([...byId].map(([id, name]) => ({ id, name })), note);
 }
 
 async function ownerWorld(env: Env): Promise<World> {
@@ -129,7 +130,7 @@ async function ownerWorld(env: Env): Promise<World> {
   const open = shown.filter((t) => t.status === "open" || t.status === "reopened").map((t) => t.decision);
   return {
     // Never the recorded run or the response cache: nothing from a real queue is stored outside it.
-    ctx: { persona: ownerPersonaOf(shown), store: false, settle: OWNER_SETTLE_LIMITS },
+    ctx: { persona: ownerPersonaOf(shown, await q.note()), store: false, settle: OWNER_SETTLE_LIMITS },
     decisionOf: async (id) => {
       const t = typeof id === "string" ? await q.ticket(id) : undefined;
       if (!t) throw new BadRequest("unknown ticket");
@@ -279,6 +280,57 @@ function walkInputFrom(b: Record<string, unknown>): WalkInput {
   if (!what) throw new BadRequest("what is required");
   const tools = Array.isArray(b.tools) ? b.tools.map((x) => t(x, 80)).filter(Boolean).slice(0, 10).sort() : [];
   return { what, why: t(b.why, 200), headline: t(b.headline, 120), goal: t(b.goal, 200), tools };
+}
+
+/** The owner's onboarding steps (docs/STAGE-10.md, 10b). The import alone takes a larger body. */
+async function onboardingRoute(req: Request, env: Env, path: string, q: ReturnType<typeof ownerQueue>): Promise<Response> {
+  const ctx: ModelCtx = { persona: ownerPersonaOf(await q.shown(), await q.note()), store: false };
+  if (req.method === "GET" && path === "/api/me/onboarding") return json({ run: (await q.onboarding()) ?? null });
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  if (path === "/api/me/onboarding") {
+    const raw = await readLimited(req, ONBOARD_MAX_BODY_BYTES);
+    let b: { history?: unknown };
+    try {
+      b = JSON.parse(raw);
+    } catch {
+      throw new BadRequest("body is not JSON");
+    }
+    const history = parseHistory(b.history, MAX_ONBOARD_HISTORY);
+    const { rules } = await q.context();
+    const { out, source } = await noteFor(env, true, rules, history, ctx);
+    const run: OnboardingRun = { id: crypto.randomUUID().slice(0, 8), created_at: new Date().toISOString(), history, note: out, sources: { note: source } };
+    await q.setOnboarding(run);
+    return json({ run });
+  }
+  const run = await q.onboarding();
+  if (!run) return json({ error: "no onboarding run yet: npm run onboard on the runner" }, 404);
+  const b = await body(req);
+  // Every step names the run the page showed: a newer import replaces it, and nothing acts on that unseen.
+  if (String(b.run ?? "") !== run.id) return json({ error: STALE_IMPORT }, 409);
+  // A kept note is the owner's now: corrections go through the facts in Rules.
+  if (run.kept_at && path !== "/api/me/onboarding/keep") return json({ error: ALREADY_KEPT }, 409);
+  // …and the version of it the page showed: a step another tab finished since isn't answered unseen.
+  if (!run.kept_at && Number(b.rev ?? 0) !== (run.rev ?? 0)) return json({ error: STALE_STEP }, 409);
+  if (path === "/api/me/onboarding/interview") {
+    const { out, source } = await interviewFor(env, true, run.history, run.note, ctx);
+    const r = await q.commitOnboarding(run, { ...run, questions: out, answers: undefined, revised: undefined, sources: { note: run.sources?.note ?? "live", questions: source } });
+    return r.ok ? json({ run: r.run }) : json({ error: r.error }, 409);
+  }
+  if (path === "/api/me/onboarding/revise") {
+    if (!run.questions) throw new BadRequest("interview first");
+    const answers = parseAnswers(b.answers, run.questions);
+    const { out, source } = await reviseFor(env, true, run.history, run.note, run.questions, answers, ctx);
+    const r = await q.commitOnboarding(run, { ...run, answers, revised: out, sources: { note: run.sources?.note ?? "live", questions: run.sources?.questions, revised: source } });
+    return r.ok ? json({ run: r.run }) : json({ error: r.error }, 409);
+  }
+  if (path === "/api/me/onboarding/keep") {
+    const facts = factsFromNote(run, MAX_RULE_CHARS);
+    const lines = facts.map((f) => f.text);
+    const r = await q.keepNote(run, facts, { lines, fact_ids: facts.map((f) => f.id), source: `Drafted by Bug Me from ${run.history.length} of your decisions${run.revised ? " and corrected in the interview" : ""}, ${run.created_at.slice(0, 10)}.` }, MAX_FACTS);
+    if (!r.ok) return json({ error: r.error }, 409);
+    return json({ ok: true, added: r.added, run: await q.onboarding() });
+  }
+  return json({ error: "not found" }, 404);
 }
 
 /** Live calls can be made: an API key, or the runner's Claude login (docs/STAGE-9.md). */
@@ -492,9 +544,9 @@ function mirrorPendingRoute(d: Decision): RouteOutput {
  * send-down is dropped before sealing: a mirror is answered in its session, so nothing is ever sent.
  * Never throws: a failure becomes a card that says so.
  */
-export async function routeMirrorTicket(env: Env, t: Ticket, c: { rules: Rule[]; facts: Fact[] }, shown: Ticket[]): Promise<{ card: Card; unrouted?: string }> {
+export async function routeMirrorTicket(env: Env, t: Ticket, c: { rules: Rule[]; facts: Fact[] }, shown: Ticket[], note?: OwnerNote): Promise<{ card: Card; unrouted?: string }> {
   const d = t.decision;
-  const ctx: ModelCtx = { persona: ownerPersonaOf([...shown, t]), store: false, settle: OWNER_SETTLE_LIMITS };
+  const ctx: ModelCtx = { persona: ownerPersonaOf([...shown, t], note), store: false, settle: OWNER_SETTLE_LIMITS };
   try {
     const key = await importSealKey(env.SEAL_KEY);
     try {
@@ -560,7 +612,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     const { rules, facts } = await q.context();
     const now = new Date();
     return json({
-      persona: ownerPersonaOf([...shown, ...answered]),
+      persona: ownerPersonaOf([...shown, ...answered], await q.note()),
       rules,
       facts,
       decisions: shown.map((t) => publicDecision({ ...t.decision, waiting_minutes: waitingMinutes(t, now) })),
@@ -586,6 +638,18 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     return json({ briefs: await q.briefs(), catalog: await q.catalog(), waiting });
   }
 
+  // Onboarding on the owner's own history (docs/STAGE-10.md, 10b) runs only on the runner, so the history
+  // never passes through Cloudflare; every model call is the owner's, uncached and unrecorded.
+  if (path === "/api/me/onboarding" || path.startsWith("/api/me/onboarding/")) {
+    if (!env.LOCAL_MODEL_URL) return json({ error: "Onboarding on your own history runs on the runner (npm run runner)." }, 404);
+    try {
+      return await onboardingRoute(req, env, path, q);
+    } catch (e) {
+      if (e instanceof OnboardingError) throw new BadRequest(e.message);
+      throw e;
+    }
+  }
+
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
   const b = await body(req);
 
@@ -606,7 +670,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     const { rules, facts } = await q.snapshot();
     const catalog = await q.catalog();
     // Never the recorded run or the cache: the owner's task stays in the owner's Durable Object.
-    const ctx: ModelCtx = { persona: ownerPersonaOf(await q.shown()), store: false };
+    const ctx: ModelCtx = { persona: ownerPersonaOf(await q.shown(), await q.note()), store: false };
     const { out, source } = await dispatchFor(env, true, task, answers, catalog, rules, facts, ctx);
     const brief = finishBrief(out, catalog, { id: briefId(), task, answers, now: new Date(), owner: true });
     await q.addBrief(brief);
@@ -676,7 +740,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     if (path !== "/api/me/route") throw new BadRequest("Answer it in the session: Bug Me only mirrors this one.");
     const c = context(b, await q.context());
     const snap = b.rules !== undefined || b.facts !== undefined ? await q.snapshot(c.rules, c.facts) : await q.snapshot();
-    const r = await routeMirrorTicket(env, mirrored, snap, await q.shown());
+    const r = await routeMirrorTicket(env, mirrored, snap, await q.shown(), await q.note());
     return json((await q.mirrorRouted(mirrored.decision.id, r.card, r.unrouted))?.card ?? r.card);
   }
 
@@ -690,7 +754,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     }
     const projectName = askProjectName(b);
     const { rules, facts, rev } = await q.snapshot();
-    const ctx: ModelCtx = { persona: ownerPersonaOf([...(await q.shown()), { decision: d, project_name: projectName }]), store: false, settle: OWNER_SETTLE_LIMITS };
+    const ctx: ModelCtx = { persona: ownerPersonaOf([...(await q.shown()), { decision: d, project_name: projectName }], await q.note()), store: false, settle: OWNER_SETTLE_LIMITS };
     // Routing can fail (no key, today's budget spent, a bad answer): the ask is kept, as the owner's to decide.
     let c: Card;
     let unrouted: string | undefined;
@@ -718,6 +782,13 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     const out = await q.resolve(t.decision.id, r);
     if ("refused" in out) throw new BadRequest(out.refused);
     return json(reply(out.ticket));
+  }
+
+  if (path === "/api/me/facts/edit") {
+    const id = cleanText(b.id, 12, "id");
+    const text = b.text === null ? null : cleanText(b.text, MAX_RULE_CHARS, "text");
+    if (text === "") throw new BadRequest("text is empty; send null to delete the fact");
+    return json({ facts: await q.editFact(id, text) });
   }
 
   if (path === "/api/me/context") {

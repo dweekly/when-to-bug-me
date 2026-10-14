@@ -32,7 +32,7 @@ import { go } from "./router";
 import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, log, newFlow, save, setF, talking } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
 import { recordTransition } from "./reflect";
-import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext } from "./live";
+import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext, saveOneFact } from "./live";
 
 export function glowEvent(e: GlowEvent): void {
   S.glow = nextGlow(S.glow, e);
@@ -832,6 +832,44 @@ export async function editRule(id: string, text: string): Promise<void> {
   save();
   render();
   await reroute(waitingIds(), `because you edited ${id}: “${t.replace(/[.\s]+$/, "")}”`);
+}
+
+/**
+ * Edit or delete a standing fact on /me (docs/STAGE-10.md): saved to the server first, then, as for a
+ * rule, the guidance version moves on and the waiting decisions are checked again under the new facts.
+ * Returns an error to show, or "" when it's done.
+ */
+export async function editFact(id: string, text: string | null): Promise<string> {
+  const old = S.facts.find((f) => f.id === id);
+  if (!old) return "";
+  const t = text === null ? null : text.replace(/\s+/g, " ").trim();
+  if (t !== null && !t) return "Say something, or delete it.";
+  if (t !== null && t.length > MAX_RULE_CHARS) return `At most ${MAX_RULE_CHARS} characters.`;
+  if (t === old.text) return "";
+  // By id on the server, not this page's whole list: another tab may have kept or added facts since.
+  try {
+    S.facts = await saveOneFact(id, t);
+  } catch (e) {
+    return `Couldn't save that (${(e as Error).message}). Try again.`;
+  }
+  await refreshOwnerNote();
+  S.version++;
+  log("fact_edited", { fact: id, from: old.text, to: t });
+  save();
+  render();
+  void reroute(waitingIds(), t === null ? `because you deleted: “${old.text.replace(/[.\s]+$/, "")}”` : `because you edited: “${t.replace(/[.\s]+$/, "")}”`);
+  return "";
+}
+
+/** The owner's note can change with their facts (a kept onboarding line edited or deleted): take the server's. */
+export async function refreshOwnerNote(): Promise<void> {
+  if (!OWNER_PAGE) return;
+  try {
+    const q = await api<{ persona: typeof Q.persona }>("/api/queue");
+    Q.persona = q.persona;
+  } catch {
+    // The next load brings it.
+  }
 }
 
 /**

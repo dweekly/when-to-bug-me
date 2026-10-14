@@ -277,3 +277,35 @@ export function fakeRevision(note: NoteLine[], answers: Record<string, string>):
   const q = Object.keys(answers)[0] ?? "";
   return { lines: note.map((l, i) => (i === 0 && q ? { ...l, change: "changed" as const, text: `${l.text} (confirmed)`, because: q, why: "confirmed in the interview" } : { ...l, change: "kept" as const })) };
 }
+
+/**
+ * An onboarding run on the owner's queue (docs/STAGE-10.md, 10b): the trimmed history it read and every
+ * step after, kept together so the interview can be done later, on another device.
+ */
+export interface OnboardingRun {
+  id: string;
+  created_at: string;
+  history: HistoryItem[];
+  note: NoteLine[];
+  questions?: InterviewQuestion[];
+  answers?: Record<string, string>;
+  revised?: RevisedLine[];
+  /** When the person kept the revised note as facts. */
+  kept_at?: string;
+  /** Bumped by every saved step: a step saves only onto the version it read (see LiveQueue.commitOnboarding). */
+  rev?: number;
+  /** Where each step's words came from (live Claude on the runner, or code in tests). */
+  sources?: { note: "live" | "cached" | "recorded" | "code"; questions?: "live" | "cached" | "recorded" | "code"; revised?: "live" | "cached" | "recorded" | "code" };
+}
+
+/** The facts a kept note becomes: one per line still standing, ids tied to the run so keeping twice is a no-op. */
+export function factsFromNote(run: Pick<OnboardingRun, "id" | "revised" | "note">, maxChars: number): { id: string; text: string; source: string; scope: string }[] {
+  const lines = (run.revised ?? run.note.map((l) => ({ ...l, change: "kept" as const }))).filter((l) => l.change !== "removed");
+  return lines.map((l) => ({
+    // Fact ids are at most 12 characters (the context's check): "o" + 5 of the run's id + the line's id.
+    id: `o${run.id.slice(0, 5)}-${l.id}`.slice(0, 12),
+    text: l.text.slice(0, maxChars),
+    scope: "all",
+    source: l.change === "added" ? "onboarding interview" : `onboarding, from ${l.cites.length} decision${l.cites.length === 1 ? "" : "s"}${l.change === "changed" ? " and the interview" : ""}`,
+  }));
+}

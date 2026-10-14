@@ -3,6 +3,7 @@
 // ticket lifecycle over a small key-value store (the owner's Durable Object in production, a Map in tests).
 
 import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
+import type { OnboardingRun } from "../shared/onboarding";
 import { MAX_REASON_CHARS, MIRROR_KEPT_MS, MIRROR_ORPHAN_MS } from "../shared/constants";
 import type { Card, Decision, Fact, MirrorAnswer, Persona, Reversible, Rule } from "../shared/types";
 import type { MirrorRecord } from "./mirror";
@@ -214,7 +215,15 @@ export function askProjectName(raw: unknown): string {
 }
 
 /** The owner's persona: David, from the "How we work" section of his CLAUDE.md. Projects are the ones his tickets name. */
-export function ownerPersona(projects: { id: string; name: string }[]): Persona {
+/** The owner's note: once onboarding's revised note is kept (docs/STAGE-10.md), it replaces the distilled one. */
+export interface OwnerNote {
+  lines: string[];
+  source: string;
+  /** The facts its lines came from: editing or deleting one changes the note too. */
+  fact_ids?: string[];
+}
+
+export function ownerPersona(projects: { id: string; name: string }[], note?: OwnerNote): Persona {
   return {
     synthetic: false,
     name: "David",
@@ -225,13 +234,13 @@ export function ownerPersona(projects: { id: string; name: string }[]): Persona 
     company_blurb: "where Claude Code sessions do most of the engineering across several software projects",
     fleet_size: Math.max(1, projects.length),
     projects: projects.map((p) => ({ id: p.id, name: p.name, blurb: `the ${p.name} project` })),
-    how_to_work_with_me: [
+    how_to_work_with_me: note?.lines ?? [
       "Ask every question whose answer changes the design all at once, each with a recommended default.",
       "Plain English first, rigor underneath.",
       "Push back on a bad plan and offer better ideas.",
       "Test a testable claim before asserting it, or label it an unverified hypothesis.",
     ],
-    how_to_work_with_me_source: "Distilled from the \"How we work\" section of David's CLAUDE.md.",
+    how_to_work_with_me_source: note?.source ?? "Distilled from the \"How we work\" section of David's CLAUDE.md.",
   };
 }
 
@@ -239,7 +248,7 @@ export function projectId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "other";
 }
 
-/** The owner's starting rules (docs/STAGE-7.md), distilled from his CLAUDE.md. Editable on /me. */
+/** The owner's starting rules (docs/STAGE-7.md), distilled from their CLAUDE.md. Editable on /me. */
 export const OWNER_RULES: Rule[] = [
   { id: "L1", text: "Business intent and product decisions are mine; technical calls are yours. Make routine judgment calls yourself." },
   { id: "L2", text: "Production deploys need my explicit go." },
@@ -327,9 +336,63 @@ const STATUS_OF: Record<Resolution["outcome"], TicketStatus> = {
   resumed: "open",
 };
 
+export const STALE_IMPORT = "A newer import replaced this one. Reload to see it.";
+export const ALREADY_KEPT = "Already kept; edit its lines in Rules.";
+export const STALE_STEP = "This onboarding changed in another tab while Bug Me worked. Reload to see it.";
+
 /** The ticket lifecycle over a KV store. Rules and facts live beside the tickets. */
 export class LiveQueue {
   constructor(private kv: KV) {}
+
+  /** The owner's onboarding run (docs/STAGE-10.md): one at a time; a new import replaces it. */
+  async onboarding(): Promise<OnboardingRun | undefined> {
+    return this.kv.get<OnboardingRun>("onboarding");
+  }
+
+  async setOnboarding(run: OnboardingRun): Promise<void> {
+    await this.kv.put("onboarding", run);
+  }
+
+  /**
+   * Save a step's result onto the run it started from, only if that is still the stored run, unchanged and
+   * unkept. Model calls take seconds: meanwhile a newer import, another tab's step or a Keep may have landed,
+   * and a late result must not undo them.
+   */
+  async commitOnboarding(from: OnboardingRun, next: OnboardingRun): Promise<{ ok: true; run: OnboardingRun } | { ok: false; error: string }> {
+    const cur = await this.onboarding();
+    if (!cur || cur.id !== from.id) return { ok: false, error: STALE_IMPORT };
+    if (cur.kept_at) return { ok: false, error: ALREADY_KEPT };
+    if ((cur.rev ?? 0) !== (from.rev ?? 0)) return { ok: false, error: STALE_STEP };
+    const saved = { ...next, rev: (from.rev ?? 0) + 1 };
+    await this.kv.put("onboarding", saved);
+    return { ok: true, run: saved };
+  }
+
+  /** The kept note, or undefined (then the distilled one applies), including once every line is deleted. */
+  async note(): Promise<OwnerNote | undefined> {
+    const n = await this.kv.get<OwnerNote | null>("note");
+    return n && n.lines.length ? n : undefined;
+  }
+
+  /**
+   * Keep a revised note: its lines join the facts (by id, so keeping twice adds nothing) and become the
+   * owner's "how to work with me" note. Never rules: settling still needs a written rule.
+   */
+  async keepNote(run: OnboardingRun, facts: Fact[], note: OwnerNote, maxFacts: number, now = new Date()): Promise<{ ok: true; added: number } | { ok: false; error: string }> {
+    const cur = await this.onboarding();
+    if (!cur || cur.id !== run.id) return { ok: false, error: STALE_IMPORT };
+    // Kept already (another tab, a retry): nothing changes, so corrections made since in Rules stand.
+    if (cur.kept_at) return { ok: true, added: 0 };
+    if ((cur.rev ?? 0) !== (run.rev ?? 0)) return { ok: false, error: STALE_STEP };
+    const c = await this.context();
+    const have = new Set(c.facts.map((f) => f.id));
+    const fresh = facts.filter((f) => !have.has(f.id));
+    if (c.facts.length + fresh.length > maxFacts) return { ok: false, error: `that would make ${c.facts.length + fresh.length} facts; the limit is ${maxFacts}` };
+    await this.setContext(c.rules, [...c.facts, ...fresh]);
+    await this.kv.put("note", note);
+    await this.kv.put("onboarding", { ...run, kept_at: now.toISOString(), rev: (run.rev ?? 0) + 1 });
+    return { ok: true, added: fresh.length };
+  }
 
   /** What the owner's briefs may choose from (docs/STAGE-8.md): names and statuses only. */
   async catalog(): Promise<Catalog> {
@@ -418,12 +481,27 @@ export class LiveQueue {
     return this.context();
   }
 
+  /** Edit or delete one fact by id against the facts stored now: another tab may have added some since this one loaded. */
+  async editFact(id: string, text: string | null): Promise<Fact[]> {
+    const c = await this.context();
+    const facts = text === null ? c.facts.filter((f) => f.id !== id) : c.facts.map((f) => (f.id === id ? { ...f, text } : f));
+    await this.setContext(c.rules, facts);
+    return facts;
+  }
+
   async setContext(rules: Rule[], facts: Fact[]): Promise<void> {
     const c = await this.context();
     if (JSON.stringify([c.rules, c.facts]) === JSON.stringify([rules, facts])) return;
     await this.kv.put("rules", rules);
     await this.kv.put("facts", facts);
     await this.kv.put("rev", c.rev + 1);
+    // A kept onboarding note follows its facts: an edited line reads as edited, a deleted one is gone.
+    const n = await this.kv.get<OwnerNote | null>("note");
+    if (n?.fact_ids) {
+      const byId = new Map(facts.map((f) => [f.id, f.text]));
+      const ids = n.fact_ids.filter((id) => byId.has(id));
+      await this.kv.put("note", { ...n, fact_ids: ids, lines: ids.map((id) => byId.get(id)!) });
+    }
   }
 
   async get(id: string): Promise<Ticket | undefined> {
