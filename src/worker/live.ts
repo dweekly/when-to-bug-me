@@ -317,6 +317,10 @@ const STATUS_OF: Record<Resolution["outcome"], TicketStatus> = {
   resumed: "open",
 };
 
+export const STALE_IMPORT = "A newer import replaced this one. Reload to see it.";
+export const ALREADY_KEPT = "Already kept; edit its lines in Rules.";
+export const STALE_STEP = "This onboarding changed in another tab while Bug Me worked. Reload to see it.";
+
 /** The ticket lifecycle over a KV store. Rules and facts live beside the tickets. */
 export class LiveQueue {
   constructor(private kv: KV) {}
@@ -330,6 +334,21 @@ export class LiveQueue {
     await this.kv.put("onboarding", run);
   }
 
+  /**
+   * Save a step's result onto the run it started from, only if that is still the stored run, unchanged and
+   * unkept. Model calls take seconds: meanwhile a newer import, another tab's step or a Keep may have landed,
+   * and a late result must not undo them.
+   */
+  async commitOnboarding(from: OnboardingRun, next: OnboardingRun): Promise<{ ok: true; run: OnboardingRun } | { ok: false; error: string }> {
+    const cur = await this.onboarding();
+    if (!cur || cur.id !== from.id) return { ok: false, error: STALE_IMPORT };
+    if (cur.kept_at) return { ok: false, error: ALREADY_KEPT };
+    if ((cur.rev ?? 0) !== (from.rev ?? 0)) return { ok: false, error: STALE_STEP };
+    const saved = { ...next, rev: (from.rev ?? 0) + 1 };
+    await this.kv.put("onboarding", saved);
+    return { ok: true, run: saved };
+  }
+
   /** The kept note, or undefined (then the distilled one applies), including once every line is deleted. */
   async note(): Promise<OwnerNote | undefined> {
     const n = await this.kv.get<OwnerNote | null>("note");
@@ -341,13 +360,18 @@ export class LiveQueue {
    * owner's "how to work with me" note. Never rules: settling still needs a written rule.
    */
   async keepNote(run: OnboardingRun, facts: Fact[], note: OwnerNote, maxFacts: number, now = new Date()): Promise<{ ok: true; added: number } | { ok: false; error: string }> {
+    const cur = await this.onboarding();
+    if (!cur || cur.id !== run.id) return { ok: false, error: STALE_IMPORT };
+    // Kept already (another tab, a retry): nothing changes, so corrections made since in Rules stand.
+    if (cur.kept_at) return { ok: true, added: 0 };
+    if ((cur.rev ?? 0) !== (run.rev ?? 0)) return { ok: false, error: STALE_STEP };
     const c = await this.context();
     const have = new Set(c.facts.map((f) => f.id));
     const fresh = facts.filter((f) => !have.has(f.id));
     if (c.facts.length + fresh.length > maxFacts) return { ok: false, error: `that would make ${c.facts.length + fresh.length} facts; the limit is ${maxFacts}` };
     await this.setContext(c.rules, [...c.facts, ...fresh]);
     await this.kv.put("note", note);
-    await this.kv.put("onboarding", { ...run, kept_at: run.kept_at ?? now.toISOString() });
+    await this.kv.put("onboarding", { ...run, kept_at: now.toISOString(), rev: (run.rev ?? 0) + 1 });
     return { ok: true, added: fresh.length };
   }
 

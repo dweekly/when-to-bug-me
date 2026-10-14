@@ -338,6 +338,22 @@ test("onboarding steps name their run: a newer import isn't acted on unseen, and
   expect(late.status()).toBe(409);
 });
 
+test("a step another tab finished meanwhile isn't answered unseen", async ({ page, request }) => {
+  const history = JSON.parse(readFileSync("fixtures/history.json", "utf8")).decisions.slice(0, 10);
+  const auth = { authorization: `Bearer ${KEY}` };
+  await request.post("/api/me/onboarding", { headers: auth, data: { history } });
+  await page.goto("/me#/welcome");
+  await page.locator("#start-interview").click();
+  await page.locator("#answer-q1").fill("Yes.");
+  // Another tab asks for the interview again: new questions this page hasn't shown.
+  const shown = (await (await request.get("/api/me/onboarding", { headers: auth })).json()).run;
+  expect((await request.post("/api/me/onboarding/interview", { headers: auth, data: { run: shown.id, rev: shown.rev } })).status()).toBe(200);
+  await page.locator("#revise-note").click();
+  await expect(page.locator(".welcome")).toContainText("changed in another tab");
+  const now = (await (await request.get("/api/me/onboarding", { headers: auth })).json()).run;
+  expect(now.revised).toBeUndefined();
+});
+
 test("a kept line's fact, edited or deleted, changes the note too, and deleting a fact re-checks what's waiting", async ({ page, request }) => {
   await page.goto("/me#/rules");
   const note = page.locator("#note");

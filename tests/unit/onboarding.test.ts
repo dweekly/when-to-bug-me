@@ -67,6 +67,8 @@ describe("the interview and the revision", () => {
   it("answers only for questions that were asked", () => {
     expect(parseAnswers({ q1: " Yes, hard. ", q7: "stray" }, questions)).toEqual({ q1: "Yes, hard." });
     expect(() => parseAnswers({}, questions)).toThrow(OnboardingError);
+    // Too long is refused, never cut: the end of a long answer is often the correction.
+    expect(() => parseAnswers({ q1: `${"Yes. ".repeat(260)}But never grant access without asking me.` }, questions)).toThrow(/over 1200/);
   });
   it("a change names the answer behind it; an untouched line is kept as it was", () => {
     const answers = { q1: "Yes, hard." };

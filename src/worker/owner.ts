@@ -57,6 +57,10 @@ export class OwnerQueue extends DurableObject {
     return this.q().setOnboarding(run);
   }
 
+  async commitOnboarding(from: OnboardingRun, next: OnboardingRun): Promise<{ ok: true; run: OnboardingRun } | { ok: false; error: string }> {
+    return this.q().commitOnboarding(from, next);
+  }
+
   async note(): Promise<OwnerNote | undefined> {
     return this.q().note();
   }

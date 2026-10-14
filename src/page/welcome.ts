@@ -5,7 +5,7 @@
 // is the owner's own history (10b): imported with `npm run onboard`, and kept as facts and their note.
 
 import historyJson from "../../fixtures/history.json";
-import { type HistoryItem, type InterviewQuestion, type NoteLine, type OnboardingRun, type RevisedLine, parseHistory } from "../shared/onboarding";
+import { type HistoryItem, type InterviewQuestion, MAX_ANSWER_CHARS, type NoteLine, type OnboardingRun, type RevisedLine, parseHistory } from "../shared/onboarding";
 import { ONBOARDING_ANSWERS } from "../shared/onboardingScript";
 import type { Source } from "../shared/types";
 import { api } from "./api";
@@ -29,6 +29,9 @@ const who = () => (Q.owner ? "you" : Q.persona.first_name);
 /** The run on the page: every owner step names it, so a newer import can't be acted on unseen. */
 const runId = () => (run && run !== "none" ? run.id : "");
 const kept_ = () => Boolean(run && run !== "none" && run.kept_at);
+
+/** The version of the run this page shows: a step from an older one is refused (another tab moved it on). */
+const runRev = () => (run && run !== "none" ? (run.rev ?? 0) : 0);
 
 function useRun(r: OnboardingRun | null): void {
   run = r ?? "none";
@@ -117,7 +120,7 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
   try {
     if (Q.owner) {
       if (kind === "keep") {
-        const r = await api<{ added: number; run: OnboardingRun }>("/api/me/onboarding/keep", { run: runId() });
+        const r = await api<{ added: number; run: OnboardingRun }>("/api/me/onboarding/keep", { run: runId(), rev: runRev() });
         kept = r.added;
         useRun(r.run);
         // The kept lines are facts and the note now: take the server's copy of both, and check the waiting
@@ -130,7 +133,9 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
         void reroute(waitingIds(), "because you kept your onboarding note");
       } else if (kind !== "draft") {
         if (kind === "revise") await drainVoice();
-        const r = await api<{ run: OnboardingRun }>(`/api/me/onboarding/${kind}`, kind === "revise" ? { run: runId(), answers: w.answers } : { run: runId() });
+        const sent = { ...w.answers };
+        const r = await api<{ run: OnboardingRun }>(`/api/me/onboarding/${kind}`, kind === "revise" ? { run: runId(), rev: runRev(), answers: sent } : { run: runId(), rev: runRev() });
+        if (kind === "revise" && JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me revised; press Revise again");
         useRun(r.run);
       }
     } else if (kind === "draft") {
@@ -146,6 +151,8 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
       const sent = { ...w.answers };
       const r = await api<{ lines: RevisedLine[]; source: Source }>("/api/onboarding/revise", { note: w.note, questions: w.questions, answers: sent });
       if (g !== generation) return;
+      // An answer edited while Bug Me revised didn't make this note: leave the answers open to send again.
+      if (JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me revised; press Revise again");
       Object.assign(w, { revised: r.lines, revisedSource: r.source, submitted: sent });
     }
     announce(kind === "draft" ? "Note drafted." : kind === "interview" ? "Questions ready." : kind === "keep" ? "Kept." : "Note revised.");
@@ -237,7 +244,7 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
     ...qs.map((q) => {
       // Once the note is revised from them, the answers are locked; "Change answers" unlocks them and drops the revision.
       const locked = Boolean(w.revised);
-      const ta = h("textarea", { id: `answer-${q.id}`, rows: "1", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked }) as HTMLTextAreaElement;
+      const ta = h("textarea", { id: `answer-${q.id}`, rows: "1", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked, maxlength: String(MAX_ANSWER_CHARS) }) as HTMLTextAreaElement;
       ta.value = w.answers[q.id] ?? "";
       // The box grows with what's in it, so a spoken answer is read whole.
       const fit = () => {

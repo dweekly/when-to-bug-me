@@ -38,7 +38,7 @@ import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishB
 import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, interviewFor, noteFor, parseFor, reviseFor, routeFor, titlesFor, walkFor } from "./model";
 import { type WalkInput, walkInput } from "../shared/walk";
 import { WALK_PROMPT_VERSION } from "../shared/prompts";
-import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type OwnerNote, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
+import { ALREADY_KEPT, AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type OwnerNote, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, STALE_IMPORT, STALE_STEP, ticketId, waitingMinutes } from "./live";
 import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
@@ -302,22 +302,22 @@ async function onboardingRoute(req: Request, env: Env, path: string, q: ReturnTy
   if (!run) return json({ error: "no onboarding run yet: npm run onboard on the runner" }, 404);
   const b = await body(req);
   // Every step names the run the page showed: a newer import replaces it, and nothing acts on that unseen.
-  if (String(b.run ?? "") !== run.id) return json({ error: "A newer import replaced this one. Reload to see it." }, 409);
+  if (String(b.run ?? "") !== run.id) return json({ error: STALE_IMPORT }, 409);
   // A kept note is the owner's now: corrections go through the facts in Rules.
-  if (run.kept_at && path !== "/api/me/onboarding/keep") return json({ error: "Already kept; edit its lines in Rules." }, 409);
+  if (run.kept_at && path !== "/api/me/onboarding/keep") return json({ error: ALREADY_KEPT }, 409);
+  // …and the version of it the page showed: a step another tab finished since isn't answered unseen.
+  if (!run.kept_at && Number(b.rev ?? 0) !== (run.rev ?? 0)) return json({ error: STALE_STEP }, 409);
   if (path === "/api/me/onboarding/interview") {
     const { out, source } = await interviewFor(env, true, run.history, run.note, ctx);
-    const next: OnboardingRun = { ...run, questions: out, answers: undefined, revised: undefined, sources: { note: run.sources?.note ?? "live", questions: source } };
-    await q.setOnboarding(next);
-    return json({ run: next });
+    const r = await q.commitOnboarding(run, { ...run, questions: out, answers: undefined, revised: undefined, sources: { note: run.sources?.note ?? "live", questions: source } });
+    return r.ok ? json({ run: r.run }) : json({ error: r.error }, 409);
   }
   if (path === "/api/me/onboarding/revise") {
     if (!run.questions) throw new BadRequest("interview first");
     const answers = parseAnswers(b.answers, run.questions);
     const { out, source } = await reviseFor(env, true, run.history, run.note, run.questions, answers, ctx);
-    const next: OnboardingRun = { ...run, answers, revised: out, sources: { note: run.sources?.note ?? "live", questions: run.sources?.questions, revised: source } };
-    await q.setOnboarding(next);
-    return json({ run: next });
+    const r = await q.commitOnboarding(run, { ...run, answers, revised: out, sources: { note: run.sources?.note ?? "live", questions: run.sources?.questions, revised: source } });
+    return r.ok ? json({ run: r.run }) : json({ error: r.error }, 409);
   }
   if (path === "/api/me/onboarding/keep") {
     const facts = factsFromNote(run, MAX_RULE_CHARS);

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type ExtractRow, allowed, projectLabel, toHistory } from "../../scripts/onboard";
 import { MAX_FACTS, MAX_RULE_CHARS } from "../../src/shared/constants";
 import { type OnboardingRun, factsFromNote, parseHistory } from "../../src/shared/onboarding";
-import { LiveQueue, mapKV } from "../../src/worker/live";
+import { ALREADY_KEPT, LiveQueue, STALE_IMPORT, STALE_STEP, mapKV } from "../../src/worker/live";
 
 const row = (over: Partial<ExtractRow>): ExtractRow => ({
   machine: "m1",
@@ -89,6 +89,7 @@ describe("keeping the note", () => {
 
   it("keeping twice adds nothing; the limit on facts holds", async () => {
     const q = new LiveQueue(mapKV());
+    await q.setOnboarding(run);
     const facts = factsFromNote(run, MAX_RULE_CHARS);
     const note = { lines: facts.map((f) => f.text), source: "test" };
     expect(await q.keepNote(run, facts, note, MAX_FACTS)).toEqual({ ok: true, added: 2 });
@@ -96,7 +97,60 @@ describe("keeping the note", () => {
     expect((await q.context()).facts).toHaveLength(2);
     expect((await q.context()).rules.length).toBeGreaterThan(0);
     expect((await q.note())?.lines).toEqual(["Line one", "New line"]);
+    await q.setOnboarding({ ...run, id: "r2" });
     expect((await q.keepNote({ ...run, id: "r2" }, factsFromNote({ ...run, id: "r2" }, MAX_RULE_CHARS), note, 3)).ok).toBe(false);
+  });
+});
+
+describe("overlapping onboarding steps (another tab, a newer import, a retry)", () => {
+  const run: OnboardingRun = { id: "r1", created_at: "2026-10-14T00:00:00Z", history: parseHistory([{ id: "h1", question: "q", options: [{ key: "A", label: "a" }], answer: "A" }]), note: [{ id: "n1", text: "Previews, not diffs", kind: "preference", cites: ["h1"] }] };
+  const keep = (q: LiveQueue, r: OnboardingRun) => {
+    const facts = factsFromNote(r, MAX_RULE_CHARS);
+    return q.keepNote(r, facts, { lines: facts.map((f) => f.text), fact_ids: facts.map((f) => f.id), source: "test" }, MAX_FACTS);
+  };
+
+  it("a step that finishes after a newer import doesn't overwrite it", async () => {
+    const q = new LiveQueue(mapKV());
+    await q.setOnboarding(run);
+    const read = (await q.onboarding())!; // the interview starts from this
+    await q.setOnboarding({ ...run, id: "r2" }); // npm run onboard, meanwhile
+    expect(await q.commitOnboarding(read, { ...read, questions: [{ id: "q1", text: "?", about: ["n1"] }] })).toEqual({ ok: false, error: STALE_IMPORT });
+    expect((await q.onboarding())!.id).toBe("r2");
+  });
+
+  it("a step that finishes after Keep doesn't un-keep the run", async () => {
+    const q = new LiveQueue(mapKV());
+    await q.setOnboarding(run);
+    const read = (await q.onboarding())!; // a revision starts from this
+    expect((await keep(q, read)).ok).toBe(true); // another tab keeps, meanwhile
+    expect(await q.commitOnboarding(read, { ...read, revised: [] })).toEqual({ ok: false, error: ALREADY_KEPT });
+    expect((await q.onboarding())!.kept_at).toBeTruthy();
+  });
+
+  it("of two steps from the same version, only the first saves", async () => {
+    const q = new LiveQueue(mapKV());
+    await q.setOnboarding(run);
+    const read = (await q.onboarding())!;
+    expect((await q.commitOnboarding(read, { ...read, questions: [{ id: "q1", text: "first", about: ["n1"] }] })).ok).toBe(true);
+    expect(await q.commitOnboarding(read, { ...read, questions: [{ id: "q1", text: "second", about: ["n1"] }] })).toEqual({ ok: false, error: STALE_STEP });
+    expect((await q.onboarding())!.questions![0].text).toBe("first");
+    expect((await keep(q, read)).ok).toBe(false); // Keep from before that step is stale too
+  });
+
+  it("Keep again on a stale page changes nothing: a fact edited or deleted since stays that way", async () => {
+    const q = new LiveQueue(mapKV());
+    await q.setOnboarding(run);
+    const stalePage = (await q.onboarding())!;
+    await keep(q, stalePage);
+    const c = await q.context();
+    const id = factsFromNote(run, MAX_RULE_CHARS)[0].id;
+    await q.setContext(c.rules, c.facts.map((f) => (f.id === id ? { ...f, text: "Diffs are fine" } : f)));
+    expect(await keep(q, stalePage)).toEqual({ ok: true, added: 0 });
+    expect((await q.note())?.lines).toEqual(["Diffs are fine"]);
+    await q.setContext(c.rules, c.facts.filter((f) => f.id !== id));
+    expect(await keep(q, stalePage)).toEqual({ ok: true, added: 0 });
+    expect((await q.context()).facts.some((f) => f.id === id)).toBe(false);
+    expect(await q.note()).toBeUndefined();
   });
 });
 
@@ -138,6 +192,7 @@ describe("a kept note follows its facts", () => {
   it("editing a kept line's fact edits the note; deleting every one brings back the distilled note", async () => {
     const q = new LiveQueue(mapKV());
     const run: OnboardingRun = { id: "r1", created_at: "2026-10-14T00:00:00Z", history: parseHistory([{ id: "h1", question: "q", options: [{ key: "A", label: "a" }], answer: "A" }]), note: [{ id: "n1", text: "Previews, not diffs", kind: "preference", cites: ["h1"] }, { id: "n2", text: "Short summaries", kind: "preference", cites: ["h1"] }] };
+    await q.setOnboarding(run);
     const facts = factsFromNote(run, MAX_RULE_CHARS);
     await q.keepNote(run, facts, { lines: facts.map((f) => f.text), fact_ids: facts.map((f) => f.id), source: "test" }, MAX_FACTS);
     const c = await q.context();
