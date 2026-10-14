@@ -7,14 +7,13 @@
 import { estimateMinutes, nextInSession } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
-import { editRule, resume, startSession, undo } from "./actions";
+import { editFact, editRule, resume, startSession, undo } from "./actions";
 import { markButton, renderNow } from "./card";
 import { type Mood as Mood6, setGlowMood, setVoiceTarget } from "./voice";
 import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
 import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
-import { F, Q, S, byId, isCard, save, setF, unfinished } from "./state";
-import { saveContext } from "./live";
+import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 import { MAX_RULE_CHARS } from "../shared/constants";
 import { openToursMenu, tourAfterRender } from "./tour";
 import { renderDispatchView } from "./dispatch";
@@ -431,18 +430,8 @@ function settledRow(id: string): HTMLElement {
 let factDraft: { id: string; text: string; error: string } | null = null;
 
 async function saveFact(id: string, text: string | null): Promise<void> {
-  const before = S.facts;
-  if (text !== null && !text.trim()) return void (factDraft = { id, text: "", error: "Say something, or delete it." });
-  if (text !== null && text.length > MAX_RULE_CHARS) return void (factDraft = { id, text, error: `At most ${MAX_RULE_CHARS} characters.` });
-  S.facts = text === null ? S.facts.filter((f) => f.id !== id) : S.facts.map((f) => (f.id === id ? { ...f, text: text.trim() } : f));
-  try {
-    await saveContext(S.rules, S.facts);
-    factDraft = null;
-    save();
-  } catch (e) {
-    S.facts = before;
-    factDraft = { id, text: text ?? "", error: (e as Error).message };
-  }
+  const error = await editFact(id, text);
+  factDraft = error ? { id, text: text ?? "", error } : null;
   render();
 }
 

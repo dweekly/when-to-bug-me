@@ -133,3 +133,17 @@ describe("the owner's onboarding is never stored outside their queue", () => {
     }
   });
 });
+
+describe("a kept note follows its facts", () => {
+  it("editing a kept line's fact edits the note; deleting every one brings back the distilled note", async () => {
+    const q = new LiveQueue(mapKV());
+    const run: OnboardingRun = { id: "r1", created_at: "2026-10-14T00:00:00Z", history: parseHistory([{ id: "h1", question: "q", options: [{ key: "A", label: "a" }], answer: "A" }]), note: [{ id: "n1", text: "Previews, not diffs", kind: "preference", cites: ["h1"] }, { id: "n2", text: "Short summaries", kind: "preference", cites: ["h1"] }] };
+    const facts = factsFromNote(run, MAX_RULE_CHARS);
+    await q.keepNote(run, facts, { lines: facts.map((f) => f.text), fact_ids: facts.map((f) => f.id), source: "test" }, MAX_FACTS);
+    const c = await q.context();
+    await q.setContext(c.rules, c.facts.map((f) => (f.id === facts[0].id ? { ...f, text: "Diffs are fine" } : f)));
+    expect((await q.note())?.lines).toEqual(["Diffs are fine", "Short summaries"]);
+    await q.setContext(c.rules, []);
+    expect(await q.note()).toBeUndefined();
+  });
+});

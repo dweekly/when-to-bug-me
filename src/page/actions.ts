@@ -831,6 +831,45 @@ export async function editRule(id: string, text: string): Promise<void> {
 }
 
 /**
+ * Edit or delete a standing fact on /me (docs/STAGE-10.md): saved to the server first, then, as for a
+ * rule, the guidance version moves on and the waiting decisions are checked again under the new facts.
+ * Returns an error to show, or "" when it's done.
+ */
+export async function editFact(id: string, text: string | null): Promise<string> {
+  const old = S.facts.find((f) => f.id === id);
+  if (!old) return "";
+  const t = text === null ? null : text.replace(/\s+/g, " ").trim();
+  if (t !== null && !t) return "Say something, or delete it.";
+  if (t !== null && t.length > MAX_RULE_CHARS) return `At most ${MAX_RULE_CHARS} characters.`;
+  if (t === old.text) return "";
+  const facts = t === null ? S.facts.filter((f) => f.id !== id) : S.facts.map((f) => (f.id === id ? { ...f, text: t } : f));
+  try {
+    await saveContext(S.rules, facts);
+  } catch (e) {
+    return `Couldn't save that (${(e as Error).message}). Try again.`;
+  }
+  S.facts = facts;
+  await refreshOwnerNote();
+  S.version++;
+  log("fact_edited", { fact: id, from: old.text, to: t });
+  save();
+  render();
+  void reroute(waitingIds(), t === null ? `because you deleted: “${old.text.replace(/[.\s]+$/, "")}”` : `because you edited: “${t.replace(/[.\s]+$/, "")}”`);
+  return "";
+}
+
+/** The owner's note can change with their facts (a kept onboarding line edited or deleted): take the server's. */
+export async function refreshOwnerNote(): Promise<void> {
+  if (!OWNER_PAGE) return;
+  try {
+    const q = await api<{ persona: typeof Q.persona }>("/api/queue");
+    Q.persona = q.persona;
+  } catch {
+    // The next load brings it.
+  }
+}
+
+/**
  * Re-route decisions under the current rules and facts, noting every change with its cause. A newer
  * edit supersedes an older pass: decisions the older pass had not finished stay pending and are
  * carried into the newer pass (each keeps the cause that first queued it), so nothing is abandoned.

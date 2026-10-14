@@ -13,6 +13,8 @@ import { SOURCE_LABEL } from "./derive";
 import { $, announce, h } from "./dom";
 import { hrefFor } from "./router";
 import { Q, S, save } from "./state";
+import { reroute } from "./actions";
+import { waitingIds } from "./derive";
 import { tourAfterRender } from "./tour";
 import { drainVoice, setVoiceTarget } from "./voice";
 
@@ -24,6 +26,9 @@ let byId = new Map(history.map((x) => [x.id, x]));
 let run: OnboardingRun | "none" | null = null;
 let kept = 0;
 const who = () => (Q.owner ? "you" : Q.persona.first_name);
+/** The run on the page: every owner step names it, so a newer import can't be acted on unseen. */
+const runId = () => (run && run !== "none" ? run.id : "");
+const kept_ = () => Boolean(run && run !== "none" && run.kept_at);
 
 function useRun(r: OnboardingRun | null): void {
   run = r ?? "none";
@@ -112,17 +117,20 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
   try {
     if (Q.owner) {
       if (kind === "keep") {
-        const r = await api<{ added: number; run: OnboardingRun }>("/api/me/onboarding/keep", {});
+        const r = await api<{ added: number; run: OnboardingRun }>("/api/me/onboarding/keep", { run: runId() });
         kept = r.added;
         useRun(r.run);
-        // The kept lines are facts and the note now: take the server's copy of both.
+        // The kept lines are facts and the note now: take the server's copy of both, and check the waiting
+        // decisions again under them, as for any change of guidance.
         const q = await api<{ facts: typeof S.facts; persona: typeof Q.persona }>("/api/queue");
         S.facts = q.facts;
         Q.persona = q.persona;
+        S.version++;
         save();
+        void reroute(waitingIds(), "because you kept your onboarding note");
       } else if (kind !== "draft") {
         if (kind === "revise") await drainVoice();
-        const r = await api<{ run: OnboardingRun }>(`/api/me/onboarding/${kind}`, kind === "revise" ? { answers: w.answers } : {});
+        const r = await api<{ run: OnboardingRun }>(`/api/me/onboarding/${kind}`, kind === "revise" ? { run: runId(), answers: w.answers } : { run: runId() });
         useRun(r.run);
       }
     } else if (kind === "draft") {
@@ -337,7 +345,9 @@ export function renderWelcomeView(view: HTMLElement): void {
               interview(w.questions),
               source(w.questionsSource),
               w.revised
-                ? h("button", { type: "button", class: "ghost small", id: "change-answers", onclick: () => ((w.revised = null), (w.submitted = {}), paint()) }, "Change answers")
+                ? kept_()
+                  ? null
+                  : h("button", { type: "button", class: "ghost small", id: "change-answers", onclick: () => ((w.revised = null), (w.submitted = {}), paint()) }, "Change answers")
                 : h(
                     "div",
                     { class: "row" },

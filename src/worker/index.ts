@@ -301,6 +301,10 @@ async function onboardingRoute(req: Request, env: Env, path: string, q: ReturnTy
   const run = await q.onboarding();
   if (!run) return json({ error: "no onboarding run yet: npm run onboard on the runner" }, 404);
   const b = await body(req);
+  // Every step names the run the page showed: a newer import replaces it, and nothing acts on that unseen.
+  if (String(b.run ?? "") !== run.id) return json({ error: "A newer import replaced this one. Reload to see it." }, 409);
+  // A kept note is the owner's now: corrections go through the facts in Rules.
+  if (run.kept_at && path !== "/api/me/onboarding/keep") return json({ error: "Already kept; edit its lines in Rules." }, 409);
   if (path === "/api/me/onboarding/interview") {
     const { out, source } = await interviewFor(env, true, run.history, run.note, ctx);
     const next: OnboardingRun = { ...run, questions: out, answers: undefined, revised: undefined, sources: { note: run.sources?.note ?? "live", questions: source } };
@@ -318,7 +322,7 @@ async function onboardingRoute(req: Request, env: Env, path: string, q: ReturnTy
   if (path === "/api/me/onboarding/keep") {
     const facts = factsFromNote(run, MAX_RULE_CHARS);
     const lines = facts.map((f) => f.text);
-    const r = await q.keepNote(run, facts, { lines, source: `Drafted by Bug Me from ${run.history.length} of your decisions${run.revised ? " and corrected in the interview" : ""}, ${run.created_at.slice(0, 10)}.` }, MAX_FACTS);
+    const r = await q.keepNote(run, facts, { lines, fact_ids: facts.map((f) => f.id), source: `Drafted by Bug Me from ${run.history.length} of your decisions${run.revised ? " and corrected in the interview" : ""}, ${run.created_at.slice(0, 10)}.` }, MAX_FACTS);
     if (!r.ok) return json({ error: r.error }, 409);
     return json({ ok: true, added: r.added, run: await q.onboarding() });
   }

@@ -200,6 +200,8 @@ export function askProjectName(raw: unknown): string {
 export interface OwnerNote {
   lines: string[];
   source: string;
+  /** The facts its lines came from: editing or deleting one changes the note too. */
+  fact_ids?: string[];
 }
 
 export function ownerPersona(projects: { id: string; name: string }[], note?: OwnerNote): Persona {
@@ -328,8 +330,10 @@ export class LiveQueue {
     await this.kv.put("onboarding", run);
   }
 
+  /** The kept note, or undefined (then the distilled one applies), including once every line is deleted. */
   async note(): Promise<OwnerNote | undefined> {
-    return this.kv.get<OwnerNote>("note");
+    const n = await this.kv.get<OwnerNote | null>("note");
+    return n && n.lines.length ? n : undefined;
   }
 
   /**
@@ -440,6 +444,13 @@ export class LiveQueue {
     await this.kv.put("rules", rules);
     await this.kv.put("facts", facts);
     await this.kv.put("rev", c.rev + 1);
+    // A kept onboarding note follows its facts: an edited line reads as edited, a deleted one is gone.
+    const n = await this.kv.get<OwnerNote | null>("note");
+    if (n?.fact_ids) {
+      const byId = new Map(facts.map((f) => [f.id, f.text]));
+      const ids = n.fact_ids.filter((id) => byId.has(id));
+      await this.kv.put("note", { ...n, fact_ids: ids, lines: ids.map((id) => byId.get(id)!) });
+    }
   }
 
   async get(id: string): Promise<Ticket | undefined> {

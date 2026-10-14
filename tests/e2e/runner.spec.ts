@@ -314,3 +314,48 @@ test("onboarding on your own history: imported on the runner, interviewed, kept 
   await page.reload();
   await expect(page.locator("#facts")).toContainText("Previews, not diffs. Always.");
 });
+
+test("onboarding steps name their run: a newer import isn't acted on unseen, and a kept run is closed", async ({ page, request }) => {
+  const history = JSON.parse(readFileSync("fixtures/history.json", "utf8")).decisions.slice(0, 10);
+  const auth = { authorization: `Bearer ${KEY}` };
+  await request.post("/api/me/onboarding", { headers: auth, data: { history } });
+  await page.goto("/me#/welcome");
+  await expect(page.locator("#start-interview")).toBeVisible();
+  // Another import lands while the page shows the first.
+  await request.post("/api/me/onboarding", { headers: auth, data: { history: history.slice(0, 8) } });
+  await page.locator("#start-interview").click();
+  await expect(page.locator(".welcome")).toContainText("A newer import replaced this one");
+  // The current run, kept: no more changes to it.
+  await page.reload();
+  await page.locator("#start-interview").click();
+  await page.locator("#answer-q1").fill("Yes.");
+  await page.locator("#revise-note").click();
+  await page.locator("#keep-note").click();
+  await expect(page.locator("#step-note")).toContainText("It's your note now");
+  await expect(page.locator("#change-answers")).toHaveCount(0);
+  const run = (await (await request.get("/api/me/onboarding", { headers: auth })).json()).run;
+  const late = await request.post("/api/me/onboarding/revise", { headers: auth, data: { run: run.id, answers: { q1: "No." } } });
+  expect(late.status()).toBe(409);
+});
+
+test("a kept line's fact, edited or deleted, changes the note too, and deleting a fact re-checks what's waiting", async ({ page, request }) => {
+  await page.goto("/me#/rules");
+  const note = page.locator("#note");
+  // The newest fact: a line of the note kept in the test before (the facts list is oldest first).
+  const first = page.locator("#facts .rtext").last();
+  const text = (await first.innerText()).trim();
+  await expect(note).toContainText(text);
+  await first.click();
+  await page.locator("#facts li.editing textarea").fill("Edited in Rules.");
+  await page.locator("#facts li.editing").getByRole("button", { name: "Save" }).click();
+  await expect(note).toContainText("Edited in Rules.");
+  await expect(note).not.toContainText(text);
+  // A waiting ask, then a fact deleted: the waiting ask is checked again.
+  await request.post("/api/me/tickets", { headers: { authorization: `Bearer ${KEY}` }, data: { question: "Ship the docs change now or tomorrow?", project: "Docs", options: [{ key: "A", label: "Now" }, { key: "B", label: "Tomorrow" }] } });
+  await page.reload();
+  const rerouted = page.waitForRequest((r) => r.url().includes("/api/me/route"));
+  await page.locator("#facts .rtext", { hasText: "Edited in Rules." }).click();
+  await page.locator("#facts li.editing").getByRole("button", { name: "delete" }).click();
+  await rerouted;
+  await expect(note).not.toContainText("Edited in Rules.");
+});
