@@ -118,26 +118,35 @@ async function load(): Promise<void> {
   }
 }
 
+/** A change that arrived while something was being typed: drawn on the next quiet tick. */
+let redrawPending = false;
+
 /**
- * On the runner, while this view is visible: briefs, waiting asks and sessions again. Redraws only when
- * something changed and nothing is being typed, so a half-written answer keeps its text and focus.
+ * On the runner, while this view is visible: briefs, waiting asks and sessions again. The brief objects
+ * the controls hold stay the same objects, updated in place, and a draft's setup edits (not yet launched
+ * or copied) stay as the person left them. Redraws only when something changed and nothing is being
+ * typed; a change held back for typing is drawn on the next quiet tick.
  */
 async function poll(): Promise<void> {
   if (document.visibilityState !== "visible" || !onDispatch() || launching) return;
   const before = JSON.stringify([briefs, waiting, runner?.sessions]);
-  const edits = new Map((briefs ?? []).map((b) => [b.id, b]));
+  const mine = new Map((briefs ?? []).map((b) => [b.id, b]));
   try {
     await load();
   } catch {
     return;
   }
-  // Setup edits not yet launched or copied stay as the person left them.
-  briefs = (briefs ?? []).map((b) => {
-    const mine = edits.get(b.id);
-    return mine && !b.launch && !b.dispatched_at ? { ...b, model: mine.model, effort: mine.effort, permission_mode: mine.permission_mode, estimate_minutes: mine.estimate_minutes, budget_usd: mine.budget_usd, tools_off: mine.tools_off } : b;
+  briefs = (briefs ?? []).map((fresh) => {
+    const b = mine.get(fresh.id);
+    if (!b) return fresh;
+    const edits = !fresh.launch && !fresh.dispatched_at
+      ? { model: b.model, effort: b.effort, permission_mode: b.permission_mode, estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd, tools_off: b.tools_off }
+      : {};
+    return Object.assign(b, fresh, edits);
   });
-  if (JSON.stringify([briefs, waiting, runner?.sessions]) === before) return;
-  if (document.activeElement?.matches("#view input, #view textarea, #view select")) return;
+  if (JSON.stringify([briefs, waiting, runner?.sessions]) !== before) redrawPending = true;
+  if (!redrawPending || document.activeElement?.matches("#view input, #view textarea, #view select")) return;
+  redrawPending = false;
   paint();
 }
 
@@ -373,6 +382,8 @@ function refreshLive(b: Shown): void {
   const copyCmd = document.getElementById("copy-command") as HTMLButtonElement | null;
   const copyBrief = document.getElementById("copy-brief") as HTMLButtonElement | null;
   if (copyCmd) copyCmd.disabled = !ready;
+  const launchBtn = document.getElementById("launch") as HTMLButtonElement | null;
+  if (launchBtn) launchBtn.disabled = !ready || !repo || launching === b.id;
   if (copyBrief) copyBrief.disabled = Boolean(invalid.get(b.id)?.size);
   const msg = document.querySelector("#brief .brief-actions .think-msg");
   if (msg) msg.textContent = actionMsg || message;
@@ -676,6 +687,8 @@ function sessionLine(b: Shown): HTMLElement {
 
 /** Save the setup and ticks (the clock starts), then ask the runner to start the session. */
 async function launch(b: Shown): Promise<void> {
+  // The button can be stale for a moment; what's typed now decides.
+  if (!copyState(b).ready || !repo || launching) return;
   launching = b.id;
   actionMsg = "";
   paint();

@@ -119,3 +119,34 @@ test("on a phone, the launched brief fits the width", async ({ page }) => {
   await expect(page.locator("#brief")).toBeVisible();
   expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
 });
+
+test("a setup edit survives the refresh, and an invalid estimate turns Launch off", async ({ page }) => {
+  await draft(page, "Tidy the README intro so it says what the tool does in one line.");
+  await page.locator("#brief .brief-more summary").click();
+  // Two refreshes (the second with nothing new), then an edit, then something that redraws the card.
+  await page.waitForTimeout(17_000);
+  await page.getByLabel("Model").selectOption("claude-haiku-5-5");
+  const here = page.url();
+  await page.goto("/me#/dispatch");
+  await page.goto(here);
+  // Details stays open across redraws.
+  await expect(page.locator("#brief .brief-more")).toHaveAttribute("open", "");
+  await expect(page.getByLabel("Model")).toHaveValue("claude-haiku-5-5");
+  for (const box of await page.locator("#brief .brief-you input").all()) await box.check();
+  await page.locator("#launch-repo").selectOption("sandbox");
+  await expect(page.locator("#launch")).toBeEnabled();
+  await page.getByLabel("Estimate in minutes").fill("0");
+  await expect(page.locator("#launch")).toBeDisabled();
+  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Fix the time or $ first.");
+});
+
+test("the first ask from a project this page hasn't seen reaches Home without a reload", async ({ page, request }) => {
+  await page.goto("/me#/");
+  await expect(page.locator("#bar nav")).toBeVisible();
+  const ask = await request.post("/api/me/tickets", {
+    headers: { authorization: `Bearer ${KEY}` },
+    data: { question: "Should the nightly export keep 30 days or 90 days of history?", project: "Export Tool", options: [{ key: "A", label: "30 days" }, { key: "B", label: "90 days" }] },
+  });
+  expect(ask.ok()).toBe(true);
+  await expect(page.locator("#view")).toContainText("Export Tool", { timeout: 20_000 });
+});
