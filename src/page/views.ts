@@ -17,6 +17,7 @@ import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 import { MAX_RULE_CHARS } from "../shared/constants";
 import { openToursMenu, tourAfterRender } from "./tour";
 import { renderDispatchView } from "./dispatch";
+import { betweenReflection, renderReviewView } from "./reflect";
 import { renderWelcomeView } from "./welcome";
 
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
@@ -235,6 +236,7 @@ function renderHome(view: HTMLElement): void {
     { class: "more-links", "aria-label": "More" },
     link({ view: "rules" }, "Rules and what Bug Me knows"),
     link({ view: "record" }, "Your record"),
+    link({ view: "review" }, "Weekly review sketch"),
   );
   view.replaceChildren(hero, startCard, agendaList, unfinishedList ?? "", asideList ?? "", more);
 }
@@ -282,6 +284,7 @@ function renderBetween(view: HTMLElement, projectId: string): void {
       h("p", { class: "glyph-big", "aria-hidden": "true" }, GLYPH.settle),
       h("h1", {}, stillOpen ? `${finished?.name}'s active queue is clear.` : `${finished?.name} is done.`),
       stillOpen ? h("p", { class: "quiet" }, `${stillOpen} set aside or waiting for you to finish.`) : null,
+      ...betweenReflection(projectId, nextSection?.project.id ?? null),
       nextSection
         ? h(
             "div",
@@ -533,6 +536,7 @@ function renderRecordView(view: HTMLElement): void {
         `${S.record.filter((r) => r.kind === "answer").length} answers, ${Object.keys(S.punts).length} set aside, ${S.record.filter((r) => r.kind === "mark").length} marks, ${S.record.length} events. Every guess made before an answer is kept with the answer and your reason. It stays in this browser.`,
       ),
       h("div", { class: "row" }, h("button", { type: "button", id: "export", class: "ghost" }, "Export JSON"), h("button", { type: "button", id: "reset", class: "ghost" }, "Start the morning over")),
+      h("p", { class: "quiet" }, link({ view: "review" }, "Weekly review sketch →")),
     ),
   );
 }
@@ -553,6 +557,7 @@ export function render(): void {
   else if (route.view === "settled") renderSettledView(view);
   else if (route.view === "rules") renderRulesView(view);
   else if (route.view === "dispatch") renderDispatchView(view, route.id);
+  else if (route.view === "review") renderReviewView(view);
   else if (route.view === "welcome") renderWelcomeView(view);
   else renderRecordView(view);
   tourAfterRender();

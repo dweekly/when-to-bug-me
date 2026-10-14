@@ -501,6 +501,60 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .turn.bug .turn-qs { grid-column: 2; margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.6; }
 @media (max-width: 560px) { .turn.bug .turn-qs { grid-column: 1; } }
 
+/* ---------- Reflection (docs/STAGE-10.md, 10c) ----------
+   The change-of-project screen's two quiet asks, and #/review. Regular weight, muted ink; route symbols
+   carry the meaning. Color only where it means something: over or under a brief's estimate. */
+.ricon svg, .rx svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.rclose { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin-left: 4px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); cursor: pointer; vertical-align: middle; }
+.rclose:hover { color: var(--ink); background: var(--night-3); }
+.rclose .rx svg { width: 14px; height: 14px; }
+abbr.est { text-decoration: none; font: 12px var(--mono); color: var(--ink-3); border-bottom: 1px dotted var(--ink-3); cursor: help; }
+.worth { margin: 26px auto 0; max-width: 520px; color: var(--ink-2); }
+.worth > p { margin: 0 0 10px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.worth.noted { font-size: 15px; color: var(--ink-3); }
+.worth-taps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.worth-taps .chip-btn { color: var(--ink-2); display: inline-flex; align-items: center; gap: 7px; }
+.worth-taps .chip-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+.wglyph { font-size: 15px; color: var(--ink); }
+.break-line { display: inline-flex; align-items: center; gap: 10px; margin: 26px auto 0; padding: 6px 6px 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); font-size: 15px; max-width: 100%; text-align: left; }
+.break-line .ricon { color: var(--ink-3); flex: none; }
+
+.review .rv-eyebrow { margin: 0; font: 12.5px var(--mono); color: var(--ink-3); }
+.rv-block { margin-top: 8px; }
+.rv-finding { margin: 0 0 12px; color: var(--ink); font-size: 17px; }
+.rv-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rv-bars li { display: grid; grid-template-columns: 2.2em minmax(4.5em, 7em) minmax(0, 1fr) 3.4em; grid-template-areas: "rank name track min" ". . dots ."; align-items: center; column-gap: 10px; padding: 6px 0; }
+.rv-rank { grid-area: rank; font: 13px var(--mono); color: var(--ink-3); }
+.rv-name { grid-area: name; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-track { grid-area: track; height: 10px; border-radius: 5px; background: var(--night-2); overflow: hidden; }
+.rv-fill { display: block; height: 100%; border-radius: 5px; background: var(--ink-2); min-width: 0; }
+.rv-min { grid-area: min; font: 13px var(--mono); color: var(--ink-2); text-align: right; }
+.rv-dots { grid-area: dots; font: 13px/1.2 var(--mono); color: var(--ink-3); letter-spacing: 0.15em; overflow-wrap: anywhere; }
+.rv-note { margin: 10px 0 0; font-size: 13px; color: var(--ink-3); }
+.rv-waffle { display: flex; flex-wrap: wrap; gap: 3px; margin: 0 0 10px; font: 17px/1 var(--mono); }
+.rv-cell { width: 1.15em; text-align: center; }
+.rv-cell.decide, .rv-cell.check { color: var(--ink); }
+.rv-cell.settled { color: var(--ink-3); }
+.rv-cell.waiting { color: var(--ink-3); opacity: 0.45; }
+.rv-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 14.5px; color: var(--ink-2); }
+.rv-n { color: var(--ink); font-family: var(--mono); }
+.rv-now { font: 11.5px var(--mono); color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; }
+.rv-worth { margin: 12px 0 0; font-size: 14.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.rv-tally { color: var(--ink); }
+.rv-briefs { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.rv-briefs li { display: grid; gap: 5px; }
+.rv-bname { color: var(--ink-2); font-size: 15px; }
+.rv-dtrack { position: relative; display: block; height: 10px; margin-right: 2px; border-radius: 5px; background: var(--night-2); }
+.rv-est { position: absolute; top: -4px; width: 2px; height: 18px; margin-left: -1px; border-radius: 1px; background: var(--ink); }
+.rv-took { position: absolute; left: 0; top: 0; height: 10px; border-radius: 5px; }
+.rv-took.under { background: var(--ok); }
+.rv-took.over { background: var(--stop); }
+.rv-dfacts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font: 13px var(--mono); color: var(--ink-3); }
+@media (max-width: 560px) {
+  .rv-bars li { grid-template-columns: 2em minmax(0, 1fr) 3.2em; grid-template-areas: "rank name min" ". track track" ". dots dots"; row-gap: 4px; }
+  .break-line { border-radius: 14px; }
+}
+
 /* Onboarding: getting to know the person (docs/STAGE-10.md). */
 .welcome-link { margin: 6px 0 0; }
 .welcome-steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 22px; counter-reset: wstep; }

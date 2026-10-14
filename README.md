@@ -20,7 +20,7 @@ The front page is a short explainer; each tour card opens a guided tour of the r
 6. **Getting to know Jordan** (linked from Home) is onboarding: Bug Me reads 30 of Jordan's past decisions (synthetic), drafts a "how to work with me" note whose every line opens the decisions behind it, asks three questions about what it saw, and revises the note from the answers (DEMO REPLY gives Jordan's). Recorded, so it runs with no key. The morning itself still runs on Jordan's hand-written note.
 7. **The clay firefly** in the corner shows the morning's glow (brighter as you give real reasons). To talk instead of type, press the microphone inside the card's text box: it keeps listening across cards, shows the words it hears under the box, and writes them into it.
 
-Also worth a click: edit a written rule and watch decisions re-route; undo something in **Decided for you**, or mark it "this shouldn't have come to me"; the settings redesign card, where both options are clickable prototypes.
+Also worth a click: finish a project with Next, and the change-of-project screen may suggest a break or ask "Were those worth your time?" (times there are estimates from the route, not measured); Record → **Weekly review sketch** draws the morning from your record against Jordan's stated priorities (synthetic); edit a written rule and watch decisions re-route; undo something in **Decided for you**, or mark it "this shouldn't have come to me"; the settings redesign card, where both options are clickable prototypes.
 
 ## What is live, what is recorded, what is code
 

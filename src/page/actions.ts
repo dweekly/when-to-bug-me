@@ -31,6 +31,7 @@ import { announce } from "./dom";
 import { go } from "./router";
 import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, log, newFlow, save, setF, talking } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
+import { recordTransition } from "./reflect";
 import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext, saveOneFact } from "./live";
 
 export function glowEvent(e: GlowEvent): void {
@@ -673,7 +674,10 @@ export function next(): void {
   const from = S.sessionProject;
   const n = nextInSession(agenda(), from);
   save();
-  if (n.changedProject && from) go({ view: "between", project: from });
+  if (n.changedProject && from) {
+    recordTransition(from, n.project); // counted here, at the action, never at render (docs/STAGE-10.md, 10c)
+    go({ view: "between", project: from });
+  }
   else if (n.id) go({ view: "focus", id: n.id });
   else go({ view: "home" });
 }
