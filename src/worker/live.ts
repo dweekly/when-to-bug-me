@@ -346,15 +346,16 @@ export class LiveQueue {
   }
 
   /**
-   * The runner's launch record (docs/STAGE-9.md). "launching" is a reservation: it is refused, and the
-   * existing record returned, unless the brief has none or its last launch failed. "running" and
-   * "failed" only follow a reservation. One Durable Object serializes these, so a double tap launches once.
+   * The runner's launch record (docs/STAGE-9.md). "launching" is a reservation: refused, with the record
+   * as it stands, unless the brief has none or its last launch failed. "running" and "failed" apply only
+   * to the current reservation of the same attempt, so a late recovery or completion for an older attempt
+   * changes nothing. One Durable Object serializes these, so a double tap launches once.
    */
   async launch(id: string, l: Launch): Promise<{ brief: Brief; ok: boolean } | undefined> {
     const b = await this.brief(id);
     if (!b) return undefined;
     const cur = b.launch;
-    const ok = l.state === "launching" ? !cur || cur.state === "failed" : cur !== undefined && cur.state !== "failed" && cur.repo === l.repo;
+    const ok = l.state === "launching" ? !cur || cur.state === "failed" : cur?.state === "launching" && cur.attempt === l.attempt && cur.repo === l.repo;
     if (!ok) return { brief: b, ok: false };
     const next: Brief = { ...b, launch: l.state === "launching" ? l : { ...l, at: cur!.at } };
     await this.kv.put(`b:${id}`, next);

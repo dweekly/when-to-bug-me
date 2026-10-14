@@ -121,6 +121,11 @@ export interface Launch {
   repo: string;
   /** When the launch was reserved: the clock for a launched brief, apart from dispatched_at. */
   at: string;
+  /**
+   * Which attempt this is (random, made by the runner at reservation). Recovery and completion carry it,
+   * and apply only to the reservation they belong to, so a late result never touches a newer attempt.
+   */
+  attempt: string;
   /** The background session's short id, as `claude --bg` prints it. */
   session_id?: string;
   worktree?: string;
@@ -131,16 +136,18 @@ export interface Launch {
 /** A repo name the runner may resolve: one directory name, no path. */
 export const REPO_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const SESSION_ID_RE = /^[a-z0-9-]{1,64}$/;
+const ATTEMPT_RE = /^[a-z0-9]{8,32}$/;
 
 export function parseLaunch(raw: unknown, now = new Date()): Launch {
   if (!raw || typeof raw !== "object") throw new DispatchError("launch is not an object");
   const o = raw as Record<string, unknown>;
   const state = oneOf(o.state, LAUNCH_STATES, "state");
   if (typeof o.repo !== "string" || !REPO_NAME_RE.test(o.repo)) throw new DispatchError("repo must be a directory name");
+  if (typeof o.attempt !== "string" || !ATTEMPT_RE.test(o.attempt)) throw new DispatchError("attempt failed its pattern");
   if (o.session_id !== undefined && (typeof o.session_id !== "string" || !SESSION_ID_RE.test(o.session_id))) throw new DispatchError("session_id failed its pattern");
   const worktree = o.worktree === undefined ? undefined : str(o.worktree, 500);
   const error = o.error === undefined ? undefined : str(o.error, 200);
-  return { state, repo: o.repo, at: now.toISOString(), ...(o.session_id ? { session_id: o.session_id as string } : {}), ...(worktree ? { worktree } : {}), ...(error ? { error } : {}) };
+  return { state, repo: o.repo, attempt: o.attempt, at: now.toISOString(), ...(o.session_id ? { session_id: o.session_id as string } : {}), ...(worktree ? { worktree } : {}), ...(error ? { error } : {}) };
 }
 
 /** Every "You first" item is ticked. */

@@ -160,22 +160,23 @@ describe("launch", () => {
     const server = (name: string) => ({ name, prefix: toolPrefix(name), status: "connected" });
     const cat: Catalog = parseCatalog({ servers: [server("bugme"), server("GitHub")], skills: [] });
     const b = finishBrief(parseBriefDraft(fakeDispatch("Tidy the README", "", cat), cat, [], []), cat, { id: "b-abcdefghij", task: "t", now: new Date(), owner: true });
-    const args = launchArgs({ ...b, tools_off: ["mcp__GitHub"] }, cat, "/h/mcp.json");
-    expect(args.slice(0, 7)).toEqual(["--bg", "--worktree", "bugme-b-abcdefghij", "-n", "bugme-b-abcdefghij", "--mcp-config", "/h/mcp.json"]);
+    const args = launchArgs({ ...b, tools_off: ["mcp__GitHub"] }, cat, "/h/mcp.json", "0a1b2c3d");
+    expect(args.slice(0, 7)).toEqual(["--bg", "--worktree", "bugme-b-abcdefghij-0a1b2c3d", "-n", "bugme-b-abcdefghij-0a1b2c3d", "--mcp-config", "/h/mcp.json"]);
     expect(args.slice(7)).toEqual(commandArgs({ ...b, tools_off: ["mcp__GitHub"] }, cat).slice(1));
     expect(args).toContain("--disallowedTools");
     expect(args.at(-2)).toBe("--");
   });
 
   it("reads the session id and Bug Me's sessions from the CLI", () => {
-    expect(backgroundId("Starting background service…\nbackgrounded · 4e653586 · bugme-b-abcdefghij\n")).toBe("4e653586");
+    expect(backgroundId("Starting background service…\nbackgrounded · 4e653586 · bugme-b-abcdefghij-0a1b2c3d\n")).toBe("4e653586");
     expect(backgroundId("Workspace not trusted.")).toBeUndefined();
     const rows = [
-      { id: "4e653586", name: "bugme-b-abcdefghij", status: "idle", state: "done", cwd: "/x" },
+      { id: "4e653586", name: "bugme-b-abcdefghij-0a1b2c3d", status: "idle", state: "done", cwd: "/x" },
+      { id: "33333333", name: "bugme-b-abcdefghij", status: "idle" },
       { id: "11111111", name: "someone else's", status: "busy" },
       { id: "22222222", name: "bugme-b-../../x" },
     ];
-    expect(parseAgents(JSON.stringify(rows))).toEqual([{ id: "4e653586", name: "bugme-b-abcdefghij", status: "idle", state: "done", cwd: "/x" }]);
+    expect(parseAgents(JSON.stringify(rows))).toEqual([{ id: "4e653586", name: "bugme-b-abcdefghij-0a1b2c3d", status: "idle", state: "done", cwd: "/x" }]);
     expect(parseAgents("not json")).toEqual([]);
   });
 });
@@ -221,6 +222,25 @@ describe("model calls: deadlines and shutdown", () => {
       expect(settled.map((x) => x.status)).toEqual(["rejected", "rejected"]);
       expect(Date.now() - t0).toBeLessThan(2000);
       await expect(m.run(req)).rejects.toThrow(ModelCallError);
+    } finally {
+      delete process.env.FAKE_CLAUDE_SLEEP_MS;
+    }
+  });
+});
+
+describe("helpers stop with the runner", () => {
+  it("a helper still running is killed; the launch command itself never is", async () => {
+    const { run, stopHelpers } = await import("../../runner/launch");
+    const s = fakeState();
+    process.env.FAKE_CLAUDE_SLEEP_MS = "5000";
+    try {
+      // `-p` sleeps in the stub; stand in for a slow `mcp list`.
+      const slow = run(FAKE, ["-p"], s.dir, 20_000);
+      await new Promise((r) => setTimeout(r, 200));
+      const t0 = Date.now();
+      stopHelpers();
+      await expect(slow).rejects.toThrow();
+      expect(Date.now() - t0).toBeLessThan(2000);
     } finally {
       delete process.env.FAKE_CLAUDE_SLEEP_MS;
     }
