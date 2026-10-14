@@ -115,16 +115,65 @@ python3 scripts/scan.py
 
 ## PRs
 
-Each PR is under the review cap. 10a, 10c and 10d branch from main; 10b branches from 10a, since they share the note screen.
+All four landed on 2026-10-14, merged by David in this order. 10b was rebased onto main after 10a, and took in 10d before merging.
 
-| PR | Branch | Owner |
-| --- | --- | --- |
-| 10a | `stage/10-onboarding` | Claude |
-| 10b | `stage/10b-real-note` | Claude |
-| 10c | `stage/10c-reflection` | subagent |
-| 10d | `stage/10d-hooks` | subagent |
+| PR | Branch | Owner | Merge |
+| --- | --- | --- | --- |
+| 10a, #40 | `stage/10-onboarding` | Claude | 12605f5 |
+| 10c, #41 | `stage/10c-reflection` | subagent | 118ceba |
+| 10d, #42 | `stage/10d-hooks` | subagent | b847a5b |
+| 10b, #43 | `stage/10b-real-note` | Claude | d4bbcec |
 
-A polish branch from another agent (`stage/8c-polish`) also touches `src/page/`, and will be rebased after whichever lands first.
+Staging was deployed from d4bbcec. `#/welcome`, `#/review` and Home's onboarding link render there with no console errors. A polish branch from another agent (`stage/8c-polish`) has no PR yet and rebases onto main.
+
+## As built
+
+Where this differs from the sections above, this wins.
+
+- **10a.**
+  - `#/welcome` reads `fixtures/history.json` (30 decisions), drafts at most eight cited lines, asks at most three questions, and revises. Recorded, so it runs with no key. The tour is "Getting to know you".
+  - The morning still runs on the hand-written note, and `persona.json`'s source label now says so.
+  - An answer edited while Revise is out is never overwritten. The stale revision is refused, and Revise runs again.
+  - Answers over the limit are refused, not cut.
+- **10b.**
+  - `npm run onboard -- --allow <list> <rows.jsonl>` sends the newest 200 answered questions from allowed projects to the runner only, trimmed to the endpoint's 300 KB.
+  - Every owner step carries the run's version. A step that read an older version is refused with "Reload to see it", whether the cause is a newer import, another tab, or a step after Keep.
+  - Keep is idempotent. Kept lines become facts, editable one at a time in Rules. Editing one refreshes the owner's note and re-routes what's waiting.
+  - Every owner route, mirrors included, uses the kept note.
+- **10c.**
+  - A dismissible break line after about 10 estimated minutes of decisions.
+  - "Were those worth your time?" every third change of project, logged as `{kind: "feedback"}`.
+  - `#/review`, built from this browser's record. A Dispatch session counts as sent only after a successful copy or a confirmed launch, and its time is measured from the launch.
+- **10d.**
+  - `mcp/bugme-hook.mjs` mirrors AskUserQuestion and ExitPlanMode into `/me` with a 2 s deadline, exiting 0 on any failure.
+  - The server enforces mirror-only. An answer that arrives before routing finishes is kept.
+  - Orphans close on the session's next Stop, its SessionEnd, or after 18 hours.
+  - `smoke:live` runs the real hook script.
+
+Not yet run: David's own history through `npm run onboard`, and the hook snippet on his machines (see Gates, manual).
+
+## Code review
+
+Every PR had three Codex rounds (gpt-6.1-sol, high), the wrapper's cap. Every finding was a P1, and every P1 was fixed with a test except where noted. Receipts are in `~/.claude/codex-reviews/`.
+
+- **10a.**
+  - Round 1: four P1s. A partial demo reply enabled an unrecorded revision, the tour didn't reset onboarding, the busy guard was lost on edit, and a revision wasn't bound to the answers it came from.
+  - Round 2: two P1s. Requests that started before a reset still landed, and speech could edit locked answers.
+  - Round 3: two P1s, a stale revision and oversized answers.
+  - All fixed, and David merged without a fourth round.
+- **10c.**
+  - Round 1: five P1s. Badge styling leaked outside the review, launches weren't recorded, demo reports weren't restored, failed copies counted as sent, and missing elapsed time looked like a missing report.
+  - Round 2: two P1s on what counts as sent.
+  - Round 3: two P1s. A report was restored without a successful copy, and duration was measured from dispatch rather than launch.
+  - All fixed. The launch-time fix has no test, since it is reached only on the runner. Merged without a fourth round.
+- **10d.**
+  - Round 1: three P1s. An answer that arrived before its question was dropped, option whitespace broke matching, and a routing failure was shown as a decision.
+  - Round 2: SHIP.
+- **10b.**
+  - Round 1: four P1s. Steps weren't bound to the displayed run, revisions were allowed after Keep, edited facts didn't reach the owner's note, and waiting cards weren't re-routed.
+  - Round 2 escalated two P1s, a stale model result and a non-idempotent Keep. David chose to guard the saves with the run version.
+  - Round 3: four P1s. A fact edit from a stale tab, an in-flight edit losing the committed revision, an import over the byte limit, and timing stats shown for history without timings.
+  - All fixed. Merged without a fourth round.
 
 ## Codex plan review (gpt-6.1-sol, high, 2026-10-14)
 
