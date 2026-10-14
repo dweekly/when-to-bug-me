@@ -24,8 +24,12 @@ import { createInterface } from "node:readline";
 const POLL_MS = 3000;
 /** One poll of a ticket, separately from the overall wait. */
 const REQUEST_TIMEOUT_MS = 20_000;
-/** Asking routes the question (and titles it) before answering: two model calls, each up to 45 s on the Worker. */
-const ASK_TIMEOUT_MS = 120_000;
+/**
+ * Asking routes the question (and titles it) before answering: two model calls, each up to 45 s on the
+ * hosted Worker, or up to 180 s through the runner's Claude login (docs/STAGE-9.md). Past this, the
+ * session gets its ticket to check later.
+ */
+const ASK_TIMEOUT_MS = 400_000;
 const DEFAULT_WAIT_MIN = 5;
 const MAX_WAIT_MIN = 10;
 
@@ -256,7 +260,7 @@ export function parseMcpList(out) {
 }
 
 /** Skill names: each directory under ~/.claude/skills (to three levels) that holds a SKILL.md. */
-function skillNames(root = join(homedir(), ".claude", "skills"), depth = 0) {
+export function skillNames(root = join(homedir(), ".claude", "skills"), depth = 0) {
   let names = [];
   let entries = [];
   try {

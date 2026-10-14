@@ -115,3 +115,22 @@ export const TITLE_PRICE_PER_MTOK = { input: 0.1, output: 0.5, cacheRead: 0.01, 
 export const TITLE_MAX_TOKENS = 1000;
 /** Most words in a title, or in a settled item's "done" line. */
 export const MAX_TITLE_WORDS = 6;
+
+/**
+ * The runner (docs/STAGE-9.md). Its default port, picked to stay clear of wrangler's 8787 and the tests'
+ * 8799 and 8807; the Worker under it listens on the next port.
+ */
+export const RUNNER_PORT = 8790;
+/**
+ * One `claude -p` call through the runner. Under the Worker's own wait for it (LOCAL_TIMEOUT_MS, 180 s in
+ * src/worker/model.ts), so the child is killed before the Worker gives up. A brief measured about a minute.
+ */
+export const RUNNER_MODEL_TIMEOUT_MS = 170_000;
+/** `claude -p` calls at once: each is a whole session's memory and startup. */
+export const RUNNER_MAX_MODEL_CALLS = 2;
+/** Starting a background session: `claude --bg` returns once the session exists (measured ~2 s). */
+export const RUNNER_LAUNCH_TIMEOUT_MS = 60_000;
+/** `claude mcp list` checks each server's health, so it can take a while (sync-catalog allows 180 s). */
+export const RUNNER_MCP_LIST_TIMEOUT_MS = 180_000;
+/** A reservation older than this with no session is reconciled from `claude agents` before anything else. */
+export const RUNNER_STALE_LAUNCH_MS = 2 * 60_000;

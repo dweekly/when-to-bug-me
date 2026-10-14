@@ -33,7 +33,7 @@ import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../sh
 import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
 import { type Titles, plainOptions } from "../shared/titles";
 import { byId, decisions, defaultFacts, defaultRules, persona, publicCatalog, publicDecision } from "./data";
-import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishBrief, parseCatalog, parseEdits, parseReport } from "../shared/dispatch";
+import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishBrief, parseCatalog, parseEdits, parseLaunch, parseReport } from "../shared/dispatch";
 import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, parseFor, routeFor, titlesFor } from "./model";
 import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
 import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
@@ -266,6 +266,9 @@ async function cardFromRoute(
   };
 }
 
+/** Live calls can be made: an API key, or the runner's Claude login (docs/STAGE-9.md). */
+const liveAvailable = (env: Env) => Boolean(env.ANTHROPIC_API_KEY || env.LOCAL_MODEL_URL) && !env.FAKE_MODEL;
+
 async function handleApi(req: Request, env: Env, path: string): Promise<Response> {
   // The live queue doesn't exist without its token, whatever else is configured.
   if (path === "/api/me" || path.startsWith("/api/me/")) {
@@ -292,8 +295,8 @@ async function handleApi(req: Request, env: Env, path: string): Promise<Response
       decisions: decisions.map(publicDecision),
       cards,
       catalog: publicCatalog,
-      live_available: Boolean(env.ANTHROPIC_API_KEY) && !env.FAKE_MODEL,
-      mode: env.FAKE_MODEL ? "fake" : env.ANTHROPIC_API_KEY ? "live" : "recorded",
+      live_available: liveAvailable(env),
+      mode: env.FAKE_MODEL ? "fake" : liveAvailable(env) ? "live" : "recorded",
       turnstile_site_key: env.TURNSTILE_SECRET ? (env.TURNSTILE_SITE_KEY ?? null) : null,
     });
   }
@@ -471,8 +474,8 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       aside: shown.filter((t) => t.status === "set-aside" && t.aside).map((t) => ({ id: t.decision.id, ...t.aside })),
       // Answered in the last day: not waiting, but the page keeps their follow-ups (a late reason, guidance) working.
       answered: answered.map((t) => ({ decision: publicDecision(t.decision), card: t.card })),
-      live_available: Boolean(env.ANTHROPIC_API_KEY) && !env.FAKE_MODEL,
-      mode: env.FAKE_MODEL ? "fake" : env.ANTHROPIC_API_KEY ? "live" : "recorded",
+      live_available: liveAvailable(env),
+      mode: env.FAKE_MODEL ? "fake" : liveAvailable(env) ? "live" : "recorded",
       owner: true,
       turnstile_site_key: null,
     });
@@ -509,12 +512,18 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     return json({ brief, source });
   }
 
-  const briefPath = path.match(/^\/api\/me\/briefs\/(b-[a-z0-9]{10})\/(dispatched|report)$/);
+  const briefPath = path.match(/^\/api\/me\/briefs\/(b-[a-z0-9]{10})\/(dispatched|report|launch)$/);
   if (briefPath && BRIEF_ID_RE.test(briefPath[1])) {
     try {
       if (briefPath[2] === "dispatched") {
         const next = await q.dispatched(briefPath[1], parseEdits(b, await q.catalog()));
         return next ? json({ brief: next }) : json({ error: "unknown brief" }, 404);
+      }
+      if (briefPath[2] === "launch") {
+        // The runner's record of its launch (docs/STAGE-9.md); 409 with the record as it stands when refused.
+        const r = await q.launch(briefPath[1], parseLaunch(b));
+        if (!r) return json({ error: "unknown brief" }, 404);
+        return json({ brief: r.brief, ok: r.ok }, r.ok ? 200 : 409);
       }
       const next = await q.report(briefPath[1], parseReport(b));
       return next ? json({ ok: true, brief: briefPath[1] }) : json({ error: "unknown brief" }, 404);

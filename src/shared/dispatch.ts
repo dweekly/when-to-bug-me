@@ -32,6 +32,8 @@ const CAP = { questions: 3, done: 3, out_of_scope: 4, context: 5, guidance: 4, p
 
 /** Bug Me's own MCP server: every owner brief needs it (ask_bug_me, report_to_bug_me), so it is never turned off. */
 export const BUGME_PREFIX = "mcp__bugme";
+/** Prerequisites: the model's (CAP.prerequisites) plus the "Connect X" items code adds, one per needed tool. */
+const MAX_TICKED = CAP.prerequisites + MAX_SERVERS;
 const PREFIX_RE = /^mcp__[A-Za-z0-9_-]{1,80}$/;
 const SKILL_RE = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
 
@@ -105,7 +107,44 @@ export interface Brief extends BriefDraft {
   report?: Report;
   /** Asks made through ask_bug_me carrying this brief's id. Owner only. */
   asks?: number;
+  /** The "You first" items the person has ticked, by index, saved so another device sees them. Owner only. */
+  ticked?: number[];
+  /** The runner's launch of this brief (docs/STAGE-9.md): one session per brief. Owner only. */
+  launch?: Launch;
 }
+
+export const LAUNCH_STATES = ["launching", "running", "failed"] as const;
+export type LaunchState = (typeof LAUNCH_STATES)[number];
+export interface Launch {
+  state: LaunchState;
+  /** A repo's directory name under the runner's dev root. */
+  repo: string;
+  /** When the launch was reserved: the clock for a launched brief, apart from dispatched_at. */
+  at: string;
+  /** The background session's short id, as `claude --bg` prints it. */
+  session_id?: string;
+  worktree?: string;
+  /** Why it failed, in code's words (never the CLI's output). */
+  error?: string;
+}
+
+/** A repo name the runner may resolve: one directory name, no path. */
+export const REPO_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+const SESSION_ID_RE = /^[a-z0-9-]{1,64}$/;
+
+export function parseLaunch(raw: unknown, now = new Date()): Launch {
+  if (!raw || typeof raw !== "object") throw new DispatchError("launch is not an object");
+  const o = raw as Record<string, unknown>;
+  const state = oneOf(o.state, LAUNCH_STATES, "state");
+  if (typeof o.repo !== "string" || !REPO_NAME_RE.test(o.repo)) throw new DispatchError("repo must be a directory name");
+  if (o.session_id !== undefined && (typeof o.session_id !== "string" || !SESSION_ID_RE.test(o.session_id))) throw new DispatchError("session_id failed its pattern");
+  const worktree = o.worktree === undefined ? undefined : str(o.worktree, 500);
+  const error = o.error === undefined ? undefined : str(o.error, 200);
+  return { state, repo: o.repo, at: now.toISOString(), ...(o.session_id ? { session_id: o.session_id as string } : {}), ...(worktree ? { worktree } : {}), ...(error ? { error } : {}) };
+}
+
+/** Every "You first" item is ticked. */
+export const allTicked = (b: Pick<Brief, "prerequisites" | "ticked">) => b.prerequisites.every((_, i) => b.ticked?.includes(i));
 
 export class DispatchError extends Error {}
 
@@ -292,6 +331,7 @@ export interface BriefEdits {
   estimate_minutes: number;
   budget_usd: number;
   tools_off: string[];
+  ticked?: number[];
 }
 
 export function parseEdits(raw: unknown, c: Catalog): BriefEdits {
@@ -308,7 +348,16 @@ export function parseEdits(raw: unknown, c: Catalog): BriefEdits {
     estimate_minutes: Math.round(num(o.estimate_minutes, 1, 60 * 24 * 7, "estimate_minutes")),
     budget_usd: Math.round(num(o.budget_usd, 0, 10_000, "budget_usd") * 100) / 100,
     tools_off: [...new Set(o.tools_off as string[])].slice(0, CAP.tools),
+    ...(o.ticked === undefined ? {} : { ticked: tickedOf(o.ticked) }),
   };
+}
+
+/** Ticked item indices: whole numbers, each once, in order. The store drops any past the brief's list. */
+function tickedOf(v: unknown): number[] {
+  if (!Array.isArray(v) || v.length > MAX_TICKED || v.some((i) => !Number.isInteger(i) || i < 0 || i >= MAX_TICKED)) {
+    throw new DispatchError(`ticked must be a list of item numbers below ${MAX_TICKED}`);
+  }
+  return [...new Set(v as number[])].sort((a, b) => a - b);
 }
 
 export function parseReport(raw: unknown, now = new Date()): Report {
@@ -369,7 +418,8 @@ function delimiterFor(text: string): string {
  * both the copied command and the runner's Launch are built from, so the two can't drift.
  */
 export function commandArgs(b: Brief, c: Catalog): string[] {
-  const args = ["claude", "--model", b.model, "--effort", b.effort, "--permission-mode", b.permission_mode];
+  // Asking and reporting never wait on a permission prompt.
+  const args = ["claude", "--model", b.model, "--effort", b.effort, "--permission-mode", b.permission_mode, "--allowedTools", BUGME_PREFIX];
   for (const p of b.tools_off) {
     if (!PREFIX_RE.test(p)) throw new DispatchError("a tool prefix failed its pattern");
     args.push("--disallowedTools", p);
