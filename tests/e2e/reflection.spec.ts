@@ -179,3 +179,31 @@ test("the change of project and #/review fit 320px without sideways scroll @narr
   await noHScroll(page, "review");
   await page.screenshot({ path: "test-results/shots/reflection-review-narrow.png", fullPage: true });
 });
+
+test("the review's styles stay on the review: the decision card keeps its own type", async ({ page }) => {
+  await page.goto("/app#/d/api-rename");
+  await expect(page.locator("#now #now-q")).toBeVisible();
+  const style = (await page.evaluate("(() => { const s = getComputedStyle(document.getElementById('now')); return { font: s.fontSize, family: s.fontFamily, radius: s.borderRadius }; })()")) as { font: string; family: string; radius: string };
+  expect(style.font).toBe("16px");
+  expect(style.family).not.toMatch(/Mono/);
+  expect(style.radius).not.toBe("999px");
+});
+
+test("after starting the morning over, copying a demo brief again brings its synthetic report back to the review", async ({ page }) => {
+  await page.goto("/app#/dispatch");
+  await page.locator('.demo-chip[data-example="usage-demo"]').click();
+  await page.locator("#draft-brief").click();
+  await page.locator("#copy-command").click();
+  await expect(page.locator(".brief-outcome")).toContainText("done");
+  await goRecord(page);
+  await page.locator("#reset").click();
+  await page.goto("/app#/dispatch");
+  await page.locator(".briefs li a").first().click();
+  await page.locator("#copy-command").click();
+  await page.goto("/app#/review");
+  const facts = page.locator(".rv-briefs li .rv-dfacts");
+  await expect(facts).toContainText("38m of ~30m · cost not reported");
+  await expect(facts.locator(".meta-chip")).toHaveText("synthetic");
+  const s = (await stored(page))!;
+  expect(s.record.filter((r) => r.kind === "dispatch_report")).toHaveLength(1);
+});

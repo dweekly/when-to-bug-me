@@ -112,10 +112,11 @@ export interface ReviewDispatch {
   brief: string;
   headline: string;
   estimate_minutes: number;
-  /** Reported minutes from copy to report, or null with no report yet. */
+  /** Reported minutes from copy (or launch) to report; null with no report yet, or with a report and no start time. */
   minutes: number | null;
   /** Reported cost, or null: shown as "not reported". */
   cost_usd: number | null;
+  /** The report's outcome; null means no report yet. */
   outcome: string | null;
   synthetic: boolean;
 }
@@ -175,6 +176,8 @@ export function reviewOf(input: {
   const briefs = new Map<string, ReviewDispatch>();
   for (const r of record) {
     if ((r.kind !== "dispatch" && r.kind !== "dispatch_report") || typeof r.brief !== "string") continue;
+    // A copy the clipboard refused stays in the record as an attempt, but nothing went out.
+    if (r.kind === "dispatch" && r.copied === false) continue;
     const prev = briefs.get(r.brief);
     const row: ReviewDispatch = prev ?? { brief: r.brief, headline: "", estimate_minutes: 0, minutes: null, cost_usd: null, outcome: null, synthetic: false };
     if (typeof r.headline === "string" && r.headline) row.headline = r.headline;

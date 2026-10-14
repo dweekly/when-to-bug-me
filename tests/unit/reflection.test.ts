@@ -152,6 +152,18 @@ describe("the weekly-review sketch", () => {
   });
 });
 
+describe("the review's Dispatch rows, from round 1 of review", () => {
+  it("leave out a copy the clipboard refused, and keep a report that has no start time", () => {
+    const record: RecordLike[] = [
+      { kind: "dispatch", brief: "refused", headline: "x", estimate_minutes: 20, copied: false },
+      { kind: "dispatch_report", brief: "manual", headline: "Ran by hand", estimate_minutes: 30, minutes: null, cost_usd: 1.25, outcome: "done", synthetic: false },
+    ];
+    expect(reviewOf({ record, projectOf, projects: persona.projects, priorities: null }).dispatch).toEqual([
+      { brief: "manual", headline: "Ran by hand", estimate_minutes: 30, minutes: null, cost_usd: 1.25, outcome: "done", synthetic: false },
+    ]);
+  });
+});
+
 describe("the synthetic stated priorities stay out of routing", () => {
   it("are not in the persona fixture, the prompts module, or a built route prompt", () => {
     expect(JSON.stringify(persona)).not.toMatch(/priorit/i);

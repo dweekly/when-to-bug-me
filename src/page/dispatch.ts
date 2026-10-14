@@ -758,15 +758,24 @@ async function launch(id: string): Promise<void> {
 
 const OUTCOME_ICON: Record<string, string> = { done: "✓", "stopped at tripwire": "⏹", partial: "◐", abandoned: "✕" };
 
+/** A report already in this morning's record (the record starts over with the morning; briefs don't). */
+const reportLogged = (brief: string, at: string) => S.record.some((e) => e.kind === "dispatch_report" && e.brief === brief && e.report_at === at);
+
 /**
- * On /me: a session's report, the first time this browser sees it, enters the record with the brief's
- * estimate and the reported time and cost (null when not reported), for the weekly-review sketch.
+ * On /me: a launch on the runner, and a session's report, the first time this browser sees each, enter
+ * the record with the brief's estimate and the reported time and cost (null when not reported), for the
+ * weekly-review sketch.
  */
 function noteReports(list: Brief[]): void {
   let added = false;
   for (const b of list) {
+    const l = b.launch;
+    if (l && l.state !== "failed" && !S.record.some((e) => e.kind === "dispatch" && e.brief === b.id && e.launch_at === l.at)) {
+      log("dispatch", { brief: b.id, headline: b.headline, what: "launch", launch_at: l.at, estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd });
+      added = true;
+    }
     const r = b.report;
-    if (!r || S.record.some((e) => e.kind === "dispatch_report" && e.brief === b.id && e.report_at === r.at)) continue;
+    if (!r || reportLogged(b.id, r.at)) continue;
     const start = b.dispatched_at ?? b.launch?.at;
     const minutes = start ? Math.max(0, Math.round((Date.parse(r.at) - Date.parse(start)) / 60_000)) : null;
     log("dispatch_report", { brief: b.id, headline: b.headline, estimate_minutes: b.estimate_minutes, minutes, cost_usd: r.cost_usd ?? null, outcome: r.outcome, synthetic: false, report_at: r.at });
@@ -836,8 +845,12 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
       keep.dispatched_at = new Date().toISOString();
       keep.report = { ...rest, at: keep.dispatched_at };
       keep.synthetic_report = { minutes, asks };
-      log("dispatch_report", { brief: b.id, headline: b.headline, estimate_minutes: b.estimate_minutes, minutes, cost_usd: rest.cost_usd ?? null, outcome: rest.outcome, synthetic: true, report_at: keep.report.at });
     }
+  }
+  // The demo's synthetic report, made at the first Copy and kept with the brief, enters this morning's
+  // record once (again after "Start the morning over", which clears the record but keeps the briefs).
+  if (!Q.owner && keep.report && keep.synthetic_report && !reportLogged(keep.id, keep.report.at)) {
+    log("dispatch_report", { brief: keep.id, headline: keep.headline, estimate_minutes: b.estimate_minutes, minutes: keep.synthetic_report.minutes, cost_usd: keep.report.cost_usd ?? null, outcome: keep.report.outcome, synthetic: true, report_at: keep.report.at });
   }
   save();
   savePublic();

@@ -175,8 +175,8 @@ export function renderReviewView(view: HTMLElement): void {
       "ul",
       { class: "rv-legend" },
       h("li", {}, h("span", { class: "rv-n" }, String(asked)), " asked you: ", `${GLYPH.decide} ${r.asked.decide} · ${GLYPH.check_in} ${r.asked.check_in}`),
-      h("li", {}, h("span", { class: "rv-n" }, String(settledNow)), ` ${GLYPH.settle} settled for you `, h("span", { class: "now", title: "From the queue as it stands now" }, "now")),
-      waitingNow ? h("li", {}, h("span", { class: "rv-n" }, String(waitingNow)), " ◌ still waiting ", h("span", { class: "now", title: "From the queue as it stands now" }, "now")) : null,
+      h("li", {}, h("span", { class: "rv-n" }, String(settledNow)), ` ${GLYPH.settle} settled for you `, h("span", { class: "rv-now", title: "From the queue as it stands now" }, "now")),
+      waitingNow ? h("li", {}, h("span", { class: "rv-n" }, String(waitingNow)), " ◌ still waiting ", h("span", { class: "rv-now", title: "From the queue as it stands now" }, "now")) : null,
     ),
     fbTotal
       ? h(
@@ -199,6 +199,7 @@ export function renderReviewView(view: HTMLElement): void {
           "ul",
           { class: "rv-briefs" },
           ...r.dispatch.map((d) => {
+            const reported = d.outcome !== null;
             const over = d.minutes !== null && d.minutes > d.estimate_minutes;
             return h(
               "li",
@@ -214,8 +215,8 @@ export function renderReviewView(view: HTMLElement): void {
               h(
                 "span",
                 { class: "rv-dfacts" },
-                d.minutes === null ? `no report yet · ~${duration(d.estimate_minutes)} est.` : `${duration(d.minutes)} of ~${duration(d.estimate_minutes)}`,
-                d.minutes === null ? "" : ` · ${d.cost_usd === null ? "cost not reported" : money(d.cost_usd)}`,
+                !reported ? `no report yet · ~${duration(d.estimate_minutes)} est.` : d.minutes === null ? `${d.outcome} · time unknown of ~${duration(d.estimate_minutes)}` : `${duration(d.minutes)} of ~${duration(d.estimate_minutes)}`,
+                reported ? ` · ${d.cost_usd === null ? "cost not reported" : money(d.cost_usd)}` : "",
                 d.synthetic ? h("span", { class: "meta-chip", title: "The public demo's example report, not a real session." }, "synthetic") : null,
               ),
             );
