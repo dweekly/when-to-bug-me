@@ -185,3 +185,37 @@ test("a repo trusted while the page is open becomes pickable without a reload", 
   writeFileSync(cj, JSON.stringify(conf));
   await expect(page.locator('#launch-repo option[value="untrusted"]')).toBeEnabled({ timeout: 20_000 });
 });
+
+test("an edit made while Launch's save is out stays; the launch sends what was clicked", async ({ page }) => {
+  const id = await draft(page, "Write a one-paragraph summary of the release process in RELEASING.md.");
+  for (const box of await page.locator("#brief .brief-you input").all()) await box.check();
+  await page.locator("#launch-repo").selectOption("sandbox");
+  await page.locator("#brief .brief-more summary").click();
+  // Hold the save until the edit is made.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(`**/api/me/briefs/${id}/dispatched`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.locator("#launch").click();
+  await page.getByLabel("Effort").selectOption("max");
+  release();
+  await expect(page.locator(".brief-session")).toBeVisible();
+  const bg = fake().calls.filter((c) => c.args[0] === "--bg" && c.args[2].startsWith(`bugme-${id}-`));
+  expect(bg[0].args[bg[0].args.indexOf("--effort") + 1]).not.toBe("max");
+  await expect(page.getByLabel("Effort")).toHaveValue("max");
+});
+
+test("a typed number that isn't valid survives a refresh", async ({ page, request }) => {
+  await draft(page, "Add a --version flag to the CLI.");
+  await page.locator("#brief .brief-more summary").click();
+  const est = page.getByLabel("Estimate in minutes");
+  await est.fill("0");
+  await page.locator("#brief h2").click(); // blur
+  // Something changes on the server, so a refresh wants to redraw.
+  await request.post("/api/me/dispatch", { headers: { authorization: `Bearer ${KEY}` }, data: { task: "Another task, to change the list." } });
+  await page.waitForTimeout(17_000);
+  await expect(est).toHaveValue("0");
+  await expect(page.locator("#brief .brief-actions .think-msg")).toHaveText("Fix the time or $ first.");
+});

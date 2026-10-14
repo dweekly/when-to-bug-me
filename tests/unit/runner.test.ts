@@ -204,7 +204,13 @@ describe("walk me through it", () => {
     const withCreds = (host: string) => `https://${["someone", "hunter2"].join(":")}${String.fromCharCode(64)}${host}/`;
     for (const bad of ["http://example.com", "javascript:alert(1)", withCreds("example.com"), "https://localhost/x", "", "ftp://x.com"]) expect(safeLink(bad)).toBeUndefined();
     expect(parseWalk({ steps: [{ text: "Open it", url: withCreds("evil.example") }] })[0].url).toBeUndefined();
-    expect(() => parseWalk({ steps: [{ text: "Copy the token and paste it here so I can finish.", url: "" }] })).toThrow(WalkError);
+    for (const bad of ["Copy the token and paste it here so I can finish.", "Paste your token into Bug Me.", "Send me your password.", "Paste the API key into the Claude Code session.", "Share the secret in this chat."]) {
+      expect(() => parseWalk({ steps: [{ text: bad, url: "" }] }), bad).toThrow(WalkError);
+    }
+    // Keeping a secret where it belongs is fine.
+    for (const ok of ["Store the key in your password manager.", "Tell the session only the secret's name, never the key itself.", "Add the token to the tool's own config with claude mcp add.", "Paste the link into the task description."]) {
+      expect(parseWalk({ steps: [{ text: ok, url: "" }] })[0].text, ok).toBe(ok);
+    }
     expect(() => parseWalk({ steps: [] })).toThrow(WalkError);
   });
 

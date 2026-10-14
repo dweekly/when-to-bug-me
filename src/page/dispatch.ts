@@ -64,6 +64,18 @@ function current(id: string): Shown | undefined {
   const b = stored(id);
   return b && { ...b, ...unsaved.get(id) };
 }
+/**
+ * A save landed: the server's copy now has the fields as sent. Only the unsaved edits that match what was
+ * sent stop being unsaved; one made while the save was out stays.
+ */
+function saved_(id: string, sent: Required<SetupEdit>, after: Brief): void {
+  const keep = stored(id);
+  if (keep) Object.assign(keep, after, sent);
+  const left = Object.fromEntries(Object.entries(unsaved.get(id) ?? {}).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(sent[k as keyof SetupEdit])));
+  if (Object.keys(left).length) unsaved.set(id, left);
+  else unsaved.delete(id);
+}
+
 function edit(id: string, patch: SetupEdit): void {
   if (!Q.owner) {
     const b = stored(id);
@@ -158,7 +170,9 @@ async function poll(): Promise<void> {
     return;
   }
   if (snapshot() !== before) redrawPending = true;
-  if (!redrawPending || document.activeElement?.matches("#view input, #view textarea, #view select")) return;
+  // Not while something is being typed, nor while a typed number is invalid: a redraw would show the
+  // saved value in its place.
+  if (!redrawPending || document.activeElement?.matches("#view input, #view textarea, #view select") || invalid.get(openId ?? "")?.size) return;
   redrawPending = false;
   paint();
 }
@@ -710,8 +724,7 @@ async function launch(id: string): Promise<void> {
     const { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off } = b;
     const saved = await api<{ brief: Brief }>(`/api/me/briefs/${id}/dispatched`, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off, ticked: tickList(b) });
     // Saved: the server's copy has these now, so they stop being unsaved edits, even if the launch fails.
-    Object.assign(keep, saved.brief);
-    unsaved.delete(id);
+    saved_(id, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off }, saved.brief);
     const r = await api<{ launch: Brief["launch"] }>("/runner/launch", { brief_id: id, repo });
     keep.launch = r.launch;
     announce("Launched.");
@@ -770,13 +783,8 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
       const wrote = typeof ClipboardItem !== "undefined"
         ? navigator.clipboard.write([new ClipboardItem({ "text/plain": saved.then(() => new Blob([text], { type: "text/plain" })) })])
         : saved.then(() => navigator.clipboard.writeText(text));
-      // The saved fields are now the server's; edits made while this was out stay unsaved.
       const after = (await saved).brief;
-      const sent = { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off };
-      Object.assign(keep, sent, { dispatched_at: after.dispatched_at, ticked: after.ticked });
-      const left = Object.fromEntries(Object.entries(unsaved.get(id) ?? {}).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(sent[k as keyof typeof sent])));
-      if (Object.keys(left).length) unsaved.set(id, left);
-      else unsaved.delete(id);
+      saved_(id, { model, effort, permission_mode, estimate_minutes, budget_usd, tools_off }, after);
       await wrote;
     } else await navigator.clipboard.writeText(text);
     actionMsg = "Copied.";

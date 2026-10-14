@@ -60,8 +60,15 @@ export function safeLink(raw: unknown): string | undefined {
   }
 }
 
-/** Steps that ask the person to paste a secret into a chat or into Bug Me are refused outright. */
-const PASTE_HERE = /\b(paste|send|share|give)\b[^.]*\b(it|token|key|secret|password)\b[^.]*\b(here|to me|to bug me|into (this|the) chat|in (this|the) chat)\b/i;
+/**
+ * A step that hands a secret to Bug Me, a chat or the session is refused outright: an action word, a
+ * secret, and one of those destinations in the same step. Storing a key in a password manager, the
+ * keychain or a tool's own config is fine, and says none of these.
+ */
+const HAND_OVER = /\b(paste|send|share|give|type|enter|provide|copy)\b/i;
+const SECRET_WORD = /\b(token|key|secret|password|passphrase|credential)s?\b/i;
+const TO_US = /\bbug me\b|\bchat\b|\bhere\b|\b(this|the|your|claude code) session\b|\b(send|give|tell|show) me\b/i;
+const handsOver = (text: string) => HAND_OVER.test(text) && SECRET_WORD.test(text) && TO_US.test(text);
 
 export function parseWalk(raw: unknown): WalkStep[] {
   const steps = (raw as { steps?: unknown })?.steps;
@@ -70,7 +77,7 @@ export function parseWalk(raw: unknown): WalkStep[] {
     const o = (s ?? {}) as Record<string, unknown>;
     const text = typeof o.text === "string" ? o.text.replace(/\s+/g, " ").trim().slice(0, MAX_STEP_CHARS) : "";
     if (!text) throw new WalkError("a step has no text");
-    if (PASTE_HERE.test(text)) throw new WalkError("a step asks for a secret to be pasted here");
+    if (handsOver(text)) throw new WalkError("a step asks for a secret to be handed over");
     const url = safeLink(o.url);
     return url ? { text, url } : { text };
   });
