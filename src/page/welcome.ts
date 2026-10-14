@@ -27,6 +27,8 @@ const w = {
   answers: {} as Record<string, string>,
   revised: null as RevisedLine[] | null,
   revisedSource: null as Source | null,
+  /** The answers as sent with the revision: what each change's "why" quotes, whatever the boxes say now. */
+  submitted: {} as Record<string, string>,
   busy: "" as "" | "draft" | "interview" | "revise",
   error: "",
   /** Note lines whose cited decisions are showing. */
@@ -45,6 +47,33 @@ const CHANGE_ICON: Record<RevisedLine["change"], [string, string]> = {
   removed: ["−", "removed by an answer"],
 };
 
+/** Start over (a tour beginning): onboarding's state lives outside the morning's. */
+export function resetWelcome(): void {
+  Object.assign(w, { note: null, noteSource: null, questions: null, questionsSource: null, answers: {}, revised: null, revisedSource: null, submitted: {}, busy: "", error: "" });
+  w.open.clear();
+}
+
+/**
+ * Whether Revise can run now. On a keyless server only the recorded path exists, so every question needs
+ * Jordan's recorded answer; live (or on the stand-in model) any answer will do.
+ */
+function canRevise(): { ok: boolean; why: string } {
+  if (w.busy || !w.questions) return { ok: false, why: "" };
+  const answered = w.questions.filter((q) => (w.answers[q.id] ?? "").trim());
+  if (!answered.length) return { ok: false, why: "" };
+  if (!Q.owner && Q.mode === "recorded" && w.questions.some((q) => w.answers[q.id] !== ONBOARDING_ANSWERS[q.id])) {
+    return { ok: false, why: "No live connection here: use Jordan's answers (DEMO REPLY) for all three." };
+  }
+  return { ok: true, why: "" };
+}
+function syncRevise(): void {
+  const go = document.getElementById("revise-note") as HTMLButtonElement | null;
+  const msg = document.getElementById("revise-why");
+  const c = canRevise();
+  if (go) go.disabled = !c.ok;
+  if (msg) msg.textContent = c.why;
+}
+
 const onWelcome = () => location.hash.startsWith("#/welcome");
 function paint(): void {
   if (!onWelcome()) return;
@@ -53,6 +82,9 @@ function paint(): void {
 }
 
 async function step(kind: "draft" | "interview" | "revise"): Promise<void> {
+  // One step at a time: a second press while one is out would race it (and, live, pay twice).
+  if (w.busy) return;
+  if (kind === "revise" && !canRevise().ok) return;
   w.busy = kind;
   w.error = "";
   w.open.clear();
@@ -66,8 +98,9 @@ async function step(kind: "draft" | "interview" | "revise"): Promise<void> {
       Object.assign(w, { questions: r.questions, questionsSource: r.source, revised: null, answers: {} });
     } else {
       await drainVoice();
-      const r = await api<{ lines: RevisedLine[]; source: Source }>("/api/onboarding/revise", { note: w.note, questions: w.questions, answers: w.answers });
-      Object.assign(w, { revised: r.lines, revisedSource: r.source });
+      const sent = { ...w.answers };
+      const r = await api<{ lines: RevisedLine[]; source: Source }>("/api/onboarding/revise", { note: w.note, questions: w.questions, answers: sent });
+      Object.assign(w, { revised: r.lines, revisedSource: r.source, submitted: sent });
     }
     announce(kind === "draft" ? "Note drafted." : kind === "interview" ? "Three questions." : "Note revised.");
   } catch (e) {
@@ -124,7 +157,7 @@ function noteLine(l: NoteLine | RevisedLine, revised = false): HTMLElement {
       change && change.change !== "kept"
         ? h(
             "p",
-            { class: "note-why", title: because ? `Jordan: “${w.answers[because.id] ?? ""}”` : "" },
+            { class: "note-why", title: because ? `Jordan: “${w.submitted[because.id] ?? ""}”` : "" },
             h("span", { class: "ico", "aria-hidden": "true" }, CHANGE_ICON[change.change][0]),
             change.why ?? CHANGE_ICON[change.change][1],
           )
@@ -155,7 +188,9 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
     "ol",
     { class: "interview" },
     ...qs.map((q) => {
-      const ta = h("textarea", { id: `answer-${q.id}`, rows: "2", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…" }) as HTMLTextAreaElement;
+      // Once the note is revised from them, the answers are locked; "Change answers" unlocks them and drops the revision.
+      const locked = Boolean(w.revised);
+      const ta = h("textarea", { id: `answer-${q.id}`, rows: "2", "aria-label": `Your answer to: ${q.text}`, placeholder: "Say it or type it…", readonly: locked }) as HTMLTextAreaElement;
       ta.value = w.answers[q.id] ?? "";
       // The box grows with what's in it, so a spoken answer is read whole.
       const fit = () => {
@@ -166,14 +201,13 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
       ta.addEventListener("input", () => {
         fit();
         w.answers[q.id] = ta.value;
-        const go = document.getElementById("revise-note") as HTMLButtonElement | null;
-        if (go) go.disabled = !Object.values(w.answers).some((a) => a.trim());
+        syncRevise();
       });
       ta.addEventListener("focus", () =>
         setVoiceTarget({ key: `welcome:${q.id}`, el: () => document.getElementById(`answer-${q.id}`) as HTMLTextAreaElement | null, write: (t) => (w.answers[q.id] = t) }),
       );
       // DEMO REPLY: Jordan's scripted answer to THIS question, by its id (recorded, so it replays for free).
-      const script = Q.owner ? undefined : ONBOARDING_ANSWERS[q.id];
+      const script = Q.owner || locked ? undefined : ONBOARDING_ANSWERS[q.id];
       const demo = script
         ? h(
             "button",
@@ -185,8 +219,7 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
                 ta.value = script;
                 w.answers[q.id] = script;
                 fit();
-                const go = document.getElementById("revise-note") as HTMLButtonElement | null;
-                if (go) go.disabled = false;
+                syncRevise();
               },
             },
             "DEMO REPLY",
@@ -243,8 +276,13 @@ export function renderWelcomeView(view: HTMLElement): void {
               interview(w.questions),
               source(w.questionsSource),
               w.revised
-                ? null
-                : h("button", { type: "button", class: "primary", id: "revise-note", disabled: Boolean(w.busy) || !Object.values(w.answers).some((a) => a.trim()), onclick: () => void step("revise") }, busyLabel("revise", "Revise the note", "Revising…")),
+                ? h("button", { type: "button", class: "ghost small", id: "change-answers", onclick: () => ((w.revised = null), (w.submitted = {}), paint()) }, "Change answers")
+                : h(
+                    "div",
+                    { class: "row" },
+                    h("p", { class: "think-msg", id: "revise-why", role: "status" }, canRevise().why),
+                    h("button", { type: "button", class: "primary", id: "revise-note", disabled: !canRevise().ok, onclick: () => void step("revise") }, busyLabel("revise", "Revise the note", "Revising…")),
+                  ),
             )
           : null,
         w.revised && lines

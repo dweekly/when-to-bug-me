@@ -26,6 +26,12 @@ test("Home links to onboarding; it reads, drafts with receipts, interviews and r
   await expect(page.locator("#step-note")).toContainText("hand-written note");
   // The draft folds away once there's a revision.
   await expect(page.locator("#step-draft details.draft-was")).toBeVisible();
+  // The answers that made it are locked; Change answers drops the revision and unlocks them.
+  await expect(page.locator("#step-interview textarea").first()).toHaveAttribute("readonly", "");
+  await expect(page.locator("#step-interview .demo-reply")).toHaveCount(0);
+  await page.locator("#change-answers").click();
+  await expect(page.locator("#revise-note")).toBeEnabled();
+  await expect(page.locator("#step-note")).toHaveCount(0);
 });
 
 test("Rules points to how a note like Jordan's is drafted", async ({ page }) => {
@@ -43,4 +49,25 @@ test("on a phone, onboarding fits the width @narrow", async ({ page }) => {
   await page.locator("#revise-note").click();
   await expect(page.locator("#step-note")).toBeVisible();
   expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
+});
+
+test("a revision in flight can't be sent twice", async ({ page }) => {
+  await page.goto("/app#/welcome");
+  await page.locator("#draft-note").click();
+  await page.locator("#start-interview").click();
+  await page.locator("#step-interview .demo-reply").first().click();
+  let posts = 0;
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/api/onboarding/revise", async (route) => {
+    posts++;
+    await held;
+    await route.continue();
+  });
+  await page.locator("#revise-note").click();
+  await page.locator("#step-interview textarea").nth(1).fill("Typing while it's out.");
+  await expect(page.locator("#revise-note")).toBeDisabled();
+  release();
+  await expect(page.locator("#step-note")).toBeVisible();
+  expect(posts).toBe(1);
 });
