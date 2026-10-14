@@ -105,8 +105,12 @@ export class OwnerQueue extends DurableObject {
     return ids;
   }
 
-  async mirrorEnd(session: string, why: string): Promise<number> {
-    return this.q().mirrorEnd(session, why);
+  async mirrorEnd(session: string, why: string, at: number): Promise<number> {
+    return this.q().mirrorEnd(session, why, at);
+  }
+
+  async mirrorRouted(id: string, card: Card, unrouted?: string): Promise<Ticket | undefined> {
+    return this.q().mirrorRouted(id, card, unrouted);
   }
 
   async recentMirrors(): Promise<Ticket[]> {
@@ -131,8 +135,8 @@ export class OwnerQueue extends DurableObject {
     const [snap, shown] = [await q.snapshot(), await q.shown()];
     await Promise.all(
       (await q.unroutedMirrors()).map(async (t) => {
-        const card = await routeMirrorTicket(this.env as Env, t, snap, shown);
-        await q.mirrorRouted(t.decision.id, card);
+        const r = await routeMirrorTicket(this.env as Env, t, snap, shown);
+        await q.mirrorRouted(t.decision.id, r.card, r.unrouted);
       }),
     );
     await this.schedule();

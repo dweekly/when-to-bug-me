@@ -21,6 +21,7 @@ export const isMirror = (id: string) => MIRRORS.has(id);
 
 /** What Bug Me would have done, in a few words. */
 function shadowLine(m: MirrorView): string {
+  if (m.unrouted) return `Bug Me couldn't route this one (${m.unrouted}).`;
   if (!m.routed || !m.shadow) return "Bug Me is still reading this one.";
   const s = m.shadow;
   const would: Record<RouteKind, string> = {
@@ -63,7 +64,8 @@ export function renderMirror(root: HTMLElement, d: Decision, m: MirrorView): voi
   const body: Child[] = [
     h("div", { class: "meta" }, h("span", { class: "glyph", "aria-hidden": "true" }, shadowGlyph(m)), h("span", { class: "route-label" }, "From your terminal"), h("span", { class: "chain" }, `${d.agent.join(" › ")} · ${which}`)),
     card?.briefing || card?.in_your_terms ? h("p", { class: "briefing" }, card.briefing || card.in_your_terms) : null,
-    h("p", { class: "why" }, shadowLine(m)),
+    // What Bug Me would have done, then its reason in its own words (a failed routing says only why it failed).
+    h("p", { class: "why" }, shadowLine(m), card && m.shadow && !m.unrouted && card.why_here ? h("span", { class: "quiet" }, " ", card.why_here) : null),
     h("h3", { id: "now-q" }, card?.headline || d.question),
     card?.headline && card.headline !== d.question ? h("p", { class: "original" }, h("span", { class: "quiet" }, "The session asked: "), h("q", {}, d.question)) : null,
     options,

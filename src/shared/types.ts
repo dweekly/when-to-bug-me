@@ -238,6 +238,8 @@ export interface MirrorView {
   routed: boolean;
   /** What Bug Me would have done: recorded, never acted on. */
   shadow?: MirrorShadow;
+  /** Set instead of a shadow when routing failed (no key, the day's budget spent): why. */
+  unrouted?: string;
   answer?: MirrorAnswer;
   /** Why a closed mirror closed without an answer. */
   closed_why?: string;

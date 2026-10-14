@@ -467,7 +467,7 @@ function mirrorPendingRoute(d: Decision): RouteOutput {
  * send-down is dropped before sealing: a mirror is answered in its session, so nothing is ever sent.
  * Never throws: a failure becomes a card that says so.
  */
-export async function routeMirrorTicket(env: Env, t: Ticket, c: { rules: Rule[]; facts: Fact[] }, shown: Ticket[]): Promise<Card> {
+export async function routeMirrorTicket(env: Env, t: Ticket, c: { rules: Rule[]; facts: Fact[] }, shown: Ticket[]): Promise<{ card: Card; unrouted?: string }> {
   const d = t.decision;
   const ctx: ModelCtx = { persona: ownerPersonaOf([...shown, t]), store: false, settle: OWNER_SETTLE_LIMITS };
   try {
@@ -477,16 +477,17 @@ export async function routeMirrorTicket(env: Env, t: Ticket, c: { rules: Rule[];
       if (env.FAKE_MODEL && t.mirror?.test_delay_ms) await new Promise((r) => setTimeout(r, t.mirror!.test_delay_ms));
       const { out, source } = await routeFor(env, true, d, c.rules, c.facts, ctx);
       const titles = await titlesFor(env, true, d, ctx).catch(() => null);
-      return await cardFromRoute(key, d, { ...out, send_down: [] }, source, c.rules, c.facts, titles, ctx);
+      return { card: await cardFromRoute(key, d, { ...out, send_down: [] }, source, c.rules, c.facts, titles, ctx) };
     } catch (e) {
       const why = e instanceof ModelUnavailable || e instanceof NeedsSession ? e.message : "an error";
-      return await cardFromRoute(key, d, { ...unroutedRoute(d, why), send_down: [] }, "code", c.rules, c.facts, null, ctx);
+      return { card: await cardFromRoute(key, d, { ...unroutedRoute(d, why), send_down: [] }, "code", c.rules, c.facts, null, ctx), unrouted: why };
     }
   } catch (e) {
     // Only without a sealing key, when nothing else works either.
     console.error("mirror routing failed", e);
-    const r = unroutedRoute(d, "no sealing key");
-    return { id: d.id, route: "decide", model_route: "decide", settle_option: "", reversible: "no", cost: "moderate", clearing_rule: "", rule_quoted: "", fact_quoted: "", why_here: r.why_here, headline: d.question, in_your_terms: "", problem: "fine", source: "code", sealed: "" };
+    const why = "no sealing key";
+    const card: Card = { id: d.id, route: "decide", model_route: "decide", settle_option: "", reversible: "no", cost: "moderate", clearing_rule: "", rule_quoted: "", fact_quoted: "", why_here: unroutedRoute(d, why).why_here, headline: d.question, in_your_terms: "", problem: "fine", source: "code", sealed: "" };
+    return { card, unrouted: why };
   }
 }
 
@@ -634,7 +635,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       }
     })();
     if (!isQuestionEvent(ev)) {
-      const closed = await q.mirrorEnd(ev.session, ev.event === "end" ? "the session ended" : "the session moved on");
+      const closed = await q.mirrorEnd(ev.session, ev.event === "end" ? "the session ended" : "the session moved on", ev.at);
       return json({ ok: true, closed });
     }
     const { rules, facts } = await q.context();
@@ -650,8 +651,8 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     if (path !== "/api/me/route") throw new BadRequest("Answer it in the session: Bug Me only mirrors this one.");
     const c = context(b, await q.context());
     const snap = b.rules !== undefined || b.facts !== undefined ? await q.snapshot(c.rules, c.facts) : await q.snapshot();
-    const routed = await routeMirrorTicket(env, mirrored, snap, await q.shown());
-    return json((await q.reroute(mirrored.decision.id, routed, "", snap.rev))?.card ?? routed);
+    const r = await routeMirrorTicket(env, mirrored, snap, await q.shown());
+    return json((await q.mirrorRouted(mirrored.decision.id, r.card, r.unrouted))?.card ?? r.card);
   }
 
   if (path === "/api/me/tickets") {

@@ -34,8 +34,10 @@ export type MirrorEvent =
       answers: Record<string, string>;
       /** Tests only, honored only on the fake model: hold routing this long, as a slow model call would. */
       testDelayMs?: number;
+      /** When the hook saw the event (ms), so events that arrive out of order are still put in order. */
+      at: number;
     }
-  | { event: "stop" | "end"; session: string };
+  | { event: "stop" | "end"; session: string; at: number };
 
 export type QuestionEvent = Extract<MirrorEvent, { event: "pre" | "post" }>;
 export const isQuestionEvent = (ev: MirrorEvent): ev is QuestionEvent => ev.event === "pre" || ev.event === "post";
@@ -44,6 +46,8 @@ export const isQuestionEvent = (ev: MirrorEvent): ev is QuestionEvent => ev.even
 export interface MirrorRecord extends MirrorView {
   session: string;
   tool_use: string;
+  /** When the hook saw the question (ms): a Stop or SessionEnd stamped later closes it, one stamped earlier doesn't. */
+  asked_at: number;
   test_delay_ms?: number;
 }
 
@@ -60,8 +64,9 @@ export const PLAN_QUESTION = "Approve this session's plan?";
 export const PLAN_OPTIONS = ["Approve", "Keep planning"];
 
 const str = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
-function bounded(v: unknown, max: number, field: string, required = true): string {
-  const t = str(v);
+function bounded(v: unknown, max: number, field: string, required = true, collapse = true): string {
+  // Questions and labels keep their inner spacing: answers name them exactly, so they must match exactly.
+  const t = collapse ? str(v) : typeof v === "string" ? v.trim() : "";
   if (required && !t) throw new AskError(`${field} is required`);
   if (t.length > max) throw new AskError(`${field} is longer than ${max} characters`);
   return t;
@@ -72,11 +77,14 @@ function id(v: unknown, field: string): string {
 }
 
 /** Check one event from the hook. Anything malformed is refused (the hook ignores the refusal and exits 0). */
-export function parseMirrorEvent(raw: unknown, allowTestDelay = false): MirrorEvent {
+export function parseMirrorEvent(raw: unknown, allowTestDelay = false, now = Date.now()): MirrorEvent {
   if (!raw || typeof raw !== "object") throw new AskError("the event must be an object");
   const b = raw as Record<string, unknown>;
   const session = id(b.session_id, "session_id");
-  if (b.event === "stop" || b.event === "end") return { event: b.event, session };
+  // The hook stamps each event as it runs (async hooks can deliver out of order); without a usable stamp,
+  // arrival time stands in.
+  const at = typeof b.at === "number" && Number.isFinite(b.at) && b.at > 0 ? b.at : now;
+  if (b.event === "stop" || b.event === "end") return { event: b.event, session, at };
   if (b.event !== "pre" && b.event !== "post") throw new AskError("event must be pre, post, stop or end");
   const toolUse = id(b.tool_use_id, "tool_use_id");
   const kind = b.tool === "AskUserQuestion" ? "ask" : b.tool === "ExitPlanMode" ? "plan" : null;
@@ -93,13 +101,13 @@ export function parseMirrorEvent(raw: unknown, allowTestDelay = false): MirrorEv
         throw new AskError(`questions[${i}].options must be a list of 1 to ${MIRROR_MAX_OPTIONS}`);
       }
       return {
-        question: bounded(x.question, MAX_QUESTION_CHARS, `questions[${i}].question`),
+        question: bounded(x.question, MAX_QUESTION_CHARS, `questions[${i}].question`, true, false),
         header: bounded(x.header ?? "", MAX_HEADER_CHARS, `questions[${i}].header`, false),
         multi: x.multiSelect === true,
         options: x.options.map((o, j) => {
           const y = (o && typeof o === "object" ? o : {}) as Record<string, unknown>;
           return {
-            label: bounded(y.label, MAX_LABEL_CHARS, `questions[${i}].options[${j}].label`),
+            label: bounded(y.label, MAX_LABEL_CHARS, `questions[${i}].options[${j}].label`, true, false),
             description: bounded(y.description ?? "", MAX_DESCRIPTION_CHARS, `questions[${i}].options[${j}].description`, false),
           };
         }),
@@ -110,12 +118,12 @@ export function parseMirrorEvent(raw: unknown, allowTestDelay = false): MirrorEv
   if (b.answers && typeof b.answers === "object") {
     for (const [k, v] of Object.entries(b.answers as Record<string, unknown>)) {
       // Answers are kept exactly (trimmed), so a typed answer survives as written; long ones are clipped.
-      if (typeof v === "string") answers[str(k)] = v.trim().slice(0, MAX_ANSWER_CHARS);
+      if (typeof v === "string") answers[k.trim()] = v.trim().slice(0, MAX_ANSWER_CHARS);
     }
   }
   const delay = Number(b.test_delay_ms);
   const testDelayMs = allowTestDelay && Number.isFinite(delay) && delay > 0 ? Math.min(delay, MIRROR_TEST_DELAY_MAX_MS) : undefined;
-  return { event: b.event, session, toolUse, kind, project, questions, answers, ...(testDelayMs ? { testDelayMs } : {}) };
+  return { event: b.event, session, toolUse, kind, project, questions, answers, at, ...(testDelayMs ? { testDelayMs } : {}) };
 }
 
 /**
@@ -184,6 +192,7 @@ export function newMirror(ev: QuestionEvent, index: number): MirrorRecord {
     routed: false,
     session: ev.session,
     tool_use: ev.toolUse,
+    asked_at: ev.at,
     ...(ev.testDelayMs ? { test_delay_ms: ev.testDelayMs } : {}),
   };
 }
@@ -221,6 +230,6 @@ export function answerFromMirror(ev: QuestionEvent, index: number, d: Decision):
 
 /** The page's view of a ticket's mirror: the correlation and the test knob stay on the server. */
 export function mirrorView(m: MirrorRecord): MirrorView {
-  const { session: _s, tool_use: _t, test_delay_ms: _d, ...view } = m;
+  const { session: _s, tool_use: _t, test_delay_ms: _d, asked_at: _a, ...view } = m;
   return view;
 }

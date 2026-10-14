@@ -512,11 +512,18 @@ export class LiveQueue {
   // between, so in the Durable Object each runs whole: an answer can land while routing is out, and
   // routing that finishes later never reopens or overwrites it.
 
-  /** PreToolUse: store each question as waiting. A ticket that already exists is left as it is (a repeat delivery, or a PostToolUse that got there first). */
+  /**
+   * PreToolUse: store each question as waiting. A ticket that already exists is left as it is (a repeat
+   * delivery, or a PostToolUse that got there first). If the session's Stop or SessionEnd, stamped after
+   * the question, got there first, the question is stored closed.
+   */
   async mirrorOpen(items: MirrorItem[], now = new Date()): Promise<string[]> {
     for (const it of items) {
       if (await this.get(it.decision.id)) continue;
-      await this.kv.put(`t:${it.decision.id}`, mirrorTicket(it, now));
+      const t = mirrorTicket(it, now);
+      const ended = await this.kv.get<{ at: number; why: string }>(`me:${it.mirror.session}`);
+      if (ended && ended.at >= it.mirror.asked_at) close(t, ended.why, now);
+      await this.kv.put(`t:${it.decision.id}`, t);
       await this.indexSession(it.mirror.session, it.decision.id);
     }
     return items.map((it) => it.decision.id);
@@ -561,12 +568,17 @@ export class LiveQueue {
     return items.map((it) => it.decision.id);
   }
 
-  /** Stop or SessionEnd: the session moved on, so whatever it asked and nobody answered is closed. */
-  async mirrorEnd(session: string, why: string, now = new Date()): Promise<number> {
+  /**
+   * Stop or SessionEnd, stamped `at`: the session moved on, so whatever it asked before then and nobody
+   * answered is closed. The latest end is kept, for a question whose PreToolUse arrives after it.
+   */
+  async mirrorEnd(session: string, why: string, at: number, now = new Date()): Promise<number> {
+    const prev = await this.kv.get<{ at: number; why: string }>(`me:${session}`);
+    if (!prev || prev.at <= at) await this.kv.put(`me:${session}`, { at, why });
     let n = 0;
     for (const id of (await this.kv.get<string[]>(`ms:${session}`)) ?? []) {
       const t = await this.get(id);
-      if (!t?.mirror || t.mirror.state !== "pending") continue;
+      if (!t?.mirror || t.mirror.state !== "pending" || t.mirror.asked_at > at) continue;
       close(t, why, now);
       await this.kv.put(`t:${id}`, t);
       n++;
@@ -576,17 +588,21 @@ export class LiveQueue {
 
   /**
    * Routing finished: the card is shown, with any settle withheld, and the route Bug Me would have taken
-   * is recorded as the shadow. The ticket's state and answer are never touched.
+   * is recorded as the shadow; if routing failed (`unrouted`), the reason is kept instead, never passed
+   * off as a route. The ticket's state and answer are never touched.
    */
-  async mirrorRouted(id: string, card: Card): Promise<Ticket | undefined> {
+  async mirrorRouted(id: string, card: Card, unrouted?: string): Promise<Ticket | undefined> {
     const t = await this.get(id);
     if (!t?.mirror) return t;
     const label = card.settle_option ? t.decision.options.find((o) => o.key === card.settle_option)?.label : undefined;
-    t.mirror = {
-      ...t.mirror,
-      routed: true,
-      shadow: { route: card.route, model_route: card.model_route, settle_option: card.settle_option, ...(label ? { label } : {}), ...(card.clearing_rule ? { rule: card.clearing_rule } : {}) },
-    };
+    const { shadow: _old, unrouted: _was, ...rest } = t.mirror;
+    t.mirror = unrouted
+      ? { ...rest, routed: true, unrouted }
+      : {
+          ...rest,
+          routed: true,
+          shadow: { route: card.route, model_route: card.model_route, settle_option: card.settle_option, ...(label ? { label } : {}), ...(card.clearing_rule ? { rule: card.clearing_rule } : {}) },
+        };
     t.card = card.route === "settle" ? withheld(card, "this one is answered in its session") : card;
     await this.kv.put(`t:${id}`, t);
     return t;

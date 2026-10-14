@@ -62,8 +62,8 @@ describe("the hook's body", () => {
       expect(sent).not.toContain("prompt_id");
     }
     expect(hookBody(fixture("ask-pre"))).toMatchObject({ event: "pre", tool: "AskUserQuestion", project: "demo-app" });
-    expect(hookBody(fixture("plan-pre"))).toEqual({ event: "pre", session_id: fixture("plan-pre").session_id, tool_use_id: fixture("plan-pre").tool_use_id, tool: "ExitPlanMode", project: "demo-app" });
-    expect(hookBody(fixture("stop"))).toEqual({ event: "stop", session_id: fixture("stop").session_id });
+    expect(hookBody(fixture("plan-pre"))).toEqual({ event: "pre", session_id: fixture("plan-pre").session_id, tool_use_id: fixture("plan-pre").tool_use_id, tool: "ExitPlanMode", project: "demo-app", at: expect.any(Number) });
+    expect(hookBody(fixture("stop"))).toEqual({ event: "stop", session_id: fixture("stop").session_id, at: expect.any(Number) });
     expect(hookBody({ ...fixture("ask-pre"), tool_name: "Bash" })).toBeNull();
     expect(DEADLINE_MS).toBe(MIRROR_HOOK_DEADLINE_MS);
   });
@@ -117,6 +117,18 @@ describe("adapters, on the captured payloads", () => {
     const [post] = await items(event("plan-post"));
     expect(post.answer).toEqual({ text: "Approve", keys: ["A"] });
     expect(post.decision.id).toBe(pre.decision.id);
+  });
+
+  it("matches an answer to a label exactly, inner spacing included", () => {
+    const ev = parseMirrorEvent({
+      event: "post",
+      session_id: "s1",
+      tool_use_id: "u1",
+      tool: "AskUserQuestion",
+      questions: [{ question: "How  to install?", options: [{ label: "Use npm  ci" }, { label: "Use npm install" }] }],
+      answers: { "How  to install?": "Use npm  ci" },
+    }) as QuestionEvent;
+    expect(answerFromMirror(ev, 0, decisionFromMirror(ev, 0, "t-x"))).toEqual({ text: "Use npm  ci", keys: ["A"] });
   });
 
   it("refuses what AskUserQuestion can't carry, and malformed ids", () => {
@@ -227,6 +239,20 @@ describe("mirror only, enforced by the server", () => {
     expect(await q.recentlyAnswered()).toHaveLength(0);
     expect(await q.recentMirrors()).toHaveLength(3);
     expect(mirrorView(its[0].mirror)).not.toHaveProperty("session");
+    expect(mirrorView(its[0].mirror)).not.toHaveProperty("asked_at");
+  });
+
+  it("a routing failure is kept as the reason, never shown as a route", async () => {
+    const q = new LiveQueue(mapKV());
+    const [it] = await items(event("plan-pre"));
+    await q.mirrorOpen([it]);
+    const t = await q.mirrorRouted(it.decision.id, card(it.decision.id, "decide"), "today's budget is spent");
+    expect(t?.mirror).toMatchObject({ routed: true, unrouted: "today's budget is spent" });
+    expect(t?.mirror).not.toHaveProperty("shadow");
+    // A later successful route replaces it.
+    const ok = await q.mirrorRouted(it.decision.id, card(it.decision.id, "check_in"));
+    expect(ok?.mirror).not.toHaveProperty("unrouted");
+    expect(ok?.mirror?.shadow?.route).toBe("check_in");
   });
 });
 
@@ -235,16 +261,35 @@ describe("orphans", () => {
     const q = new LiveQueue(mapKV());
     const pre = await items(event("ask-pre"));
     await q.mirrorOpen(pre);
-    expect(await q.mirrorEnd(pre[0].mirror.session, "the session moved on")).toBe(3);
+    const later = pre[0].mirror.asked_at + 1000;
+    expect(await q.mirrorEnd(pre[0].mirror.session, "the session moved on", later)).toBe(3);
     const t = await q.get(pre[0].decision.id);
     expect(t?.status).toBe("closed");
     expect(t?.mirror).toMatchObject({ state: "closed", closed_why: "the session moved on" });
     expect(await q.shown()).toHaveLength(0);
-    expect(await q.mirrorEnd(pre[0].mirror.session, "the session ended")).toBe(0);
+    expect(await q.mirrorEnd(pre[0].mirror.session, "the session ended", later + 1)).toBe(0);
     await q.mirrorAnswer(await items(event("ask-post")));
     expect((await q.get(pre[0].decision.id))?.mirror?.state).toBe("answered");
     // Another session's end touches nothing of this one.
-    expect(await q.mirrorEnd("someone-else", "the session ended")).toBe(0);
+    expect(await q.mirrorEnd("someone-else", "the session ended", later)).toBe(0);
+  });
+
+  it("puts out-of-order events back in order by when the hook saw them", async () => {
+    const at = (name: string, t: number) => parseMirrorEvent({ ...hookBody(fixture(name)), at: t }) as QuestionEvent;
+    const q = new LiveQueue(mapKV());
+    // A dismissed question, then SessionEnd, delivered the other way round: the question arrives closed.
+    const asked = await items(at("ask-pre", 1_000));
+    const session = asked[0].mirror.session;
+    await q.mirrorEnd(session, "the session ended", 2_000);
+    await q.mirrorOpen(asked);
+    expect((await q.get(asked[0].decision.id))?.mirror).toMatchObject({ state: "closed", closed_why: "the session ended" });
+    // The session resumes and asks again, later: that question waits, and an older Stop arriving late doesn't close it.
+    const again = parseMirrorEvent({ ...hookBody(fixture("plan-pre")), session_id: session, at: 3_000 }) as QuestionEvent;
+    const [plan] = await items(again);
+    await q.mirrorOpen([plan]);
+    expect(await q.mirrorEnd(session, "the session moved on", 2_500)).toBe(0);
+    expect((await q.get(plan.decision.id))?.mirror?.state).toBe("pending");
+    expect(await q.mirrorEnd(session, "the session moved on", 3_500)).toBe(1);
   });
 
   it("a mirror with no answer and no end closes after the orphan time", async () => {
@@ -305,7 +350,7 @@ describe("the hook script never holds a session up", () => {
     expect(r.out).toBe("");
     expect(got.path).toBe("/api/me/mirror");
     expect(got.auth).toBe("Bearer test-key");
-    expect(JSON.parse(got.body!)).toEqual(hookBody(fixture("ask-pre")));
+    expect(JSON.parse(got.body!)).toEqual({ ...hookBody(fixture("ask-pre")), at: expect.any(Number) });
   });
 
   it("exits 0 on garbage, on an event it ignores, and with no BUGME_URL", async () => {

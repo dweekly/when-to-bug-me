@@ -37,11 +37,13 @@ export function hookBody(p) {
   if (!p || typeof p !== "object") return null;
   const session_id = str(p.session_id);
   if (!session_id) return null;
-  if (p.hook_event_name === "Stop") return { event: "stop", session_id };
-  if (p.hook_event_name === "SessionEnd") return { event: "end", session_id };
+  // Stamped here, as the event happens: async hooks can arrive out of order, and Bug Me puts them back.
+  const at = Date.now();
+  if (p.hook_event_name === "Stop") return { event: "stop", session_id, at };
+  if (p.hook_event_name === "SessionEnd") return { event: "end", session_id, at };
   const event = p.hook_event_name === "PreToolUse" ? "pre" : p.hook_event_name === "PostToolUse" ? "post" : null;
   if (!event || !TOOLS.has(p.tool_name) || !str(p.tool_use_id)) return null;
-  const body = { event, session_id, tool_use_id: p.tool_use_id, tool: p.tool_name, project: str(p.cwd) ? basename(p.cwd) : "" };
+  const body = { event, session_id, tool_use_id: p.tool_use_id, tool: p.tool_name, project: str(p.cwd) ? basename(p.cwd) : "", at };
   if (p.tool_name === "ExitPlanMode") return body; // the question is fixed; the plan stays in the session
   const input = p.tool_input && typeof p.tool_input === "object" ? p.tool_input : {};
   const response = p.tool_response && typeof p.tool_response === "object" ? p.tool_response : {};

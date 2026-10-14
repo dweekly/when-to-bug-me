@@ -103,3 +103,23 @@ test("a plan approval shows no plan, and closes when the session moves on", asyn
   await expect(card.locator(".mirror-status")).toHaveText(/Closed: the session moved on/, POLLED);
   expect(await stayed(page)).toBe(true);
 });
+
+test("a mirror whose routing failed says so, rather than showing a route", async ({ page, request }, testInfo) => {
+  const session = `e2e-unrouted-${testInfo.project.name}-${Date.now()}`;
+  const [plan] = await mirror(request, { event: "pre", tool: "ExitPlanMode", session_id: session, tool_use_id: "toolu_e2e3", project: "mirror-e2e" });
+  // The stand-in model never fails, so the queue is rewritten as a Worker with no key (or no budget) serves it.
+  await page.route("**/api/me/queue", async (route) => {
+    const res = await route.fetch();
+    const q = (await res.json()) as { mirrors: Record<string, Record<string, unknown>> };
+    if (q.mirrors[plan]) {
+      delete q.mirrors[plan].shadow;
+      q.mirrors[plan] = { ...q.mirrors[plan], routed: true, unrouted: "today's budget is spent" };
+    }
+    await route.fulfill({ response: res, json: q });
+  });
+  await signIn(page);
+  await page.goto(`/me#/d/${plan}`);
+  const card = page.locator("#now .mirror");
+  await expect(card.locator(".why")).toHaveText("Bug Me couldn't route this one (today's budget is spent).");
+  await expect(page.locator(`#now`)).not.toContainText("would bring it");
+});
