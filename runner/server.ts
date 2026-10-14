@@ -3,7 +3,7 @@
 // Claude Code sessions.
 import { type ChildProcess, spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
-import { type IncomingMessage, type Server, type ServerResponse, createServer } from "node:http";
+import { type IncomingMessage, type Server, type ServerResponse, createServer, request as httpRequest } from "node:http";
 import { join } from "node:path";
 import { parseMcpList, skillNames } from "../mcp/bugme.mjs";
 import { RUNNER_HEADER, RUNNER_MCP_LIST_TIMEOUT_MS, RUNNER_STALE_LAUNCH_MS } from "../src/shared/constants";
@@ -77,6 +77,8 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
     }
   };
 
+  process.on("exit", stopWorker);
+
   /** The Worker's owner API, as the owner. */
   async function owner<T>(path: string, body?: unknown): Promise<{ status: number; data: T }> {
     const r = await fetch(`${workerUrl}${path}`, {
@@ -138,7 +140,8 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
     const { briefs, catalog } = await briefsAndCatalog();
     const b = briefs.find((x) => x.id === briefId);
     if (!b) return { status: 404, body: { error: "unknown brief" } };
-    if (b.launch?.state === "launching") await reconcile([b], true);
+    // A reservation younger than RUNNER_STALE_LAUNCH_MS may still be starting: it stays protected.
+    if (b.launch?.state === "launching") await reconcile([b]);
     if (!allTicked(b)) return { status: 409, body: { error: "Tick every “You first” item first." } };
     let path: string;
     try {
@@ -178,21 +181,28 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
     return { status: 200, body: { launch: started.data.brief.launch } };
   }
 
+  /**
+   * Pass a request to the Worker. node:http rather than fetch: fetch gives up waiting for response
+   * headers after 300 s, and an owner ask through the runner can take two model calls of up to 180 s.
+   */
   async function proxy(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(req.headers)) if (!DROP.test(k) && typeof v === "string") headers.set(k, v);
-    headers.set(RUNNER_HEADER, cfg.modelKey);
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(req.headers)) if (!DROP.test(k) && typeof v === "string") headers[k] = v;
+    headers[RUNNER_HEADER] = cfg.modelKey;
     const body = req.method === "GET" || req.method === "HEAD" ? undefined : await readBody(req);
-    const r = await fetch(`${workerUrl}${path}`, { method: req.method, headers, body, redirect: "manual" });
-    const out: Record<string, string | string[]> = {};
-    r.headers.forEach((v, k) => {
-      if (k !== "set-cookie" && k !== "content-encoding" && k !== "content-length") out[k] = v;
+    if (body) headers["content-length"] = String(body.length);
+    await new Promise<void>((resolve, reject) => {
+      const up = httpRequest({ host: "127.0.0.1", port: cfg.workerPort, method: req.method, path, headers }, (r) => {
+        res.writeHead(r.statusCode ?? 502, r.headers);
+        r.pipe(res);
+        r.on("end", resolve);
+        r.on("error", reject);
+      });
+      up.on("error", reject);
+      up.end(body);
     });
-    const cookies = r.headers.getSetCookie();
-    if (cookies.length) out["set-cookie"] = cookies;
-    res.writeHead(r.status, out);
-    res.end(Buffer.from(await r.arrayBuffer()));
   }
+
 
   const server = createServer((req, res) => {
     void (async () => {
@@ -249,17 +259,25 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
     });
   });
 
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(cfg.port, "127.0.0.1", resolve);
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(cfg.port, "127.0.0.1", resolve);
+    });
+  } catch (e) {
+    // The port is taken, say: the Worker started for nothing, so it goes too.
+    models.stopAll();
+    stopWorker();
+    throw e;
+  }
   void refreshCatalog();
   void briefsAndCatalog().then((x) => reconcile(x.briefs), () => {});
 
-  process.on("exit", stopWorker);
   return {
     server,
     close: async () => {
+      // Model helpers stop with the runner; launched work sessions are the person's and keep running.
+      models.stopAll();
       server.closeAllConnections();
       await new Promise<void>((r) => server.close(() => r()));
       stopWorker();

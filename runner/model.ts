@@ -47,10 +47,16 @@ export function modelArgs(r: Pick<ModelRequest, "model" | "effort" | "schema">):
   ];
 }
 
-/** Runs at most `max` calls at once; the rest wait their turn. */
+/**
+ * Runs at most `max` calls at once; the rest wait their turn. A call's deadline starts when it's asked
+ * for, queue time included, so nothing runs on for a Worker that has stopped waiting.
+ */
 export class ModelRunner {
-  private running = 0;
-  private waiting: (() => void)[] = [];
+  private running = new Set<ReturnType<typeof spawn>>();
+  /** Slots taken: a finished call hands its slot straight to the next one waiting. */
+  private active = 0;
+  private waiting: { go: () => void; stop: (e: Error) => void }[] = [];
+  private stopped = false;
 
   constructor(
     private bin: string,
@@ -60,31 +66,55 @@ export class ModelRunner {
   ) {}
 
   async run(r: ModelRequest): Promise<unknown> {
-    if (this.running >= this.max) await new Promise<void>((go) => this.waiting.push(go));
-    this.running++;
+    const deadline = Date.now() + this.timeoutMs;
+    if (this.stopped) throw new ModelCallError("the runner is stopping");
+    if (this.active >= this.max) {
+      await new Promise<void>((go, stop) => {
+        const entry = { go, stop };
+        this.waiting.push(entry);
+        setTimeout(() => {
+          const i = this.waiting.indexOf(entry);
+          if (i >= 0) {
+            this.waiting.splice(i, 1);
+            stop(new ModelCallError("the model call timed out"));
+          }
+        }, this.timeoutMs);
+      });
+    } else this.active++;
     try {
-      return await this.once(r);
+      return await this.once(r, deadline - Date.now());
     } finally {
-      this.running--;
-      this.waiting.shift()?.();
+      const next = this.waiting.shift();
+      if (next) next.go();
+      else this.active--;
     }
   }
 
-  private once(r: ModelRequest): Promise<unknown> {
+  /** Stop every call in flight and refuse the queued ones (the runner is shutting down). */
+  stopAll(): void {
+    this.stopped = true;
+    for (const c of this.running) c.kill("SIGKILL");
+    for (const w of this.waiting.splice(0)) w.stop(new ModelCallError("the runner is stopping"));
+  }
+
+  private once(r: ModelRequest, timeoutMs: number): Promise<unknown> {
+    if (timeoutMs <= 0) return Promise.reject(new ModelCallError("the model call timed out"));
     return new Promise((resolve, reject) => {
       const child = spawn(this.bin, modelArgs(r), { cwd: this.cwd, stdio: ["pipe", "pipe", "ignore"] });
+      this.running.add(child);
       let out = "";
       let done = false;
       const finish = (f: () => void) => {
         if (done) return;
         done = true;
         clearTimeout(timer);
+        this.running.delete(child);
         f();
       };
       const timer = setTimeout(() => {
         child.kill("SIGKILL");
         finish(() => reject(new ModelCallError("the model call timed out")));
-      }, this.timeoutMs);
+      }, timeoutMs);
       child.stdout.setEncoding("utf8");
       child.stdout.on("data", (d: string) => {
         out += d;

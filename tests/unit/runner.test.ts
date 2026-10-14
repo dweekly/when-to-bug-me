@@ -190,3 +190,39 @@ describe("the runner's secrets", () => {
     expect(statSync(join(home, "runner.env")).mode & 0o777).toBe(0o600);
   });
 });
+
+describe("model calls: deadlines and shutdown", () => {
+  it("time spent queued counts toward the deadline", async () => {
+    const s = fakeState();
+    process.env.FAKE_CLAUDE_SLEEP_MS = "400";
+    try {
+      const m = new ModelRunner(FAKE, s.dir, 1, 600);
+      const req = { model: "claude-haiku-5-5", effort: "low", schema: {}, prompt: "x" };
+      const [first, second] = await Promise.allSettled([m.run(req), m.run(req)]);
+      // The first finishes at ~400 ms; the second would need until ~800 ms, past its 600 ms deadline.
+      expect(first.status).toBe("fulfilled");
+      expect(second.status).toBe("rejected");
+    } finally {
+      delete process.env.FAKE_CLAUDE_SLEEP_MS;
+    }
+  });
+
+  it("stopping the runner stops calls in flight and refuses the queued ones", async () => {
+    const s = fakeState();
+    process.env.FAKE_CLAUDE_SLEEP_MS = "5000";
+    try {
+      const m = new ModelRunner(FAKE, s.dir, 1, 10_000);
+      const req = { model: "claude-haiku-5-5", effort: "low", schema: {}, prompt: "x" };
+      const calls = [m.run(req), m.run(req)];
+      await new Promise((r) => setTimeout(r, 200));
+      const t0 = Date.now();
+      m.stopAll();
+      const settled = await Promise.allSettled(calls);
+      expect(settled.map((x) => x.status)).toEqual(["rejected", "rejected"]);
+      expect(Date.now() - t0).toBeLessThan(2000);
+      await expect(m.run(req)).rejects.toThrow(ModelCallError);
+    } finally {
+      delete process.env.FAKE_CLAUDE_SLEEP_MS;
+    }
+  });
+});
