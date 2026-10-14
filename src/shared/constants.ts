@@ -126,6 +126,8 @@ export const RUNNER_PORT = 8790;
  * src/worker/model.ts), so the child is killed before the Worker gives up. A brief measured about a minute.
  */
 export const RUNNER_MODEL_TIMEOUT_MS = 170_000;
+/** The header the runner puts on every request it passes to the Worker under it, carrying its model key. */
+export const RUNNER_HEADER = "x-bugme-runner";
 /** `claude -p` calls at once: each is a whole session's memory and startup. */
 export const RUNNER_MAX_MODEL_CALLS = 2;
 /** Starting a background session: `claude --bg` returns once the session exists (measured ~2 s). */

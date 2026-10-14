@@ -27,7 +27,7 @@
 // Which model answers is decided in model.ts: the deterministic fake when FAKE_MODEL is set or no
 // API key exists, otherwise live Claude behind the cache and the spend cap.
 
-import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES } from "../shared/constants";
+import { MAX_EVIDENCE_CHARS, MAX_FACTS, MAX_REASON_CHARS, MAX_REROUTES_PER_FACT, MAX_RULE_CHARS, MAX_RULES, RUNNER_HEADER } from "../shared/constants";
 import { ConverseError, parseConverseRequest } from "../shared/converse";
 import { enforceSettleInvariant, verifiedConflicts, verifiedQuotes } from "../shared/route";
 import type { Card, Decision, Fact, Persona, RouteOutput, Rule, Source } from "../shared/types";
@@ -589,6 +589,11 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    // Under the runner (docs/STAGE-9.md) the Worker listens on loopback behind the runner's guards; a
+    // request that didn't come through the runner (another local process, a DNS-rebound page) gets nothing.
+    if (env.LOCAL_MODEL_URL && (!usableToken(env.LOCAL_MODEL_TOKEN) || !sameString(req.headers.get(RUNNER_HEADER) ?? "", env.LOCAL_MODEL_TOKEN))) {
+      return new Response("Not found", { status: 404 });
+    }
     const url = new URL(req.url);
     // The owner's page is the same app in live mode (docs/STAGE-7.md); it doesn't exist without LIVE_TOKEN.
     if (url.pathname === "/me") {

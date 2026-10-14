@@ -433,7 +433,9 @@ export function buildCommand(b: Brief, c: Catalog): string {
   const text = args.pop()!;
   args.pop(); // "--"
   const d = delimiterFor(text);
-  return `${["claude", ...args.slice(1).map(shellQuote)].join(" ")} -- "$(cat <<'${d}'\n${text}\n${d}\n)"`;
+  // Flags as written (letters and dashes only, nothing a shell reads); every value single-quoted.
+  const shown = args.slice(1).map((a) => (/^--[A-Za-z-]+$/.test(a) ? a : shellQuote(a)));
+  return `${["claude", ...shown].join(" ")} -- "$(cat <<'${d}'\n${text}\n${d}\n)"`;
 }
 
 /** "45m", "1h", "1h 30m". */

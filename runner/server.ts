@@ -6,7 +6,7 @@ import { mkdirSync } from "node:fs";
 import { type IncomingMessage, type Server, type ServerResponse, createServer } from "node:http";
 import { join } from "node:path";
 import { parseMcpList, skillNames } from "../mcp/bugme.mjs";
-import { RUNNER_MCP_LIST_TIMEOUT_MS, RUNNER_STALE_LAUNCH_MS } from "../src/shared/constants";
+import { RUNNER_HEADER, RUNNER_MCP_LIST_TIMEOUT_MS, RUNNER_STALE_LAUNCH_MS } from "../src/shared/constants";
 import { BRIEF_ID_RE } from "../src/worker/live";
 import { BUGME_PREFIX, type Brief, type Catalog, type Launch, REPO_NAME_RE, allTicked } from "../src/shared/dispatch";
 import type { RunnerConfig } from "./config";
@@ -81,7 +81,7 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
   async function owner<T>(path: string, body?: unknown): Promise<{ status: number; data: T }> {
     const r = await fetch(`${workerUrl}${path}`, {
       method: body === undefined ? "GET" : "POST",
-      headers: { authorization: `Bearer ${cfg.ownerKey}`, ...(body === undefined ? {} : { "content-type": "application/json" }) },
+      headers: { [RUNNER_HEADER]: cfg.modelKey, authorization: `Bearer ${cfg.ownerKey}`, ...(body === undefined ? {} : { "content-type": "application/json" }) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return { status: r.status, data: (await r.json()) as T };
@@ -90,7 +90,7 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
   const record = (id: string, l: Omit<Launch, "at">) => owner<{ brief: Brief; ok: boolean }>(`/api/me/briefs/${id}/launch`, l);
 
   for (let i = 0; ; i++) {
-    if (await fetch(`${workerUrl}/api/me/briefs`, { headers: { authorization: `Bearer ${cfg.ownerKey}` } }).then((r) => r.ok, () => false)) break;
+    if (await fetch(`${workerUrl}/api/me/briefs`, { headers: { [RUNNER_HEADER]: cfg.modelKey, authorization: `Bearer ${cfg.ownerKey}` } }).then((r) => r.ok, () => false)) break;
     if (i > 90 || worker.exitCode !== null) {
       stopWorker();
       throw new Error("the Worker didn't start (run with BUGME_RUNNER_LOG=1 to see why)");
@@ -181,6 +181,7 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
   async function proxy(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) if (!DROP.test(k) && typeof v === "string") headers.set(k, v);
+    headers.set(RUNNER_HEADER, cfg.modelKey);
     const body = req.method === "GET" || req.method === "HEAD" ? undefined : await readBody(req);
     const r = await fetch(`${workerUrl}${path}`, { method: req.method, headers, body, redirect: "manual" });
     const out: Record<string, string | string[]> = {};
