@@ -58,6 +58,15 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Cross-device follow-ups on /me** (Codex, fourth pass on #32; David, 2026-10-12: edge cases after the third pass go here). (a) A follow-up to an "other" or rejected answer should also match its course, so one tab's old course can't replace another's newer one. (b) On reload, a saved local answer should be replaced by the server's current answer (the queue would carry the answer's identity), dropping its stale follow-ups. (c) When guidance is saved but can't attach to an answer changed elsewhere, the decisions it affects should still be re-checked.
 - **Queue retention, backups and notifications.** Old tickets stay in the Durable Object; nothing pings David's phone when something new arrives.
 
+## From stage 8 (Dispatch)
+
+- **A real local route.** Sensitive work that isn't urgent is marked "run locally", but nothing runs locally yet: a local model behind Claude Code (Ollama is installed on David's laptop, with no models pulled), with the catch that its MCP tools must stay local too.
+- **A hard budget for dispatched work.** `--max-budget-usd` only works headless (`-p`); interactive sessions get a time tripwire and an advisory dollar figure. Read the session's spend from its transcript, or run bounded work headless.
+- **Calibrate estimates from reports.** Reports are shown, not learned from: "minutes since copied" isn't work time. With a start signal from the session, feed estimate vs. actual into the next draft.
+- **A launcher.** Make the worktree and start the session, instead of copy and paste; hand off from the phone to the laptop beyond the clipboard.
+- **Check statuses at dispatch time.** The catalog's statuses are as of the last sync; a server can lose its login after.
+- **Dispatch on the explainer page.** The front page tells the Respond story only.
+
 ## Tech debt to schedule
 
 - Seven formatting decisions have an option labeled "Skip" (leave the code as is), the same word as the card's set-aside link. Those cards reach Jordan only after a rule change. Relabel them ("Leave as is") at the next re-recording, since the label is part of the recorded routing prompt.

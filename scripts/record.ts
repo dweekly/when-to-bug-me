@@ -16,6 +16,7 @@
 // something other than the script expects. The guidance call the confirmed thread leads to, and its
 // re-routes, are recorded too. Entries already recorded are re-checked against today's validators; a
 // stale one is dropped and asked again.
+// Stage 8 adds the public Dispatch demo's three briefs (DISPATCH_EXAMPLES), on Jordan's synthetic tools.
 // It stops when its own spend passes LOCAL_BUDGET_USD.
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -30,6 +31,7 @@ import { keptFact, withFact } from "../src/shared/lifecycle";
 import {
   ASK_SCHEMA,
   CONVERSE_PROMPT_VERSION,
+  DISPATCH_PROMPT_VERSION,
   FACT_SCHEMA,
   PARSE_PROMPT_VERSION,
   PROMPT_VERSION,
@@ -37,6 +39,7 @@ import {
   askPrompt,
   conversePrompt,
   converseSchema,
+  dispatchPrompt,
   factPrompt,
   parsePrompt,
   parseSchema,
@@ -51,6 +54,8 @@ import { MAX_REASON_CHARS } from "../src/shared/constants";
 import { enforceSettleInvariant, parseRouteOutput } from "../src/shared/route";
 import type { Decision, Fact, Persona, Rule } from "../src/shared/types";
 import { CONVERSATIONS, EXAMPLES, scriptTurn } from "../src/shared/examples";
+import { dispatchSchema, parseBriefDraft, parseCatalog, runWhere } from "../src/shared/dispatch";
+import { DISPATCH_EXAMPLES } from "../src/shared/dispatchExamples";
 
 /** Hard ceiling on what one recording run may spend, in dollars. About 60 low-effort calls fit well under it. */
 const LOCAL_BUDGET_USD = 4;
@@ -63,6 +68,7 @@ const rules = read<Rule[]>("fixtures/rules.json");
 const facts = read<Fact[]>("fixtures/facts.json");
 const decisions = read<Decision[]>("fixtures/decisions.json");
 const byId = new Map(decisions.map((d) => [d.id, d]));
+const catalog = parseCatalog(read("fixtures/catalog.json"));
 const OUT = new URL("../fixtures/captures/recorded.json", import.meta.url);
 const dryRun = process.argv.includes("--dry-run");
 
@@ -222,6 +228,14 @@ async function factAndReroutes(d: Decision, choice: string, evidence: string): P
 async function main(): Promise<void> {
   await routeAll(decisions.map((d) => d.id), rules, facts, "default");
   await titlesAll();
+  // Dispatch (docs/STAGE-8.md): each demo task as the Worker sees it (trimmed).
+  for (const x of DISPATCH_EXAMPLES) {
+    const task = x.task.trim();
+    const raw = await ask(`dispatch ${x.id}`, dispatchPrompt(persona, rules, facts, task, "", catalog), dispatchSchema(catalog), (o) => parseBriefDraft(o, catalog, rules, facts), DISPATCH_PROMPT_VERSION);
+    if (!raw) continue;
+    const b = parseBriefDraft(raw, catalog, rules, facts);
+    console.log(`  dispatch ${x.id}: ${b.stage} ~${b.estimate_minutes}min $${b.budget_usd} ${b.model}/${b.effort}/${b.permission_mode} ${b.sensitivity}/${b.urgency} → ${runWhere(b.sensitivity, b.urgency).where}; off ${b.tools_off.join(",")}; needs ${b.tools_needed.join(",")}; prereqs ${b.prerequisites.map((p) => p.what).join(" | ")}; questions ${b.questions.length}`);
+  }
   for (const s of CONVERSATIONS) await playConversation(s);
   for (const ex of EXAMPLES) {
     const d = byId.get(ex.id)!;

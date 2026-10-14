@@ -16,7 +16,7 @@ export const PARSE_PROMPT_VERSION = "2026-10-12.1";
 export const CONVERSE_PROMPT_VERSION = "2026-10-13.2";
 export const TITLE_PROMPT_VERSION = "2026-10-13.2";
 /** The dispatch prompt (docs/STAGE-8.md), versioned on its own. */
-export const DISPATCH_PROMPT_VERSION = "2026-10-13.1";
+export const DISPATCH_PROMPT_VERSION = "2026-10-13.2";
 
 function head(p: Persona): string {
   return `${p.name} (${p.pronouns}) is a ${p.role.toLowerCase()} at ${p.company}, ${p.company_blurb}. ${p.first_name} runs about ${p.fleet_size} AI agents across ${p.projects.length} projects: ${p.projects
@@ -497,12 +497,12 @@ Skills: ${skills}
 ${task}
 ${answers ? `\n=== ${n}'s answers to your earlier questions ===\n${answers}\n` : ""}
 === Write the brief ===
-- headline: the task in at most 8 words.
-- goal: one sentence on what the work produces. why: one sentence on what it is for, so the session can tell whether a different approach would also serve.
+- headline: the task in at most 6 words.
+- goal: what the work produces, in at most 15 words. why: what it is for, in at most 12 words, so the session can tell whether a different approach would also serve.
 - questions: only questions whose answer would change this brief (the size, the stage, what's in scope, a prerequisite). At most 3. Leave it empty if the task is clear enough; still fill in the rest of the brief with your best reading.
 - stage: prototype (something running to react to, fast; hardcoded values are fine), mvp (real use, crude inside) or product (reliable and maintained). Pick the smallest stage that serves the goal; words like "quick", "demo", "try" or "for Thursday" mean prototype.
-- done: up to 3 checks that say the work is finished, each something the session can actually check.
-- out_of_scope: up to 4 things a capable agent would be tempted to add that this stage doesn't need (tests beyond one smoke run, auth, configuration options, abstractions, a production deploy). Name the specific temptations of this task.
+- done: up to 3 checks that say the work is finished, each something the session can actually check, each at most 6 words.
+- out_of_scope: up to 4 things a capable agent would be tempted to add that this stage doesn't need (tests beyond one smoke run, auth, configuration options, abstractions, a production deploy). Name the specific temptations of this task, each in at most 4 words.
 - estimate_minutes: a realistic wall-clock estimate for a Claude Code session at that stage. The session stops and checks in at ${TRIPWIRE_MULTIPLE}× this.
 - budget_usd: the model spend this is worth.
 - model, effort, permission_mode: the cheapest setup that does the job well. Riskier or more sensitive work gets a more careful permission mode.
@@ -510,8 +510,8 @@ ${answers ? `\n=== ${n}'s answers to your earlier questions ===\n${answers}\n` :
 - tools_off: servers in the list above this task has no business touching; turning them off keeps the session focused and keeps data where it belongs. tools_needed: servers it must have. skills: skills worth loading, if any. Use only names from the lists.
 - context: up to 5 pointers the session should read or know first (files, documents, earlier decisions), as ${n} described them. Don't invent paths.
 - guidance: ${n}'s rules or facts above that bear on this task, each copied exactly as written.
-- prerequisites: up to 4 things ${n} must do before the session starts, so it doesn't stop midway: credentials or API tokens to hand over, accounts or permissions to grant, decisions only ${n} can make. Each with why. Leave it empty if there are none.
-- check_ins: up to 4 decisions the session must bring back to ${n} rather than make itself, from ${n}'s rules and the task.
+- prerequisites: up to 4 things ${n} must do before the session starts, so it doesn't stop midway: credentials or API tokens to hand over, accounts or permissions to grant, decisions only ${n} can make. what: at most 6 words, starting with a verb. why: at most 10 words. Leave it empty if there are none.
+- check_ins: up to 4 decisions the session must bring back to ${n} rather than make itself, from ${n}'s rules and the task, each at most 6 words.
 
-Write in plain words ${n} would use. Reply with the JSON object only.`;
+Write in plain words ${n} would use, as short as a sticky note: ${n} scans this on a phone. The session also gets ${n}'s own words, so nothing here has to carry every detail. Reply with the JSON object only.`;
 }

@@ -7,6 +7,7 @@ import { GLOW_START, type Guess, type Mood } from "../shared/lifecycle";
 import type { Punt, PuntKind } from "../shared/punt";
 import type { BugTurn, JordanTurn, Ledger } from "../shared/converse";
 import type { Card, Decision, Fact, FactOutput, Mark, Persona, RouteKind, Rule, Source } from "../shared/types";
+import type { Catalog } from "../shared/dispatch";
 import { OWNER_PAGE } from "./livemode";
 
 export type Unavailable = { id: string; unavailable: string };
@@ -28,6 +29,8 @@ export interface Queue {
   aside?: { id: string; kind: string; reason: string; instruction: string; at: string }[];
   /** On /me: answered in the last day, for this browser's own follow-ups. */
   answered?: { decision: Decision; card: Card }[];
+  /** The public site's Dispatch catalog: Jordan's synthetic tools (docs/STAGE-8.md). */
+  catalog?: Catalog;
 }
 
 export interface Answer {

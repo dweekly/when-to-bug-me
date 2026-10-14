@@ -130,6 +130,46 @@ Three recorded examples:
 
 The first carries a synthetic report, labeled synthetic like everything else: done at 38 minutes vs. 30, asked once, scope as briefed. A Dispatch demo in the Demos menu walks through it.
 
+## As built
+
+- **The recorded demo briefs read like briefs** (Opus 5.5, 2026-10-13, $0.11 for the three):
+  - the dashboard demo is a prototype, with eight tools turned off;
+  - the support tickets are high sensitivity and low urgency, so code says run locally;
+  - the PagerDuty hookup asks up front for the integration key and for which releases should page, and gives three check-ins.
+
+  Claude picked Sonnet 5.5 for all three; Jordan has no rule about models.
+- **`--` before the brief.** `--disallowedTools` takes several values, so without `--` it swallowed the opening prompt as tool names. Codex found it, and Claude Code 2.1.296 confirmed it ("Permission deny rule "Reply" matches no known tool"). `smoke:dispatch` now turns a tool off, so the real-CLI gate covers that path.
+- **The person's own words go to the session.** The brief summarizes the task; the opening prompt also carries the task and any answers verbatim, trimmed but with their whitespace intact.
+- **Real sessions behave.** In `smoke:dispatch`, a Haiku session started from a generated command:
+  - asked once through `ask_bug_me` with the brief's id;
+  - wrote its one file;
+  - reported back, about $0.01 a run.
+
+  Twice, with the stand-in's vague "runs from one command" check, it reported "partial" and said why, instead of claiming done.
+- **The first request after a session's run can hit a dropped connection** on the local Worker. One retry succeeds, which says the Worker was alive (seen every run on 2026-10-13, never twice in a row).
+- **The Dispatch demo** ("Send work out at the right size") runs start to finish on the recorded run at desktop and phone widths. Its first popover sits above the box, because on a phone it covered Draft brief.
+- **Questions are a conversation** (David, 2026-10-13: a question box on top of the card with a Redraft button "is a little silly"). The task and answers show as the person's turns, Bug Me asks under them, and Send redrafts. Every answer so far goes along, so a second round of questions doesn't drop the first.
+- **Copy on `/me`** calls the clipboard inside the click, with a promise that resolves once the save lands, because Safari refuses a clipboard write made after an await. Only the clock comes back from the save, so edits made meanwhile stay.
+- **Review decisions (David, 2026-10-13):**
+  - #36 (engine): merge after the round-2 fixes, with no third round;
+  - #37 (page): Codex escalated after round 2 with three bugs, all fixed (answers across redrafts, the Safari clipboard, the save overwriting edits); merge, then plan stage 9.
+- **The card, redesigned** (David, 2026-10-13: "way way too verbose", the bold white text was hard to read, the repeated ✕ hurt scanning).
+  - One prompt: "What do you want done?".
+  - The card reads top to bottom:
+    - the title and a line of chips (stage, time with its stopping point, money, cloud or local);
+    - the goal;
+    - checks;
+    - what's out, as one muted line;
+    - "You first" (the one block in the accent);
+    - what comes back to you.
+  - Model, effort, mode, time, money, tools, the quoted rules, the source label and the command sit behind Details.
+  - Text is regular weight in muted ink, and color is only on icons.
+  - The prompt (2026-10-13.2) asks for sticky-note-length items, and code drops a prerequisite that repeats connecting a server already listed. Re-recorded for $0.09.
+- **Next (stage 9):** a local runner reached over localhost or Tailscale.
+  - It starts the session itself, reads the tools live and makes the worktree.
+  - "Walk me through it" on each prerequisite: at least step-by-step instructions, at best a Claude session that drives Chrome with the person.
+- - **Spend:** about $0.17 in all (the recording, plus about a dozen cent-sized CLI checks).
+
 ## Gates
 
 ```bash
