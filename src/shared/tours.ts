@@ -5,6 +5,7 @@
 // expected element appearing), never by the tour doing it for them.
 
 import { DISPATCH_EXAMPLES } from "./dispatchExamples";
+import { ONBOARDING_ANSWERS } from "./onboardingScript";
 
 export interface TourStep {
   /** Navigate here before the step (a hash like "#/d/onsite-flight"). */
@@ -209,6 +210,24 @@ export const TOURS: Tour[] = [
       { target: "#brief .brief-you", title: "You first", text: "What would stop it halfway. Tick it off.", until: { click: "#brief .brief-you input" } },
       { target: "#copy-command", title: "Copy and run", text: "One command: model, effort, tools off, and the brief. The setup is under Details.", until: { click: "#copy-command" } },
       { target: ".brief-report", title: "It reports back", text: "How it went, next to what was briefed.", until: "next" },
+    ],
+  },
+  {
+    id: "welcome",
+    title: "Getting to know you",
+    blurb: "Before routing anything, Bug Me reads Jordan's history, drafts a note, and asks about it.",
+    minutes: 2,
+    mood: "pleased",
+    path: [],
+    steps: [
+      { go: "#/welcome", target: "#step-read", title: "It reads first", text: "Thirty of Jordan's recent decisions: how fast, what they typed, where they overruled the agent.", until: { click: "#draft-note" } },
+      { target: "#step-draft .wnote", title: "A draft, with receipts", text: "Every line cites the decisions behind it. Open one.", until: { click: "#step-draft .cites" } },
+      { target: "#start-interview", title: "Then it asks", text: "Only about what it isn't sure of.", until: { click: "#start-interview" } },
+      { target: "#step-interview .iq:nth-child(1)", side: "top", title: "About what it saw", text: "Say your answer, or use Jordan's.", until: "next", example: { textarea: "#answer-q1", text: ONBOARDING_ANSWERS.q1 } },
+      { target: "#step-interview .iq:nth-child(2)", side: "top", title: "Where it's unsure", text: "Jordan's answer to the second.", until: "next", example: { textarea: "#answer-q2", text: ONBOARDING_ANSWERS.q2 } },
+      { target: "#step-interview .iq:nth-child(3)", side: "top", title: "Thin evidence", text: "Two lines rest on one decision each. Jordan's answer.", until: "next", example: { textarea: "#answer-q3", text: ONBOARDING_ANSWERS.q3 } },
+      { target: "#revise-note", title: "Revise", text: "The answers change the note.", until: { click: "#revise-note" } },
+      { target: "#step-note", title: "The note it works from", text: "What changed, and why, in Jordan's words.", until: "next" },
     ],
   },
 ];

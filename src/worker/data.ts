@@ -6,6 +6,8 @@ import factsJson from "../../fixtures/facts.json";
 import personaJson from "../../fixtures/persona.json";
 import rulesJson from "../../fixtures/rules.json";
 import catalogJson from "../../fixtures/catalog.json";
+import historyJson from "../../fixtures/history.json";
+import { type HistoryItem, parseHistory } from "../shared/onboarding";
 import { type Catalog, parseCatalog } from "../shared/dispatch";
 import type { Decision, Fact, Persona, Rule } from "../shared/types";
 
@@ -39,3 +41,6 @@ export function publicDecision(d: Decision) {
 
 /** Jordan's synthetic tools and skills, for the public Dispatch demo (docs/STAGE-8.md). */
 export const publicCatalog: Catalog = parseCatalog(catalogJson);
+
+/** Jordan's past decisions, which the onboarding demo reads (docs/STAGE-10.md). Synthetic, shown on the page. */
+export const jordanHistory: HistoryItem[] = parseHistory(historyJson.decisions);

@@ -42,6 +42,10 @@ import {
   dispatchPrompt,
   walkPrompt,
   WALK_PROMPT_VERSION,
+  notePrompt,
+  interviewPrompt,
+  revisePrompt,
+  ONBOARD_PROMPT_VERSION,
   factPrompt,
   parsePrompt,
   parseSchema,
@@ -59,6 +63,8 @@ import { CONVERSATIONS, EXAMPLES, scriptTurn } from "../src/shared/examples";
 import { dispatchSchema, finishBrief, parseBriefDraft, parseCatalog, runWhere } from "../src/shared/dispatch";
 import { WALK_SCHEMA, parseWalk, walkInput } from "../src/shared/walk";
 import { DISPATCH_EXAMPLES } from "../src/shared/dispatchExamples";
+import { INTERVIEW_SCHEMA, NOTE_SCHEMA, REVISION_SCHEMA, parseAnswers, parseHistory, parseInterview, parseNote, parseRevision } from "../src/shared/onboarding";
+import { ONBOARDING_ANSWERS } from "../src/shared/onboardingScript";
 
 /** Hard ceiling on what one recording run may spend, in dollars. About 60 low-effort calls fit well under it. */
 const LOCAL_BUDGET_USD = 4;
@@ -244,6 +250,25 @@ async function main(): Promise<void> {
       const w = walkInput(shown, i, catalog);
       const steps = await ask(`walk ${x.id} ${i}`, walkPrompt(w), WALK_SCHEMA, parseWalk, WALK_PROMPT_VERSION);
       if (steps) console.log(`  walk ${x.id} "${w.what}": ${parseWalk(steps).map((st) => st.text).join(" / ")}`);
+    }
+  }
+  // Onboarding (docs/STAGE-10.md): Jordan's history → note → interview → (with the scripted answers) revision.
+  {
+    const history = parseHistory(read<{ decisions: unknown[] }>("fixtures/history.json").decisions);
+    const noteRaw = await ask("onboarding note", notePrompt(persona, rules, history), NOTE_SCHEMA, (o) => parseNote(o, history), ONBOARD_PROMPT_VERSION);
+    if (noteRaw) {
+      const note = parseNote(noteRaw, history);
+      for (const l of note) console.log(`  note ${l.id} [${l.kind}; ${l.cites.join(",")}] ${l.text}`);
+      const qRaw = await ask("onboarding interview", interviewPrompt(persona, history, note), INTERVIEW_SCHEMA, (o) => parseInterview(o, note), ONBOARD_PROMPT_VERSION);
+      if (qRaw) {
+        const questions = parseInterview(qRaw, note);
+        for (const q of questions) console.log(`  interview ${q.id} (${q.about.join(",")}) ${q.text}`);
+        if (Object.keys(ONBOARDING_ANSWERS).length) {
+          const answers = parseAnswers(ONBOARDING_ANSWERS, questions);
+          const rRaw = await ask("onboarding revision", revisePrompt(persona, history, note, questions, answers), REVISION_SCHEMA, (o) => parseRevision(o, note, history, answers), ONBOARD_PROMPT_VERSION);
+          if (rRaw) for (const l of parseRevision(rRaw, note, history, answers)) console.log(`  revised ${l.id} ${l.change}${l.because ? ` (${l.because})` : ""}: ${l.text}`);
+        } else console.log("  onboarding: no scripted answers yet (src/shared/onboardingScript.ts); the revision isn't recorded");
+      }
     }
   }
   for (const s of CONVERSATIONS) await playConversation(s);
