@@ -45,3 +45,5 @@ window.addEventListener("pagehide", () => {
   wanted = null;
   sync();
 });
+// Back to a page restored from the back-forward cache: no render runs, so the card in front resumes here.
+window.addEventListener("pageshow", attend);

@@ -267,3 +267,15 @@ test("a hidden tab stops the clock: time away from the page isn't counted", asyn
   const ev = (await stored(page))!.record.find((r) => r.kind === "attention") as unknown as { seconds: number };
   expect(ev.seconds).toBeLessThan(3);
 });
+
+test("leaving the page and coming back with Back restarts the clock on the card in front", async ({ page }) => {
+  await freshPage(page);
+  await openDecision(page, "api-rename");
+  await page.waitForTimeout(1200);
+  // What the back-forward cache does: the page is hidden and shown again, with no render in between.
+  await page.evaluate(`window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }))`);
+  await page.evaluate(`window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))`);
+  await page.waitForTimeout(1200);
+  await page.evaluate("location.hash = '#/review'");
+  await expect.poll(async () => (await stored(page))?.record.filter((r) => r.kind === "attention" && r.id === "api-rename").length).toBe(2);
+});
