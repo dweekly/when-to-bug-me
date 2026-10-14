@@ -143,3 +143,19 @@ export const RUNNER_STALE_LAUNCH_MS = 2 * 60_000;
  * and only while the page is visible.
  */
 export const OWNER_POLL_MS = 8_000;
+
+/**
+ * Reflection prompts (docs/STAGE-10.md, 10c). A break is suggested on the change-of-project screen once
+ * the decisions answered since the last suggestion add up to this many ESTIMATED minutes (each answer
+ * counts MINUTES_PER_DECISION or MINUTES_PER_CHECK_IN by the route it was answered on; nothing is
+ * timed). Heuristic, not from a study: chosen so the demo's biggest pile (Launch, about 11 estimated
+ * minutes on the recorded run) earns one suggestion and a two-question pile does not.
+ */
+export const BREAK_AFTER_EST_MINUTES = 10;
+
+/**
+ * "Were those worth your time?" is asked on the first change of project and then at most every this
+ * many (the 1st, 4th, 7th...). From the plan's "at most every third change of project" (David,
+ * 2026-10-14); asking on the first makes it seen in a three-project demo morning.
+ */
+export const FEEDBACK_EVERY_TRANSITIONS = 3;

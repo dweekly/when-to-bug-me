@@ -66,6 +66,6 @@ export default defineConfig({
     // so they run in order, and the phone layout is checked inside them.
     { name: "runner", testMatch: /runner\.spec\.ts/, use: { baseURL: `http://localhost:${RUNNER_PORT}`, viewport: { width: 1440, height: 1000 } } },
     // The narrowest phone the layout promises (no horizontal scroll at 320px): the layout checks only.
-    { name: "narrow", testMatch: /(stage(2|6[ef]?|8)|settled)\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
+    { name: "narrow", testMatch: /(stage(2|6[ef]?|8)|settled|reflection)\.spec\.ts/, grep: /@narrow/, use: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true } },
   ],
 });

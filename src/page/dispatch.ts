@@ -27,7 +27,7 @@ import { api } from "./api";
 import { SOURCE_LABEL } from "./derive";
 import { $, announce, h } from "./dom";
 import { go, hrefFor } from "./router";
-import { Q, S } from "./state";
+import { Q, S, log, save } from "./state";
 import { tourAfterRender } from "./tour";
 import { drainVoice, setVoiceTarget } from "./voice";
 
@@ -136,6 +136,7 @@ async function load(): Promise<void> {
   briefs = r.briefs;
   catalog = r.catalog;
   waiting = r.waiting ?? {};
+  noteReports(r.briefs);
   for (const b of r.briefs) if (b.ticked && !ticked.has(b.id)) ticked.set(b.id, new Set(b.ticked));
   // Only the runner answers this; the hosted Worker has no /runner/ routes.
   try {
@@ -757,6 +758,23 @@ async function launch(id: string): Promise<void> {
 
 const OUTCOME_ICON: Record<string, string> = { done: "✓", "stopped at tripwire": "⏹", partial: "◐", abandoned: "✕" };
 
+/**
+ * On /me: a session's report, the first time this browser sees it, enters the record with the brief's
+ * estimate and the reported time and cost (null when not reported), for the weekly-review sketch.
+ */
+function noteReports(list: Brief[]): void {
+  let added = false;
+  for (const b of list) {
+    const r = b.report;
+    if (!r || S.record.some((e) => e.kind === "dispatch_report" && e.brief === b.id && e.report_at === r.at)) continue;
+    const start = b.dispatched_at ?? b.launch?.at;
+    const minutes = start ? Math.max(0, Math.round((Date.parse(r.at) - Date.parse(start)) / 60_000)) : null;
+    log("dispatch_report", { brief: b.id, headline: b.headline, estimate_minutes: b.estimate_minutes, minutes, cost_usd: r.cost_usd ?? null, outcome: r.outcome, synthetic: false, report_at: r.at });
+    added = true;
+  }
+  if (added) save();
+}
+
 function report(b: Shown): HTMLElement | null {
   const r = b.report;
   if (!r) return null;
@@ -808,6 +826,8 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
   } catch (e) {
     actionMsg = `Couldn't copy (${(e as Error).message}). It's under Details.`;
   }
+  // The record keeps what went out against its estimate, for the weekly-review sketch (docs/STAGE-10.md, 10c).
+  log("dispatch", { brief: b.id, headline: b.headline, what, copied: actionMsg === "Copied.", estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd });
   if (!Q.owner && what === "command" && !keep.report) {
     // The public demo shows what a session would send back, labeled synthetic.
     const ex = DISPATCH_EXAMPLES.find((x) => x.task === b.task)?.report;
@@ -816,8 +836,10 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
       keep.dispatched_at = new Date().toISOString();
       keep.report = { ...rest, at: keep.dispatched_at };
       keep.synthetic_report = { minutes, asks };
+      log("dispatch_report", { brief: b.id, headline: b.headline, estimate_minutes: b.estimate_minutes, minutes, cost_usd: rest.cost_usd ?? null, outcome: rest.outcome, synthetic: true, report_at: keep.report.at });
     }
   }
+  save();
   savePublic();
   paint();
   announce(actionMsg);
