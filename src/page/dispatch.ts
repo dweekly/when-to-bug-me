@@ -778,7 +778,8 @@ function noteReports(list: Brief[]): void {
     }
     const r = b.report;
     if (!r || reportLogged(b.id, r.at)) continue;
-    const start = b.dispatched_at ?? b.launch?.at;
+    // A launched session ran from its launch; a later Copy resets dispatched_at but not that.
+    const start = launchCounts(b.launch) ? b.launch!.at : b.dispatched_at;
     const minutes = start ? Math.max(0, Math.round((Date.parse(r.at) - Date.parse(start)) / 60_000)) : null;
     log("dispatch_report", { brief: b.id, headline: b.headline, estimate_minutes: b.estimate_minutes, minutes, cost_usd: r.cost_usd ?? null, outcome: r.outcome, synthetic: false, report_at: r.at });
     added = true;
@@ -854,7 +855,7 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
   }
   // The demo's synthetic report, made at the first Copy and kept with the brief, enters this morning's
   // record once (again after "Start the morning over", which clears the record but keeps the briefs).
-  if (!Q.owner && keep.report && keep.synthetic_report && !reportLogged(keep.id, keep.report.at)) {
+  if (!Q.owner && copied && keep.report && keep.synthetic_report && !reportLogged(keep.id, keep.report.at)) {
     log("dispatch_report", { brief: keep.id, headline: keep.headline, estimate_minutes: b.estimate_minutes, minutes: keep.synthetic_report.minutes, cost_usd: keep.report.cost_usd ?? null, outcome: keep.report.outcome, synthetic: true, report_at: keep.report.at });
   }
   save();

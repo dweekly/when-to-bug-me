@@ -221,3 +221,20 @@ test("a demo Copy the clipboard refuses sends nothing: no synthetic report, noth
   await page.goto("/app#/review");
   await expect(page.locator("#rv-dispatch")).not.toContainText("38m");
 });
+
+test("after starting the morning over, a refused Copy doesn't bring the old synthetic report back", async ({ page }) => {
+  await page.goto("/app#/dispatch");
+  await page.locator('.demo-chip[data-example="usage-demo"]').click();
+  await page.locator("#draft-brief").click();
+  await page.locator("#copy-command").click();
+  await expect(page.locator(".brief-outcome")).toContainText("done");
+  await goRecord(page);
+  await page.locator("#reset").click();
+  await page.goto("/app#/dispatch");
+  await page.evaluate("navigator.clipboard.writeText = () => Promise.reject(new Error('denied'))");
+  await page.locator(".briefs li a").first().click();
+  await page.locator("#copy-command").click();
+  await expect(page.locator("#brief .brief-actions .think-msg")).toContainText("Couldn't copy");
+  const s = (await stored(page))!;
+  expect(s.record.filter((r) => r.kind === "dispatch_report")).toHaveLength(0);
+});
