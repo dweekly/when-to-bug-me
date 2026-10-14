@@ -4,6 +4,7 @@
 // Dispatch (dispatch.ts, docs/STAGE-8.md).
 // render() redraws the bar and the current view from state.
 
+import { attend } from "./attention";
 import { estimateMinutes, nextInSession } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
@@ -545,6 +546,7 @@ function renderRecordView(view: HTMLElement): void {
 // ---------- Dispatch ----------
 
 export function render(): void {
+  attend(); // a card that just left the screen is logged first, so the view drawn next counts it
   const route = currentRoute();
   renderBar(route);
   const view = $("view");
@@ -562,6 +564,7 @@ export function render(): void {
   else if (route.view === "welcome") renderWelcomeView(view);
   else renderRecordView(view);
   tourAfterRender();
+  attend();
 }
 
 /** Replace the rule being edited (actions.ts saves or rejects a draft from outside this module). */

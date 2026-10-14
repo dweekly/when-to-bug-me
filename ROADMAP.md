@@ -86,6 +86,12 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **wrangler dev as the runner's Worker.** It's a development server (with an inspector on loopback); a production build of the Worker under workerd would be leaner.
 - **"Do it with me" boundary is where the walk stops.** Claude in Chrome can read the page, so the session is told to stop before any page that shows or takes a secret; it can't be prevented from looking.
 
+## From stage 11 (the submission review)
+
+- **Decision quality, not just time.** Measured attention shows what a decision cost the person; nothing shows whether the answer was right. That needs a later outcome check, such as reversals, "you should have asked me" marks, or a sample re-judged a week later.
+- **When a reason explains the exception.** Pushback is skipped whenever any reason was given, even one unrelated to the rule. Judging whether the reason covers the conflict needs a model call, and a new recording.
+- **Attention is screen time.** It counts a visible card, not someone reading it; a card left open in a visible tab keeps counting.
+
 ## From stage 10d (hooks into Bug Me)
 
 Hardening:

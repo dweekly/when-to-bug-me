@@ -61,6 +61,12 @@ describe("shouldPushBack", () => {
     expect(shouldPushBack("No new runtime dependencies in the SDKs.", MAX_PUSHBACKS_PER_SESSION + 1)).toBe(false);
   });
 
+  it("never pushes back once the person has given a reason: it already explains the exception", () => {
+    expect(shouldPushBack("Travel: book the cheapest reasonable option.", 0, "Mornings before 8:30 are school drop-off.")).toBe(false);
+    expect(shouldPushBack("Travel: book the cheapest reasonable option.", 0, "   ")).toBe(true);
+    expect(shouldPushBack("Travel: book the cheapest reasonable option.", 0, "")).toBe(true);
+  });
+
   it("never pushes back without a conflicting quote", () => {
     expect(shouldPushBack(null, 0)).toBe(false);
     expect(shouldPushBack("", 0)).toBe(false);

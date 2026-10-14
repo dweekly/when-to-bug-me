@@ -126,6 +126,23 @@ describe("the weekly-review sketch", () => {
     expect(r.top).toBeNull();
   });
 
+  it("sums measured attention per project and overall, ignoring malformed stretches", () => {
+    const launchId = "a1";
+    const billingId = "b1";
+    const record: RecordLike[] = [
+      { kind: "attention", id: launchId, seconds: 40 },
+      { kind: "attention", id: launchId, seconds: 25 },
+      { kind: "attention", id: billingId, seconds: 30 },
+      { kind: "attention", id: billingId, seconds: -5 },
+      { kind: "attention", id: billingId, seconds: "lots" },
+      { kind: "attention", seconds: 99 },
+    ];
+    const r = reviewOf({ record, projectOf, projects, priorities: null });
+    expect(r.measured).toEqual({ seconds: 95, decisions: 2 });
+    expect(r.projects.find((p) => p.id === "launch")!.seconds_measured).toBe(65);
+    expect(r.projects.find((p) => p.id === "billing")!.seconds_measured).toBe(30);
+  });
+
   it("tallies one feedback tap per change of project", () => {
     const record: RecordLike[] = [
       { kind: "feedback", transition: "t1", choice: "all" },
