@@ -72,6 +72,9 @@ test("Launch waits for every tick and a trusted repo, then starts one session wi
   expect(bg[0].cwd).toMatch(/\/dev\/sandbox$/);
   await expect(page.locator("#copy-attach")).toContainText(`claude attach ${fake().sessions[0].id}`);
   await expect(page.locator(".briefs li.current .brief-row-meta")).toContainText("launched");
+  // A launch with no Copy still counts as sent in the weekly-review sketch (docs/STAGE-10.md, 10c).
+  await page.goto("/me#/review");
+  await expect(page.locator(`.rv-briefs li[data-brief="${id}"] .rv-dfacts`)).toContainText("no report yet");
 });
 
 test("the session line follows the session, and an ask shows without a reload", async ({ page, request }) => {

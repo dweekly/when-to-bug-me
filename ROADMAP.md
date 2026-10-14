@@ -7,6 +7,14 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - A real-microphone check of the voice firefly in Chrome and Safari (the tests use a stand-in recognizer).
 - A keyboard-only and screen-reader pass (Lighthouse at phone width: explainer 100, app 100 after the contrast fix).
 
+## Hardening (stage 10c, reflection prompts)
+
+- Break and feedback thresholds (`BREAK_AFTER_EST_MINUTES`, `FEEDBACK_EVERY_TRANSITIONS`) are heuristics; time is estimated from the route, never measured.
+- A change of project is counted only when Next leaves a finished project; finishing one and going Home, or working across projects from Home, never reaches that screen.
+- On `/me`, a session's report enters this browser's record only when the Dispatch view loads it; another device's record never sees it.
+- The weekly review reads this browser's record for one morning; a real weekly job, across devices and days, is out of scope (docs/STAGE-10.md).
+- Jordan's stated priorities are a hand-written constant; a real person would state and edit them.
+
 ## After the prototype (from the plan review)
 
 - **Calibration and accuracy, measured properly.** Disagreement with strong agents, probability calibration, held-out people and tasks. The prototype makes no such claim.

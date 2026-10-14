@@ -21,13 +21,14 @@ import {
   tripwireMinutes,
 } from "../shared/dispatch";
 import { OWNER_POLL_MS } from "../shared/constants";
+import { launchCounts } from "../shared/reflection";
 import { DISPATCH_EXAMPLES } from "../shared/dispatchExamples";
 import type { Source } from "../shared/types";
 import { api } from "./api";
 import { SOURCE_LABEL } from "./derive";
 import { $, announce, h } from "./dom";
 import { go, hrefFor } from "./router";
-import { Q, S } from "./state";
+import { Q, S, log, save } from "./state";
 import { tourAfterRender } from "./tour";
 import { drainVoice, setVoiceTarget } from "./voice";
 
@@ -136,6 +137,7 @@ async function load(): Promise<void> {
   briefs = r.briefs;
   catalog = r.catalog;
   waiting = r.waiting ?? {};
+  noteReports(r.briefs);
   for (const b of r.briefs) if (b.ticked && !ticked.has(b.id)) ticked.set(b.id, new Set(b.ticked));
   // Only the runner answers this; the hosted Worker has no /runner/ routes.
   try {
@@ -757,6 +759,34 @@ async function launch(id: string): Promise<void> {
 
 const OUTCOME_ICON: Record<string, string> = { done: "✓", "stopped at tripwire": "⏹", partial: "◐", abandoned: "✕" };
 
+/** A report already in this morning's record (the record starts over with the morning; briefs don't). */
+const reportLogged = (brief: string, at: string) => S.record.some((e) => e.kind === "dispatch_report" && e.brief === brief && e.report_at === at);
+
+/**
+ * On /me: a launch on the runner, and a session's report, the first time this browser sees each, enter
+ * the record with the brief's estimate and the reported time and cost (null when not reported), for the
+ * weekly-review sketch.
+ */
+function noteReports(list: Brief[]): void {
+  let added = false;
+  for (const b of list) {
+    const l = b.launch;
+    // Only a launch that started counts: one still starting may yet fail (docs/STAGE-10.md, 10c).
+    if (l && launchCounts(l) && !S.record.some((e) => e.kind === "dispatch" && e.brief === b.id && e.launch_at === l.at)) {
+      log("dispatch", { brief: b.id, headline: b.headline, what: "launch", launch_at: l.at, estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd });
+      added = true;
+    }
+    const r = b.report;
+    if (!r || reportLogged(b.id, r.at)) continue;
+    // A launched session ran from its launch; a later Copy resets dispatched_at but not that.
+    const start = launchCounts(b.launch) ? b.launch!.at : b.dispatched_at;
+    const minutes = start ? Math.max(0, Math.round((Date.parse(r.at) - Date.parse(start)) / 60_000)) : null;
+    log("dispatch_report", { brief: b.id, headline: b.headline, estimate_minutes: b.estimate_minutes, minutes, cost_usd: r.cost_usd ?? null, outcome: r.outcome, synthetic: false, report_at: r.at });
+    added = true;
+  }
+  if (added) save();
+}
+
 function report(b: Shown): HTMLElement | null {
   const r = b.report;
   if (!r) return null;
@@ -808,7 +838,12 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
   } catch (e) {
     actionMsg = `Couldn't copy (${(e as Error).message}). It's under Details.`;
   }
-  if (!Q.owner && what === "command" && !keep.report) {
+  // The record keeps what went out against its estimate, for the weekly-review sketch (docs/STAGE-10.md, 10c).
+  const copied = actionMsg === "Copied.";
+  log("dispatch", { brief: b.id, headline: b.headline, what, copied, estimate_minutes: b.estimate_minutes, budget_usd: b.budget_usd });
+  // Only a command that actually reached the clipboard "went out", so only then does the demo show what
+  // a session would send back.
+  if (!Q.owner && what === "command" && !keep.report && copied) {
     // The public demo shows what a session would send back, labeled synthetic.
     const ex = DISPATCH_EXAMPLES.find((x) => x.task === b.task)?.report;
     if (ex) {
@@ -818,6 +853,12 @@ async function copy(id: string, what: "command" | "brief"): Promise<void> {
       keep.synthetic_report = { minutes, asks };
     }
   }
+  // The demo's synthetic report, made at the first Copy and kept with the brief, enters this morning's
+  // record once (again after "Start the morning over", which clears the record but keeps the briefs).
+  if (!Q.owner && copied && keep.report && keep.synthetic_report && !reportLogged(keep.id, keep.report.at)) {
+    log("dispatch_report", { brief: keep.id, headline: keep.headline, estimate_minutes: b.estimate_minutes, minutes: keep.synthetic_report.minutes, cost_usd: keep.report.cost_usd ?? null, outcome: keep.report.outcome, synthetic: true, report_at: keep.report.at });
+  }
+  save();
   savePublic();
   paint();
   announce(actionMsg);
