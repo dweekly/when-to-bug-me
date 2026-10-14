@@ -8,6 +8,7 @@ import type { Punt, PuntKind } from "../shared/punt";
 import type { BugTurn, JordanTurn, Ledger } from "../shared/converse";
 import type { Card, Decision, Fact, FactOutput, Mark, MirrorView, Persona, RouteKind, Rule, Source } from "../shared/types";
 import type { Catalog } from "../shared/dispatch";
+import type { Transition } from "../shared/reflection";
 import { OWNER_PAGE } from "./livemode";
 
 export type Unavailable = { id: string; unavailable: string };
@@ -107,6 +108,8 @@ export interface State {
   sessionProject: string | null;
   /** Every time a decision was set aside and later resumed, oldest first; shown when it comes back. */
   puntHistory: Record<string, Punt[]>;
+  /** Changes of project, counted at Next (docs/STAGE-10.md, 10c): what each offered and what was tapped. */
+  transitions: Transition[];
 }
 
 /** Bumped whenever a saved morning can no longer be read faithfully, and the old one starts fresh:
@@ -208,6 +211,7 @@ export function fresh(q: Queue): State {
     punts: {},
     sessionProject: null,
     puntHistory: {},
+    transitions: [],
   };
 }
 
@@ -244,7 +248,7 @@ export function load(q: Queue): State {
           else if (!s.answered[id]) flows[id] = { ...f, phase: "choose", message: "The page reloaded before that was sent; send it again." };
           else if (s.answered[id]) flows[id] = { ...f, phase: "done", message: "The page reloaded before this finished; your answer and reason are recorded." };
         }
-        return { ...base, ...s, punts: s.punts ?? {}, puntHistory: s.puntHistory ?? {}, sessionProject: s.sessionProject ?? null, flows, evaluated: s.evaluated ?? {}, changes, cards: { ...base.cards, ...kept }, pending: [], pendingCause: {} };
+        return { ...base, ...s, transitions: Array.isArray(s.transitions) ? s.transitions : [], punts: s.punts ?? {}, puntHistory: s.puntHistory ?? {}, sessionProject: s.sessionProject ?? null, flows, evaluated: s.evaluated ?? {}, changes, cards: { ...base.cards, ...kept }, pending: [], pendingCause: {} };
       }
     }
   } catch {
