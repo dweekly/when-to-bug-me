@@ -217,3 +217,50 @@ export interface FactOutput {
   /** Waiting decision ids this guidance may change; validated against known ids by code. */
   may_affect: string[];
 }
+
+/**
+ * A question mirrored from a Claude Code session by the hook (docs/STAGE-10.md, 10d): shown on /me,
+ * answered only in the session. This is what the owner's page sees of it.
+ */
+export interface MirrorView {
+  /** AskUserQuestion, or ExitPlanMode's approval. */
+  kind: "ask" | "plan";
+  /** Waiting in the session; answered there (the hook saw it); or closed with no answer seen. */
+  state: "pending" | "answered" | "closed";
+  /** AskUserQuestion's short header chip, if it had one. */
+  header?: string;
+  /** Any number of options may be picked. */
+  multi: boolean;
+  /** Which question of the call this is, from 0, and how many the call asked. */
+  index: number;
+  of: number;
+  /** Routing has finished (the card is briefed, or says why it couldn't be). */
+  routed: boolean;
+  /** What Bug Me would have done: recorded, never acted on. */
+  shadow?: MirrorShadow;
+  /** Set instead of a shadow when routing failed (no key, the day's budget spent): why. */
+  unrouted?: string;
+  answer?: MirrorAnswer;
+  /** Why a closed mirror closed without an answer. */
+  closed_why?: string;
+  /** When it was answered or closed. */
+  closed_at?: string;
+}
+
+/** The session's answer, as the hook saw it: the raw text, the options it names, and any typed words. */
+export interface MirrorAnswer {
+  text: string;
+  /** Option keys picked (several for multi-select), in the options' order. */
+  keys: string[];
+  /** Words typed instead of (or beside) an option. */
+  typed?: string;
+}
+
+/** The route Bug Me gave a mirror, before the mirror-only rule withheld any settle. */
+export interface MirrorShadow {
+  route: RouteKind;
+  model_route: RouteKind;
+  settle_option: string;
+  label?: string;
+  rule?: string;
+}

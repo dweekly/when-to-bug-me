@@ -17,6 +17,7 @@ import { OWNER_POLL_MS } from "../shared/constants";
 import type { PuntKind } from "../shared/punt";
 import { plainOptions } from "../shared/titles";
 import { startTour } from "./tour";
+import { MIRRORS, setMirrors } from "./mirror";
 import { render } from "./views";
 
 /** Each decision's options in the person's terms, from its card (docs/STAGE-6F.md): the page shows,
@@ -36,6 +37,7 @@ async function boot(): Promise<void> {
   setS(load(Q));
   // On /me the server is the source of truth for the queue, rules and set-asides (docs/STAGE-7.md).
   if (Q.owner) startOwner(Q);
+  setMirrors(Q.mirrors);
   setById(new Map((Q.owner ? ownerDecisions(Q, S.answered) : Q.decisions).map((d) => [d.id, d])));
   initVoice();
   // The record view's buttons are redrawn with it, so their clicks are handled here, once.
@@ -87,8 +89,10 @@ async function boot(): Promise<void> {
 
 /**
  * New asks arriving while the owner's page is open (a launched session's, say: docs/STAGE-9.md) join
- * the queue without a reload. Only additions: a decision already on the page, and any answer in
- * progress on it, is never touched. The view redraws only when nothing is being typed.
+ * the queue without a reload. For ordinary decisions, only additions: a decision already on the page,
+ * and any answer in progress on it, is never touched. Mirrored questions (docs/STAGE-10.md, 10d) are
+ * reconciled too: their card when routing finishes, and their state when the session answers or moves
+ * on. The view redraws only when nothing is being typed.
  */
 /** An arrival that couldn't be drawn because something was being typed: drawn on the next quiet tick. */
 let redrawPending = false;
@@ -118,6 +122,30 @@ async function newAsks(): Promise<void> {
     }
     redrawPending = true;
     announce(arrived.length === 1 ? "A new ask came in." : `${arrived.length} new asks came in.`);
+  }
+  // Mirrors already on the page: take the server's state and card. Nothing of the person's is on them.
+  const mirrors = q.mirrors ?? {};
+  for (const [id, m] of Object.entries(mirrors)) {
+    if (!byId.has(id)) continue;
+    const before = MIRRORS.get(id);
+    if (before && JSON.stringify(before) === JSON.stringify(m)) continue;
+    MIRRORS.set(id, m);
+    const card = q.cards.find((c) => c.id === id);
+    if (card) {
+      S.cards[id] = card;
+      Q.cards = [...Q.cards.filter((c) => c.id !== id), card];
+    }
+    redrawPending = true;
+    if (before && before.state === "pending" && m.state !== "pending") announce(m.state === "answered" ? "A session question was answered there." : "A session question closed.");
+  }
+  // A mirror the server no longer lists (it ended more than a day ago) leaves the list.
+  for (const id of [...MIRRORS.keys()]) {
+    if (!(id in mirrors)) {
+      MIRRORS.delete(id);
+      Q.decisions = Q.decisions.filter((d) => d.id !== id);
+      byId.delete(id);
+      redrawPending = true;
+    }
   }
   const typing = document.activeElement?.matches("input, textarea, select");
   if (redrawPending && !typing && !location.hash.startsWith("#/dispatch")) {

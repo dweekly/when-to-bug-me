@@ -3,7 +3,10 @@
 // re-route can't interleave. The logic is in live.ts; this only adapts the object's storage to it.
 
 import { DurableObject } from "cloudflare:workers";
-import { AskError, type KV, LiveQueue, type Resolution, type Ticket } from "./live";
+import { AskError, type KV, LiveQueue, type MirrorItem, type Resolution, type Ticket } from "./live";
+// A cycle (index.ts re-exports this class), safe because routeMirrorTicket is only called at run time.
+import { routeMirrorTicket } from "./index";
+import type { Env } from "./model";
 import type { Card, Decision, Fact, Rule } from "../shared/types";
 import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
 
@@ -86,6 +89,57 @@ export class OwnerQueue extends DurableObject {
 
   async reroute(id: string, card: Card, instruction: string, rev: number): Promise<Ticket | undefined> {
     return this.q().reroute(id, card, instruction, rev);
+  }
+
+  // Mirrors (docs/STAGE-10.md, 10d). The hook's request is answered as soon as the mirror is stored;
+  // routing runs afterwards from the alarm, which (unlike a request's waitUntil) may run for minutes.
+  async mirrorOpen(items: MirrorItem[]): Promise<string[]> {
+    const ids = await this.q().mirrorOpen(items);
+    await this.schedule();
+    return ids;
+  }
+
+  async mirrorAnswer(items: MirrorItem[]): Promise<string[]> {
+    const ids = await this.q().mirrorAnswer(items);
+    await this.schedule();
+    return ids;
+  }
+
+  async mirrorEnd(session: string, why: string, at: number): Promise<number> {
+    return this.q().mirrorEnd(session, why, at);
+  }
+
+  async mirrorRouted(id: string, card: Card, unrouted?: string): Promise<Ticket | undefined> {
+    return this.q().mirrorRouted(id, card, unrouted);
+  }
+
+  async recentMirrors(): Promise<Ticket[]> {
+    return this.q().recentMirrors();
+  }
+
+  /** Route now if anything waits for it, else wake when the next waiting mirror would become an orphan. */
+  private async schedule(): Promise<void> {
+    const q = this.q();
+    if ((await q.unroutedMirrors()).length) return this.ctx.storage.setAlarm(Date.now());
+    const next = await q.sweepMirrors();
+    if (next) await this.ctx.storage.setAlarm(next);
+  }
+
+  /**
+   * Route every mirror that hasn't been, side by side (on the runner, its own limit on model calls
+   * queues them). Other requests run while the model calls are out, so an answer can arrive meanwhile;
+   * mirrorRouted keeps it. A failure is routed as "couldn't route", never retried forever.
+   */
+  async alarm(): Promise<void> {
+    const q = this.q();
+    const [snap, shown] = [await q.snapshot(), await q.shown()];
+    await Promise.all(
+      (await q.unroutedMirrors()).map(async (t) => {
+        const r = await routeMirrorTicket(this.env as Env, t, snap, shown);
+        await q.mirrorRouted(t.decision.id, r.card, r.unrouted);
+      }),
+    );
+    await this.schedule();
   }
 
   /** A refusal (an unknown ticket, a follow-up whose answer changed) comes back as a value: an error's class doesn't survive the RPC. */

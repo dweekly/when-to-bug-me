@@ -13,6 +13,8 @@
 //   GET  /me                    the same app, in live mode
 //   POST /api/me/login          trade the token for the owner cookie
 //   POST /api/me/tickets        an agent's ask (the MCP server): routed, settled by rule or queued
+//   POST /api/me/mirror         a Claude Code hook event (mcp/bugme-hook.mjs): a question or plan approval
+//                               mirrored on the queue, its answer in the session, or the session moving on
 //   GET  /api/me/tickets/<id>   what the asking session is told now
 //   GET  /api/me/queue          the owner's queue, in /api/queue's shape
 //   POST /api/me/resolve        the owner's answer, sent back to the asking session
@@ -38,11 +40,12 @@ import { type Catalog, DispatchError, MAX_ANSWERS_CHARS, MAX_TASK_CHARS, finishB
 import { type Env, type ModelCtx, ModelUnavailable, NeedsSession, PUBLIC_CTX, askFor, converseFor, dispatchFor, factFor, interviewFor, noteFor, parseFor, reviseFor, routeFor, titlesFor, walkFor } from "./model";
 import { type WalkInput, walkInput } from "../shared/walk";
 import { WALK_PROMPT_VERSION } from "../shared/prompts";
-import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, OWNER_SETTLE_LIMITS, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
+import { AskError, BRIEF_ID_RE, MAX_OTHERS_IN_PROMPT, type MirrorItem, OWNER_SETTLE_LIMITS, type Ticket, askBrief, askProjectName, briefId, decisionFromAsk, ownerPersona, parseResolution, reply, ticketId, waitingMinutes } from "./live";
 import { isOwner, ownerCookie, sameString, usableToken } from "./liveAuth";
 import { issueSession, sessionValid, verifyTurnstile } from "./session";
 import { BadRequest, readLimited } from "./body";
 import { SealError, importSealKey, seal, sha256Hex, unseal } from "./seal";
+import { type MirrorEvent, type QuestionEvent, answerFromMirror, isQuestionEvent, decisionFromMirror, mirrorId, mirrorView, newMirror, parseMirrorEvent, questionCount } from "./mirror";
 
 export { SpendCounter } from "./spend";
 export { OwnerQueue } from "./owner";
@@ -478,6 +481,54 @@ async function settleInstruction(key: CryptoKey, d: Decision, c: Card): Promise<
   return opened.send_down.find((s) => s.option === c.settle_option)?.instruction ?? "";
 }
 
+/** A mirror's card before routing: the question and its options, with no guess and nothing to send down. */
+function mirrorPendingRoute(d: Decision): RouteOutput {
+  return { ...unroutedRoute(d, ""), why_here: "Bug Me is still reading this one.", send_down: [] };
+}
+
+/**
+ * Route one mirrored question (docs/STAGE-10.md, 10d), from the owner's Durable Object after the hook's
+ * request was answered: the same route and titles as an ask, owner context and `store: false`. Its
+ * send-down is dropped before sealing: a mirror is answered in its session, so nothing is ever sent.
+ * Never throws: a failure becomes a card that says so.
+ */
+export async function routeMirrorTicket(env: Env, t: Ticket, c: { rules: Rule[]; facts: Fact[] }, shown: Ticket[]): Promise<{ card: Card; unrouted?: string }> {
+  const d = t.decision;
+  const ctx: ModelCtx = { persona: ownerPersonaOf([...shown, t]), store: false, settle: OWNER_SETTLE_LIMITS };
+  try {
+    const key = await importSealKey(env.SEAL_KEY);
+    try {
+      // A stand-in for a slow model call, for tests on the fake model only.
+      if (env.FAKE_MODEL && t.mirror?.test_delay_ms) await new Promise((r) => setTimeout(r, t.mirror!.test_delay_ms));
+      const { out, source } = await routeFor(env, true, d, c.rules, c.facts, ctx);
+      const titles = await titlesFor(env, true, d, ctx).catch(() => null);
+      return { card: await cardFromRoute(key, d, { ...out, send_down: [] }, source, c.rules, c.facts, titles, ctx) };
+    } catch (e) {
+      const why = e instanceof ModelUnavailable || e instanceof NeedsSession ? e.message : "an error";
+      return { card: await cardFromRoute(key, d, { ...unroutedRoute(d, why), send_down: [] }, "code", c.rules, c.facts, null, ctx), unrouted: why };
+    }
+  } catch (e) {
+    // Only without a sealing key, when nothing else works either.
+    console.error("mirror routing failed", e);
+    const why = "no sealing key";
+    const card: Card = { id: d.id, route: "decide", model_route: "decide", settle_option: "", reversible: "no", cost: "moderate", clearing_rule: "", rule_quoted: "", fact_quoted: "", why_here: unroutedRoute(d, why).why_here, headline: d.question, in_your_terms: "", problem: "fine", source: "code", sealed: "" };
+    return { card, unrouted: why };
+  }
+}
+
+/** The questions of one hook event, ready for the owner's Durable Object. */
+async function mirrorItems(ev: QuestionEvent, key: CryptoKey, rules: Rule[], facts: Fact[]): Promise<MirrorItem[]> {
+  const ctx: ModelCtx = { persona: ownerPersonaOf([]), store: false };
+  return Promise.all(
+    Array.from({ length: questionCount(ev) }, async (_, i) => {
+      const d = decisionFromMirror(ev, i, await mirrorId(ev.session, ev.toolUse, i));
+      const answer = ev.event === "post" ? answerFromMirror(ev, i, d) : undefined;
+      const card = await cardFromRoute(key, d, mirrorPendingRoute(d), "code", rules, facts, null, ctx);
+      return { decision: d, card, projectName: askProjectName({ project: ev.project }), mirror: newMirror(ev, i), ...(answer ? { answer } : {}) };
+    }),
+  );
+}
+
 /** The live queue (docs/STAGE-7.md). Without LIVE_TOKEN, none of it exists. */
 async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey): Promise<Response> {
   const liveKey = env.LIVE_TOKEN!;
@@ -503,7 +554,8 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
   }
 
   if (path === "/api/me/queue" && req.method === "GET") {
-    const shown = await q.shown();
+    // Mirrors that ended in the last day are listed too, so an open page can show how each ended.
+    const shown = [...(await q.shown()), ...(await q.recentMirrors())];
     const answered = await q.recentlyAnswered();
     const { rules, facts } = await q.context();
     const now = new Date();
@@ -513,6 +565,7 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       facts,
       decisions: shown.map((t) => publicDecision({ ...t.decision, waiting_minutes: waitingMinutes(t, now) })),
       cards: shown.map((t) => t.card),
+      mirrors: Object.fromEntries(shown.flatMap((t) => (t.mirror ? [[t.decision.id, mirrorView(t.mirror)]] : []))),
       // Set aside on any device: the page lists them, and Resume brings them back.
       aside: shown.filter((t) => t.status === "set-aside" && t.aside).map((t) => ({ id: t.decision.id, ...t.aside })),
       // Answered in the last day: not waiting, but the page keeps their follow-ups (a late reason, guidance) working.
@@ -593,6 +646,38 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
       if (e instanceof DispatchError) throw new BadRequest(e.message);
       throw e;
     }
+  }
+
+  if (path === "/api/me/mirror") {
+    // Answered as soon as it's stored: routing waits for the Durable Object's alarm, so the hook's
+    // 2-second budget is never spent on a model call.
+    const ev: MirrorEvent = (() => {
+      try {
+        return parseMirrorEvent(b, Boolean(env.FAKE_MODEL));
+      } catch (e) {
+        if (e instanceof AskError) throw new BadRequest(e.message);
+        throw e;
+      }
+    })();
+    if (!isQuestionEvent(ev)) {
+      const closed = await q.mirrorEnd(ev.session, ev.event === "end" ? "the session ended" : "the session moved on", ev.at);
+      return json({ ok: true, closed });
+    }
+    const { rules, facts } = await q.context();
+    const items = await mirrorItems(ev, key, rules, facts);
+    const tickets = ev.event === "pre" ? await q.mirrorOpen(items) : await q.mirrorAnswer(items);
+    return json({ ok: true, tickets });
+  }
+
+  // A mirror is answered in its session: the page may re-route it (it never settles) but not decide it.
+  const decidePaths = ["/api/me/route", "/api/me/answer", "/api/me/fact", "/api/me/ask", "/api/me/parse", "/api/me/converse"];
+  const mirrored = typeof b.id === "string" && decidePaths.includes(path) ? await q.ticket(b.id) : undefined;
+  if (mirrored?.mirror) {
+    if (path !== "/api/me/route") throw new BadRequest("Answer it in the session: Bug Me only mirrors this one.");
+    const c = context(b, await q.context());
+    const snap = b.rules !== undefined || b.facts !== undefined ? await q.snapshot(c.rules, c.facts) : await q.snapshot();
+    const r = await routeMirrorTicket(env, mirrored, snap, await q.shown());
+    return json((await q.mirrorRouted(mirrored.decision.id, r.card, r.unrouted))?.card ?? r.card);
   }
 
   if (path === "/api/me/tickets") {

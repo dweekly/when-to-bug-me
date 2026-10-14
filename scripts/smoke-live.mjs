@@ -9,13 +9,15 @@
 //   6. Sign-in: no credentials is refused; the one-time link sets the cookie; /me serves the app.
 //   7. Dispatch (docs/STAGE-8.md): a catalog is synced (a bad one refused), a task becomes a stored
 //      brief, Copy records the edits, an ask names the brief, and report_to_bug_me reports on it.
-//   8. The Worker goes away while a session waits: the session still gets its ticket, to check later.
+//   8. Hooks (docs/STAGE-10.md, 10d): the real hook script, fed captured Claude Code events, mirrors a
+//      question and a plan approval onto the queue, then the question's answer and the session's Stop.
+//   9. The Worker goes away while a session waits: the session still gets its ticket, to check later.
 //
 // Run with `npm run smoke:live`. No API key is used and nothing is spent.
 
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { createInterface } from "node:readline";
 
 const PORT = 8806;
@@ -199,6 +201,44 @@ const after = (await owner("/api/me/briefs")).briefs.find((b) => b.id === brief.
 if (!reported.ok || after?.asks !== 1 || after?.report?.outcome !== "done" || after?.model !== "claude-haiku-5-5") fail(`brief after the session: ${JSON.stringify(after)}`);
 if (!linked.ticket) fail("the linked ask has no ticket");
 ok(`dispatch: brief ${brief.id} drafted, copied with edits, asked about once, reported done`);
+
+/** Run mcp/bugme-hook.mjs as Claude Code would: the event on stdin, the config in the environment. */
+function hook(event) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const h = spawn("node", ["mcp/bugme-hook.mjs"], { env: { ...process.env, BUGME_URL: BASE, ...Object.fromEntries([["BUGME_TOKEN", OWNER_KEY]]) }, stdio: ["pipe", "pipe", "inherit"] });
+    let out = "";
+    h.stdout.on("data", (d) => (out += d));
+    h.on("close", (code) => resolve({ code, out, ms: Date.now() - start }));
+    h.stdin.end(JSON.stringify(event));
+  });
+}
+const captured = (name, session) => ({ ...JSON.parse(readFileSync(`fixtures/hooks/${name}.json`, "utf8")), session_id: session });
+const hookSession = `smoke-${process.pid}`;
+for (const name of ["ask-pre", "plan-pre"]) {
+  const r = await hook(captured(name, hookSession));
+  if (r.code !== 0 || r.out !== "" || r.ms > 2500) fail(`hook on ${name}: exit ${r.code}, ${r.ms} ms, stdout ${JSON.stringify(r.out)}`);
+}
+let mirrors = {};
+for (let i = 0; i < 20; i++) {
+  mirrors = (await owner("/api/me/queue")).mirrors ?? {};
+  if (Object.keys(mirrors).length === 4 && Object.values(mirrors).every((m) => m.routed)) break;
+  await new Promise((r) => setTimeout(r, 500));
+}
+const byIndex = Object.entries(mirrors).filter(([, m]) => m.kind === "ask").sort(([, a], [, b]) => a.index - b.index);
+const planId = Object.entries(mirrors).find(([, m]) => m.kind === "plan")?.[0];
+if (byIndex.length !== 3 || !planId || !Object.values(mirrors).every((m) => m.routed && m.state === "pending")) fail(`mirrors after PreToolUse: ${JSON.stringify(mirrors)}`);
+ok("hook: a three-question AskUserQuestion and a plan approval mirrored, acknowledged within the hook's deadline, then routed");
+if ((await hook(captured("ask-post", hookSession))).code !== 0) fail("hook on ask-post didn't exit 0");
+if ((await hook(captured("stop", hookSession))).code !== 0) fail("hook on stop didn't exit 0");
+const answers = await Promise.all(byIndex.map(([id]) => owner(`/api/me/tickets/${id}`)));
+const plan = await owner(`/api/me/tickets/${planId}`);
+if (answers.map((a) => `${a.status}:${a.answer?.text}`).join("|") !== "answered:Red|answered:my own typed answer|answered:Lint, Types" || plan.status !== "closed") {
+  fail(`after PostToolUse and Stop: ${JSON.stringify([answers, plan])}`);
+}
+const refused = await fetch(`${BASE}/api/me/resolve`, { method: "POST", headers: { authorization: `Bearer ${OWNER_KEY}`, "content-type": "application/json" }, body: JSON.stringify({ id: byIndex[0][0], outcome: "option", choice: "B" }) });
+if (refused.status !== 400) fail(`resolving a mirror wasn't refused: ${refused.status}`);
+ok(`hook: answers recorded from PostToolUse (Red; a typed answer; Lint and Types), the plan closed on Stop, and the page can't answer a mirror`);
 
 const waiting = toolResult(rpc, "ask_bug_me", {
   question: "Rotate the production database password tonight?",

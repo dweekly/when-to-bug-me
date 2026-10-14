@@ -15,6 +15,7 @@ import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
 import { openToursMenu, tourAfterRender } from "./tour";
+import { mirrorList } from "./mirror";
 import { renderDispatchView } from "./dispatch";
 import { betweenReflection, renderReviewView } from "./reflect";
 import { renderWelcomeView } from "./welcome";
@@ -237,7 +238,7 @@ function renderHome(view: HTMLElement): void {
     link({ view: "record" }, "Your record"),
     link({ view: "review" }, "Weekly review sketch"),
   );
-  view.replaceChildren(hero, startCard, agendaList, unfinishedList ?? "", asideList ?? "", more);
+  view.replaceChildren(hero, startCard, agendaList, mirrorList(byId) ?? "", unfinishedList ?? "", asideList ?? "", more);
 }
 
 // ---------- Focus ----------
