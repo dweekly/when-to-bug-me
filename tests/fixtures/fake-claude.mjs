@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // A stand-in `claude` for the runner's tests (docs/STAGE-9.md). It records every call's argv (and stdin
 // for -p) to $FAKE_CLAUDE_STATE, a JSON file, and answers the few commands the runner uses:
-//   mcp list              one line per server in the state's `mcp` map ({cwd: [[name, status]]} or default)
+//   mcp list              one line per server in the state's `mcp` map ({cwd: [[name, status]]} or default),
+//                         after `mcpSleepMs` if set
 //   agents --json --all   the sessions it has started
 //   --bg …                starts a "session": prints the line `claude --bg` prints
 //   -p …                  echoes {structured_output: {prompt_chars}}; FAKE_CLAUDE_SLEEP_MS delays it
@@ -17,6 +18,8 @@ const save = () => file && writeFileSync(file, JSON.stringify(state));
 if (args[0] === "mcp" && args[1] === "list") {
   state.calls.push({ args, cwd: process.cwd() });
   save();
+  // A slow tools check, for tests that act during it.
+  if (state.mcpSleepMs) await new Promise((r) => setTimeout(r, state.mcpSleepMs));
   const servers = state.mcp?.[process.cwd()] ?? state.mcp?.default ?? [["bugme", "connected"]];
   const word = { connected: "✔ Connected", "needs authentication": "! Needs authentication", failed: "✗ Failed to connect" };
   process.stdout.write(`Checking MCP server health…\n\n${servers.map(([n, s]) => `${n}: node x.mjs - ${word[s] ?? s}`).join("\n")}\n`);

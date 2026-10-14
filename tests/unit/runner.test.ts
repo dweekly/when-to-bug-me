@@ -294,3 +294,21 @@ describe("helpers stop with the runner", () => {
     }
   });
 });
+
+describe("a launch that times out isn't a launch that failed", () => {
+  it("a command stopped at its deadline is marked timed out; a refusal isn't", async () => {
+    const { run, LaunchError } = await import("../../runner/launch");
+    const s = fakeState({ failLaunch: true });
+    process.env.FAKE_CLAUDE_SLEEP_MS = "5000";
+    try {
+      const slow = await run(FAKE, ["-p"], s.dir, 300).catch((e: unknown) => e);
+      expect(slow).toBeInstanceOf(LaunchError);
+      expect((slow as InstanceType<typeof LaunchError>).timedOut).toBe(true);
+    } finally {
+      delete process.env.FAKE_CLAUDE_SLEEP_MS;
+    }
+    const refused = await run(FAKE, ["--bg", "--worktree", "x", "-n", "x"], s.dir).catch((e: unknown) => e);
+    expect(refused).toBeInstanceOf(LaunchError);
+    expect((refused as InstanceType<typeof LaunchError>).timedOut).toBe(false);
+  });
+});
