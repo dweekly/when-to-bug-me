@@ -77,3 +77,51 @@ test("a revision in flight can't be sent twice", async ({ page }) => {
   await expect(page.locator("#step-note")).toBeVisible();
   expect(posts).toBe(1);
 });
+
+test.describe("speech and the interview", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      class FakeRec {
+        lang = "";
+        interimResults = false;
+        continuous = false;
+        onresult: ((e: unknown) => void) | null = null;
+        onend: (() => void) | null = null;
+        onerror: ((e: unknown) => void) | null = null;
+        start() {
+          const g = globalThis as unknown as { __recs: FakeRec[] };
+          (g.__recs ??= []).push(this);
+        }
+        stop() {
+          this.onend?.();
+        }
+      }
+      (globalThis as unknown as { SpeechRecognition: unknown }).SpeechRecognition = FakeRec;
+    });
+    // The file's own setup already loaded the page; reload so the stand-in recognizer is the one used.
+    await page.reload();
+  });
+  const say = (page: import("@playwright/test").Page, words: string) =>
+    page.evaluate((w) => {
+      const recs = (globalThis as unknown as { __recs: { onresult: (e: unknown) => void }[] }).__recs;
+      recs.at(-1)!.onresult({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: w } }] });
+    }, words);
+
+  test("speech fills an open answer, and never a locked one", async ({ page }) => {
+    await page.goto("/app#/welcome");
+    await page.locator("#draft-note").click();
+    await page.locator("#start-interview").click();
+    await page.locator("#answer-q1").focus();
+    await page.locator("#voice-btn").click();
+    await say(page, "Yes, that's the line.");
+    await expect(page.locator("#answer-q1")).toHaveValue(/Yes, that's the line\./);
+    await page.locator("#revise-note").click();
+    await expect(page.locator("#step-note")).toBeVisible();
+    const before = await page.locator("#answer-q1").inputValue();
+    await say(page, "words after the revision");
+    await page.locator("#answer-q1").focus();
+    await say(page, "and after focusing it");
+    await expect(page.locator("#answer-q1")).toHaveValue(before);
+    await expect(page.locator("#step-interview #voice-btn")).toHaveCount(0);
+  });
+});

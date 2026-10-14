@@ -63,7 +63,11 @@ const CHANGE_ICON: Record<RevisedLine["change"], [string, string]> = {
 };
 
 /** Start over (a tour beginning): onboarding's state lives outside the morning's. */
+/** Bumped by every reset: a reply to a request made before it is ignored, whatever it says. */
+let generation = 0;
+
 export function resetWelcome(): void {
+  generation++;
   Object.assign(w, { note: null, noteSource: null, questions: null, questionsSource: null, answers: {}, revised: null, revisedSource: null, submitted: {}, busy: "", error: "" });
   w.open.clear();
 }
@@ -100,6 +104,7 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
   // One step at a time: a second press while one is out would race it (and, live, pay twice).
   if (w.busy) return;
   if (kind === "revise" && !canRevise().ok) return;
+  const g = generation;
   w.busy = kind;
   w.error = "";
   w.open.clear();
@@ -122,18 +127,22 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
       }
     } else if (kind === "draft") {
       const r = await api<{ note: NoteLine[]; source: Source }>("/api/onboarding/draft", {});
+      if (g !== generation) return;
       Object.assign(w, { note: r.note, noteSource: r.source, questions: null, revised: null, answers: {} });
     } else if (kind === "interview") {
       const r = await api<{ questions: InterviewQuestion[]; source: Source }>("/api/onboarding/interview", { note: w.note });
+      if (g !== generation) return;
       Object.assign(w, { questions: r.questions, questionsSource: r.source, revised: null, answers: {} });
     } else {
       await drainVoice();
       const sent = { ...w.answers };
       const r = await api<{ lines: RevisedLine[]; source: Source }>("/api/onboarding/revise", { note: w.note, questions: w.questions, answers: sent });
+      if (g !== generation) return;
       Object.assign(w, { revised: r.lines, revisedSource: r.source, submitted: sent });
     }
     announce(kind === "draft" ? "Note drafted." : kind === "interview" ? "Questions ready." : kind === "keep" ? "Kept." : "Note revised.");
   } catch (e) {
+    if (g !== generation) return;
     w.error = (e as Error).message;
   }
   w.busy = "";
@@ -232,8 +241,9 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
         w.answers[q.id] = ta.value;
         syncRevise();
       });
+      // Speech goes only to an answer that can still change; a locked one takes none.
       ta.addEventListener("focus", () =>
-        setVoiceTarget({ key: `welcome:${q.id}`, el: () => document.getElementById(`answer-${q.id}`) as HTMLTextAreaElement | null, write: (t) => (w.answers[q.id] = t) }),
+        setVoiceTarget(locked ? null : { key: `welcome:${q.id}`, el: () => document.getElementById(`answer-${q.id}`) as HTMLTextAreaElement | null, write: (t) => (w.answers[q.id] = t) }),
       );
       // DEMO REPLY: Jordan's scripted answer to THIS question, by its id (recorded, so it replays for free).
       const script = Q.owner || locked ? undefined : ONBOARDING_ANSWERS[q.id];
@@ -360,7 +370,7 @@ export function renderWelcomeView(view: HTMLElement): void {
       w.error ? h("p", { class: "think-msg", role: "alert" }, `Couldn't do that: ${w.error}`) : null,
     ),
   );
-  if (!w.questions) setVoiceTarget(null);
+  if (!w.questions || w.revised) setVoiceTarget(null);
   // Size the answer boxes to what's in them now that they're on the page (a box measures nothing detached).
   for (const ta of view.querySelectorAll<HTMLTextAreaElement>(".interview textarea")) {
     ta.style.height = "auto";

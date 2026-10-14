@@ -34,3 +34,21 @@ test("the tour starts from the top after onboarding was done by hand", async ({ 
   await expect(page.locator(".driver-popover-title")).toHaveText("It reads first");
   await expect(page.locator("#draft-note")).toBeVisible();
 });
+
+test("a draft that was still out when the tour restarted onboarding doesn't come back", async ({ page }) => {
+  await page.goto("/app#/welcome");
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/api/onboarding/draft", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.locator("#draft-note").click();
+  await page.locator(".tours-btn").click();
+  await page.locator('.tour-item[data-tour="welcome"]').click();
+  await expect(page.locator(".driver-popover-title")).toHaveText("It reads first");
+  release();
+  await page.waitForTimeout(1500);
+  await expect(page.locator("#draft-note")).toBeVisible();
+  await expect(page.locator("#step-draft")).toHaveCount(0);
+});
