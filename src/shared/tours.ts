@@ -208,7 +208,8 @@ export const TOURS: Tour[] = [
       { target: "#brief .brief-skip", title: "Not this time", text: "What it would be tempted to build. Ruled out.", until: "next" },
       { target: "#brief .brief-you", title: "You first", text: "What would stop it halfway. Tick it off.", until: { click: "#brief .brief-you input" } },
       { target: "#copy-command", title: "Copy and run", text: "One command: model, effort, tools off, and the brief. The setup is under Details.", until: { click: "#copy-command" } },
-      { target: ".brief-report", title: "It reports back", text: "How it went, next to what was briefed.", until: "next" },
+      // Only after a copy that worked (a browser can refuse the clipboard): otherwise the tour ends here.
+      { target: ".brief-report", optional: true, title: "It reports back", text: "How it went, next to what was briefed.", until: "next" },
     ],
   },
 ];

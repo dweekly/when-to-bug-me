@@ -53,7 +53,9 @@ async function act(page: Page, step: TourStep): Promise<void> {
   }
 }
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, context }) => {
+  // Copy command really copies, as for a visitor, so Dispatch's tour reaches its report.
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/app#/");
   await page.evaluate("localStorage.clear()");
 });

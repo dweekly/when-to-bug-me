@@ -36,8 +36,8 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("the runner is owner-only: no demo, no public model routes", async ({ request }) => {
-  expect((await request.post("/api/dispatch", { data: { task: "x" }, headers: { origin: "http://localhost:8793" } })).status()).toBe(404);
+test("the runner is owner-only: no demo, no public model routes", async ({ request, baseURL }) => {
+  expect((await request.post("/api/dispatch", { data: { task: "x" }, headers: { origin: baseURL! } })).status()).toBe(404);
   expect((await request.get("/api/me/briefs")).status()).toBe(401);
   expect((await request.get("/runner/status")).status()).toBe(401);
 });

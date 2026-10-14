@@ -5,11 +5,13 @@
 import { defineConfig } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 
-const PORT = 8799;
+/** Shifts every port below, so several worktrees can run the suite at once (E2E_PORT_OFFSET=100 npx playwright test). */
+const OFFSET = Number(process.env.E2E_PORT_OFFSET ?? 0);
+const PORT = 8799 + OFFSET;
 /** A second server with no fake model and no API key: the recorded Claude run, as a keyless deployment serves it. */
-const RECORDED_PORT = 8798;
+const RECORDED_PORT = 8798 + OFFSET;
 /** The runner (docs/STAGE-9.md) on stubs: its Worker takes the next port and its inspector the one after. */
-const RUNNER_PORT = 8793;
+const RUNNER_PORT = 8793 + OFFSET;
 /** A throwaway sealing key per test run, so a fresh clone needs no .dev.vars to run the suite. */
 const SEAL_KEY = randomBytes(32).toString("base64");
 /**
