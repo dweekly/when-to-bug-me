@@ -61,6 +61,10 @@ export class OwnerQueue extends DurableObject {
     return this.q().commitOnboarding(from, next);
   }
 
+  async editFact(id: string, text: string | null): Promise<Fact[]> {
+    return this.q().editFact(id, text);
+  }
+
   async note(): Promise<OwnerNote | undefined> {
     return this.q().note();
   }

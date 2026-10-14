@@ -1,8 +1,8 @@
 // Stage 10b (docs/STAGE-10.md): the owner's history import, the runner-only routes' storage, and privacy.
 import { describe, expect, it } from "vitest";
-import { type ExtractRow, allowed, projectLabel, toHistory } from "../../scripts/onboard";
-import { MAX_FACTS, MAX_RULE_CHARS } from "../../src/shared/constants";
-import { type OnboardingRun, factsFromNote, parseHistory } from "../../src/shared/onboarding";
+import { type ExtractRow, allowed, fitBytes, projectLabel, toHistory } from "../../scripts/onboard";
+import { MAX_FACTS, MAX_ONBOARD_HISTORY, MAX_RULE_CHARS, ONBOARD_MAX_BODY_BYTES } from "../../src/shared/constants";
+import { type HistoryItem, type OnboardingRun, factsFromNote, parseHistory } from "../../src/shared/onboarding";
 import { ALREADY_KEPT, LiveQueue, STALE_IMPORT, STALE_STEP, mapKV } from "../../src/worker/live";
 
 const row = (over: Partial<ExtractRow>): ExtractRow => ({
@@ -200,5 +200,32 @@ describe("a kept note follows its facts", () => {
     expect((await q.note())?.lines).toEqual(["Diffs are fine", "Short summaries"]);
     await q.setContext(c.rules, []);
     expect(await q.note()).toBeUndefined();
+  });
+});
+
+describe("the size of an import", () => {
+  it("keeps the newest items that fit the endpoint's byte limit", () => {
+    const big = (i: number): HistoryItem => ({ id: `x${i}`, project: "p", days_ago: i, question: "q".repeat(600), options: ["A", "B", "C", "D"].map((key) => ({ key, label: "l".repeat(200) })), answer: "A" });
+    const all = Array.from({ length: MAX_ONBOARD_HISTORY }, (_, i) => big(i));
+    expect(Buffer.byteLength(JSON.stringify({ history: all }))).toBeGreaterThan(ONBOARD_MAX_BODY_BYTES);
+    const fit = fitBytes(all);
+    expect(Buffer.byteLength(JSON.stringify({ history: fit }))).toBeLessThanOrEqual(ONBOARD_MAX_BODY_BYTES);
+    expect(fit[0].id).toBe("x0");
+    expect(fit.length).toBeGreaterThan(150);
+  });
+});
+
+describe("a fact edited from a tab that loaded before a Keep", () => {
+  it("changes that fact only: the kept facts and the note stay", async () => {
+    const q = new LiveQueue(mapKV());
+    const c0 = await q.context();
+    await q.setContext(c0.rules, [{ id: "F-1", text: "Older fact", source: "test", scope: "all" }]);
+    const run: OnboardingRun = { id: "r1", created_at: "2026-10-14T00:00:00Z", history: parseHistory([{ id: "h1", question: "q", options: [{ key: "A", label: "a" }], answer: "A" }]), note: [{ id: "n1", text: "Previews, not diffs", kind: "preference", cites: ["h1"] }] };
+    await q.setOnboarding(run);
+    const facts = factsFromNote(run, MAX_RULE_CHARS);
+    await q.keepNote(run, facts, { lines: facts.map((f) => f.text), fact_ids: facts.map((f) => f.id), source: "test" }, MAX_FACTS);
+    const after = await q.editFact("F-1", "Older fact, edited");
+    expect(after.map((f) => f.text)).toEqual(["Older fact, edited", "Previews, not diffs"]);
+    expect((await q.note())?.lines).toEqual(["Previews, not diffs"]);
   });
 });

@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { MAX_ONBOARD_HISTORY, RUNNER_PORT } from "../src/shared/constants";
+import { MAX_ONBOARD_HISTORY, ONBOARD_MAX_BODY_BYTES, RUNNER_PORT } from "../src/shared/constants";
 import type { HistoryItem } from "../src/shared/onboarding";
 
 /** One row as the extractor writes it (only the fields used here). */
@@ -89,6 +89,13 @@ export function toHistory(rows: ExtractRow[], now: Date, max = MAX_ONBOARD_HISTO
   });
 }
 
+/** The newest items that fit the endpoint's byte limit, measured as the request is sent. */
+export function fitBytes(history: HistoryItem[], max = ONBOARD_MAX_BODY_BYTES): HistoryItem[] {
+  const out = [...history];
+  while (out.length > 1 && Buffer.byteLength(JSON.stringify({ history: out })) > max) out.pop();
+  return out;
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const at = args.indexOf("--allow");
@@ -110,7 +117,7 @@ async function main(): Promise<void> {
       .map((l) => JSON.parse(l) as ExtractRow),
   );
   const eligible = rows.filter((r) => allowed(r, allow, denyMarkers, denySessions));
-  const history = toHistory(eligible, new Date());
+  const history = fitBytes(toHistory(eligible, new Date()));
   if (!history.length) throw new Error("no answered questions from allowed projects in those rows");
   const dates = eligible.map((r) => r.ts!).filter(Boolean).sort();
   console.log(`${rows.length} rows; ${eligible.length} from allowed projects; sending the newest ${history.length} answered questions`);

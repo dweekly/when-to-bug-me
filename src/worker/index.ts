@@ -17,6 +17,7 @@
 //   GET  /api/me/queue          the owner's queue, in /api/queue's shape
 //   POST /api/me/resolve        the owner's answer, sent back to the asking session
 //   POST /api/me/context        save the owner's rules and facts
+//   POST /api/me/facts/edit     edit (text) or delete (text: null) one fact by id
 //   POST /api/me/{route,answer,fact,ask,parse,converse}  the same calls as above, in the owner's world
 //   POST /api/me/catalog        the owner's tool and skill names and statuses (mcp/bugme.mjs sync-catalog)
 //   GET  /api/me/briefs         the owner's briefs and catalog
@@ -696,6 +697,13 @@ async function handleOwner(req: Request, env: Env, path: string, key: CryptoKey)
     const out = await q.resolve(t.decision.id, r);
     if ("refused" in out) throw new BadRequest(out.refused);
     return json(reply(out.ticket));
+  }
+
+  if (path === "/api/me/facts/edit") {
+    const id = cleanText(b.id, 12, "id");
+    const text = b.text === null ? null : cleanText(b.text, MAX_RULE_CHARS, "text");
+    if (text === "") throw new BadRequest("text is empty; send null to delete the fact");
+    return json({ facts: await q.editFact(id, text) });
   }
 
   if (path === "/api/me/context") {

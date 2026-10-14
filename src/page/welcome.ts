@@ -135,7 +135,14 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
         if (kind === "revise") await drainVoice();
         const sent = { ...w.answers };
         const r = await api<{ run: OnboardingRun }>(`/api/me/onboarding/${kind}`, kind === "revise" ? { run: runId(), rev: runRev(), answers: sent } : { run: runId(), rev: runRev() });
-        if (kind === "revise" && JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me revised; press Revise again");
+        if (kind === "revise" && JSON.stringify(w.answers) !== JSON.stringify(sent)) {
+          // The server saved a revision of the answers sent; take its version (so Revise again isn't stale)
+          // but keep the answers as edited, and show no revision until they're the ones it used.
+          const edited = { ...w.answers };
+          useRun(r.run);
+          Object.assign(w, { answers: edited, revised: null, revisedSource: null });
+          throw new Error("you changed an answer while Bug Me revised; press Revise again");
+        }
         useRun(r.run);
       }
     } else if (kind === "draft") {
@@ -175,7 +182,8 @@ function stats(): HTMLElement {
     "p",
     { class: "brief-meta welcome-stats" },
     chip("▤", `${history.length} decisions · ${span} days`, Q.owner ? "Your recent decisions, from allowed projects" : "Jordan's recent decisions (synthetic)"),
-    chip("⚡", `${pct(quick)} answered in ≤5 s`, "Answered almost without reading"),
+    // Imported history carries no timings: say nothing rather than "0".
+    history.some((x) => x.seconds !== undefined) ? chip("⚡", `${pct(quick)} answered in ≤5 s`, "Answered almost without reading") : null,
     chip("✍", `${pct(worded)} with reasons`, "Jordan typed a reason or an answer of their own"),
     chip("↺", `${pct(against)} against the agent`, "Went against the agent's recommendation"),
   );

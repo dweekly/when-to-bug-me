@@ -31,7 +31,7 @@ import { announce } from "./dom";
 import { go } from "./router";
 import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, log, newFlow, save, setF, talking } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
-import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext } from "./live";
+import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext, saveOneFact } from "./live";
 
 export function glowEvent(e: GlowEvent): void {
   S.glow = nextGlow(S.glow, e);
@@ -842,13 +842,12 @@ export async function editFact(id: string, text: string | null): Promise<string>
   if (t !== null && !t) return "Say something, or delete it.";
   if (t !== null && t.length > MAX_RULE_CHARS) return `At most ${MAX_RULE_CHARS} characters.`;
   if (t === old.text) return "";
-  const facts = t === null ? S.facts.filter((f) => f.id !== id) : S.facts.map((f) => (f.id === id ? { ...f, text: t } : f));
+  // By id on the server, not this page's whole list: another tab may have kept or added facts since.
   try {
-    await saveContext(S.rules, facts);
+    S.facts = await saveOneFact(id, t);
   } catch (e) {
     return `Couldn't save that (${(e as Error).message}). Try again.`;
   }
-  S.facts = facts;
   await refreshOwnerNote();
   S.version++;
   log("fact_edited", { fact: id, from: old.text, to: t });

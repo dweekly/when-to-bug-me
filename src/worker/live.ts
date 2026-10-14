@@ -462,6 +462,14 @@ export class LiveQueue {
     return this.context();
   }
 
+  /** Edit or delete one fact by id against the facts stored now: another tab may have added some since this one loaded. */
+  async editFact(id: string, text: string | null): Promise<Fact[]> {
+    const c = await this.context();
+    const facts = text === null ? c.facts.filter((f) => f.id !== id) : c.facts.map((f) => (f.id === id ? { ...f, text } : f));
+    await this.setContext(c.rules, facts);
+    return facts;
+  }
+
   async setContext(rules: Rule[], facts: Fact[]): Promise<void> {
     const c = await this.context();
     if (JSON.stringify([c.rules, c.facts]) === JSON.stringify([rules, facts])) return;

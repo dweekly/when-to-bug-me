@@ -354,6 +354,32 @@ test("a step another tab finished meanwhile isn't answered unseen", async ({ pag
   expect(now.revised).toBeUndefined();
 });
 
+test("an answer edited while Revise is out stays, and Revise again uses it; history without timings shows none", async ({ page, request }) => {
+  // As npm run onboard sends it: no seconds.
+  const history = JSON.parse(readFileSync("fixtures/history.json", "utf8")).decisions.slice(0, 10).map(({ seconds: _s, ...x }: Record<string, unknown>) => x);
+  await request.post("/api/me/onboarding", { headers: { authorization: `Bearer ${KEY}` }, data: { history } });
+  await page.goto("/me#/welcome");
+  await expect(page.locator(".welcome-stats")).not.toContainText("≤5 s");
+  await page.locator("#start-interview").click();
+  await page.locator("#answer-q1").fill("Yes.");
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/api/me/onboarding/revise", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.locator("#revise-note").click();
+  await page.locator("#answer-q1").fill("Only for cleanups.");
+  release();
+  await expect(page.locator(".welcome")).toContainText("changed an answer while Bug Me revised");
+  await expect(page.locator("#answer-q1")).toHaveValue("Only for cleanups.");
+  await page.unroute("**/api/me/onboarding/revise");
+  const sent = page.waitForRequest((r) => r.url().includes("/api/me/onboarding/revise"));
+  await page.locator("#revise-note").click();
+  expect((await sent).postDataJSON().answers.q1).toBe("Only for cleanups.");
+  await expect(page.locator("#keep-note")).toBeVisible();
+});
+
 test("a kept line's fact, edited or deleted, changes the note too, and deleting a fact re-checks what's waiting", async ({ page, request }) => {
   await page.goto("/me#/rules");
   const note = page.locator("#note");

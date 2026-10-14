@@ -74,6 +74,11 @@ export async function deliver(id: string, d: Delivery): Promise<void> {
 }
 
 /** Save the owner's rules and facts on the server. Resolves once it has them; throws if it couldn't. No-op off /me. */
+/** One fact edited (or deleted, text null) on the server by id; returns the facts as stored now. */
+export async function saveOneFact(id: string, text: string | null): Promise<(typeof S.facts)> {
+  return (await api<{ facts: typeof S.facts }>("/api/me/facts/edit", { id, text })).facts;
+}
+
 export async function saveContext(rules: typeof S.rules, facts: typeof S.facts): Promise<void> {
   if (!OWNER_PAGE) return;
   await api("/api/me/context", { rules, facts });
