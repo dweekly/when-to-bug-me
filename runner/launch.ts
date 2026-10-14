@@ -7,7 +7,10 @@ import { join, sep } from "node:path";
 import { RUNNER_LAUNCH_TIMEOUT_MS } from "../src/shared/constants";
 import { type Brief, type Catalog, REPO_NAME_RE, commandArgs } from "../src/shared/dispatch";
 
-export class LaunchError extends Error {}
+export class LaunchError extends Error {
+  /** The command was stopped at its deadline rather than failing: what it did is unknown. */
+  timedOut = false;
+}
 
 export interface Repo {
   name: string;
@@ -101,7 +104,7 @@ export function run(bin: string, args: string[], cwd: string, timeout = RUNNER_L
   return new Promise((resolve, reject) => {
     const child = execFile(bin, args, { cwd, timeout, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
       helpers.delete(child);
-      if (err) reject(new LaunchError("claude failed"));
+      if (err) reject(Object.assign(new LaunchError("claude failed"), { timedOut: Boolean(err.killed || err.signal) }));
       else resolve(stdout);
     });
     // `claude --bg` hands its session to Claude Code's own background service and returns; it isn't a

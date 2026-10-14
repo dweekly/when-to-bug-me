@@ -171,11 +171,25 @@ export async function startRunner(cfg: RunnerConfig, envFile: string): Promise<R
     const reserved = await record(b.id, { state: "launching", repo, attempt });
     if (reserved.status === 409) return { status: 200, body: { launch: reserved.data.brief.launch, existing: true } };
     if (reserved.status !== 200) return { status: 502, body: { error: "Bug Me couldn't record the launch" } };
+    // The brief as reserved, not as read before the tools check: an edit made in the meantime (a
+    // stricter permission mode, a tick taken back) is what launches, or stops the launch.
+    const now = reserved.data.brief;
+    if (!allTicked(now)) {
+      await record(b.id, { state: "failed", repo, attempt, error: "a \u201cYou first\u201d item was unticked" });
+      return { status: 409, body: { error: "Tick every \u201cYou first\u201d item first." } };
+    }
     let id: string | undefined;
+    let unsure = false;
     try {
-      id = backgroundId(await run(cfg.claudeBin, launchArgs(b, catalog, mcpConfig, attempt), path));
-    } catch {
-      id = undefined;
+      id = backgroundId(await run(cfg.claudeBin, launchArgs(now, catalog, mcpConfig, attempt), path));
+      unsure = !id; // it ran, but didn't say which session it started
+    } catch (e) {
+      // Timed out: the background service may have the session anyway. Only a clear refusal is a failure.
+      unsure = e instanceof LaunchError && e.timedOut;
+    }
+    if (!id && unsure) {
+      // Left "launching": recovery finds the session by name, or marks it failed once it's stale.
+      return { status: 202, body: { error: "Couldn't confirm the session started; Bug Me will check in a couple of minutes." } };
     }
     if (!id) {
       await record(b.id, { state: "failed", repo, attempt, error: "the session didn't start" });
