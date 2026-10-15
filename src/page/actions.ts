@@ -7,7 +7,7 @@ import { nextInSession } from "../shared/agenda";
 import { MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_HUH, MAX_FACTS, MAX_REASON_CHARS, MAX_RULE_CHARS, MAX_RULES, MAX_TRANSCRIPT_CHARS, REROUTE_CONCURRENCY } from "../shared/constants";
 import { type ConverseResult, EMPTY_LEDGER, type JordanTurn, closeInputs, huhs, jordanTurns, standingTurn, unclearCount, wordTurns } from "../shared/converse";
 import { guidanceText } from "../shared/parse";
-import { type Punt, puntInstruction, puntProblem } from "../shared/punt";
+import { type Punt, alsoAskInstruction, puntInstruction, puntProblem } from "../shared/punt";
 import {
   type GlowEvent,
   type Guess,
@@ -266,6 +266,7 @@ export async function confirmThread(flow: Flow, d: Decision, route: RouteKind): 
   flow.conditions = ci.conditions;
   flow.evidence = ci.evidence;
   flow.noMoreQuestions = ci.noMoreQuestions;
+  flow.questions = ci.questions;
   flow.hasFeedback = ci.hasFeedback;
   const n: Narration = { narration: ci.narration, narrationMarks: [], unparsed: false };
   flow.narration = n;
@@ -327,15 +328,16 @@ export async function chooseOutside(flow: Flow, d: Decision, route: RouteKind, k
   const basis = flow.basis.trim();
   const conditions = flow.conditions.trim();
   const first = Q.persona.first_name;
+  const also = alsoAskInstruction(flow.questions ?? [], first);
   const send_down =
-    kind === "other"
+    (kind === "other"
       ? `${first} chose neither option. Instead: ${course}${conditions ? ` Conditions: ${conditions}` : ""}`
-      : `${first} rejected the question as asked: ${course}${conditions ? ` Conditions: ${conditions}` : ""}`;
+      : `${first} rejected the question as asked: ${course}${conditions ? ` Conditions: ${conditions}` : ""}`) + (also ? ` ${also}` : "");
   // Live queue only (docs/STAGE-7.md): the asking session hears it now, or nothing is recorded and the card stays open.
   if (!(await delivered(flow, d.id, { outcome: kind, course, reason: basis, conditions, instruction: send_down }))) return;
   const thread = threadOf(flow);
   S.answered[d.id] = { initial: kind, final: kind, other: course, outcome: kind, basis, guess: [], route, pushback: null, send_down, marks: [], narration: n.narration, narrationMarks: n.narrationMarks, ...(conditions ? { conditions } : {}), ...(thread ? { thread } : {}) };
-  log("answer", { id: d.id, route, initial: kind, final: kind, outcome: kind, other: course, basis, conditions: conditions || undefined, narration: n.narration, guess_before_answer: null, source: isCardLike(S.cards[d.id]) ? (S.cards[d.id] as Card).source : null, ...threadLog(flow) });
+  log("answer", { id: d.id, route, initial: kind, final: kind, outcome: kind, other: course, basis, conditions: conditions || undefined, narration: n.narration, asked_agent: flow.questions?.length ? flow.questions : undefined, guess_before_answer: null, source: isCardLike(S.cards[d.id]) ? (S.cards[d.id] as Card).source : null, ...threadLog(flow) });
   glowEvent({ kind: "answered", route, basis: substantiveBasis(basis || course), againstRecommendation: true });
   flow.choice = kind;
   flow.send_down = send_down;
@@ -422,6 +424,7 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
   const send_down = [
     r.send_down,
     conditions ? `Conditions from ${Q.persona.first_name}: ${conditions}` : "",
+    alsoAskInstruction(flow.questions ?? [], Q.persona.first_name),
     n?.unparsed ? `${Q.persona.first_name}'s words, as said: “${n.narration}”` : "",
   ].filter(Boolean).join(" ");
   // Live queue only: the asking session hears it now, or nothing is recorded (and the guess stays hidden)
@@ -454,6 +457,7 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
     pushback_outcome: pushbackOutcome,
     conditions: conditions || undefined,
     narration: n?.narration || undefined,
+    asked_agent: flow.questions?.length ? flow.questions : undefined,
     source: c.source,
     ...threadLog(flow),
   });

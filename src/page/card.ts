@@ -3,7 +3,7 @@
 // work each button starts lives in actions.ts; this module only draws and wires it.
 
 import { CONVERSATIONS, EXAMPLES, scriptWords } from "../shared/examples";
-import { type JordanTurn, type Quote, jordanTurns, primaryLabel } from "../shared/converse";
+import { type JordanTurn, type Quote, jordanTurns, primaryLabel, readbackSplit } from "../shared/converse";
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, Mark, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
@@ -333,11 +333,12 @@ function jordanTurn(d: Decision, flow: Flow, t: JordanTurn, n: number): HTMLElem
 const face = () => h("img", { class: "bug-face", src: "/firefly/clay/attentive.png", alt: "", width: 28, height: 28 });
 
 function bugTurn(t: ShownBugTurn): HTMLElement {
+  const [before, said] = t.next === "confirm" ? readbackSplit(t.text) : [t.text, ""];
   return h(
     "li",
     { class: `turn bug${t.next === "confirm" ? " readback" : t.next === "explain" ? " explain" : ""}` },
     face(),
-    h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), t.text),
+    h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), before, said ? h("strong", { class: "readback-line" }, said) : null),
     t.source && t.source !== "live" ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "code" ? "stand-in" : t.source) : null,
   );
 }

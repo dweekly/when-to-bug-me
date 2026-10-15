@@ -14,7 +14,9 @@ import {
   parseConverseRequest,
   plainly,
   primaryLabel,
+  openQuestions,
   readBack,
+  readbackSplit,
   sanitizeLedger,
   transcriptForPrompt,
   unclearCount,
@@ -23,6 +25,7 @@ import {
 import { CONVERSATIONS } from "../../src/shared/examples";
 import { fakeConverse } from "../../src/shared/fakeConverse";
 import { shouldAskWhy } from "../../src/shared/lifecycle";
+import { alsoAskInstruction } from "../../src/shared/punt";
 import { conversePrompt } from "../../src/shared/prompts";
 import { decision, decisions, facts, persona, rules } from "./helpers";
 
@@ -170,6 +173,50 @@ describe("read-backs and the primary button, one per outcome", () => {
     expect(primaryLabel(api, ask)).toBe("Ask the agent");
     expect(readBack(api, L({}))).toBe("Want to set this aside for now?");
     expect(primaryLabel(api, L({}))).toBe("Skip");
+  });
+});
+
+describe("a decision with a question the agent's material didn't answer (issue #47)", () => {
+  const open = { quote: q(0, "How many integrations read that field directly?"), answer: null };
+  const answered = { quote: q(0, "Does mobile parse it?"), answer: "Yes, the iOS app does." };
+  const keep = L({ choice: "B", why: [q(0, "Renaming breaks every integrator.")], questions: [open, answered] });
+
+  it("stays a decision, and only the unanswered question is open", () => {
+    expect(outcomeOf(api, keep)).toEqual({ kind: "option", key: "B" });
+    expect(openQuestions(keep)).toEqual(["How many integrations read that field directly?"]);
+  });
+  it("code's read-back says the question goes to the agent too, on every outcome that decides", () => {
+    expect(readBack(api, keep)).toBe("So: keep user_id. I'll also ask the agent: “How many integrations read that field directly?” Right?");
+    expect(readBack(api, L({ ...keep, choice: "other", course: q(0, "Ship both names.") }))).toBe("So: not either option. Ship both names. I'll also ask the agent: “How many integrations read that field directly?” Right?");
+    expect(readBack(api, L({ ...keep, choice: "reject", course: q(0, "why rename at all?") }))).toBe("So you're rejecting the question: why rename at all. I'll tell the agent. I'll also ask the agent: “How many integrations read that field directly?” Right?");
+  });
+  it("hands the open questions to the close path with a decision, and not when they are the outcome", () => {
+    expect(closeInputs(api, [j("Keep it. How many integrations read that field directly?")], keep).questions).toEqual(["How many integrations read that field directly?"]);
+    expect(closeInputs(api, [j("How many integrations read that field directly?")], L({ questions: [open] })).questions).toEqual([]);
+  });
+  it("tells the session to find out, and to come back only if it changes the decision", () => {
+    expect(alsoAskInstruction(["How many integrations read that field directly?"], "Jordan")).toBe(
+      "Jordan also asks: “How many integrations read that field directly?” Find out. If the answer would change this decision, ask Bug Me again with what you found; otherwise mention it in your next update.",
+    );
+    expect(alsoAskInstruction([], "Jordan")).toBe("");
+  });
+  it("a question changes what was read back, so a later yes can't skip it", () => {
+    expect(decisionFingerprint(keep)).not.toBe(decisionFingerprint(L({ ...keep, questions: [answered] })));
+  });
+});
+
+describe("readbackSplit: only the read-back itself is bold (issue #48)", () => {
+  it("splits at the last sentence starting So", () => {
+    expect(readbackSplit("I don't know how many integrations read that field directly; I'll ask the agent. So: keep user_id in v2. Right?")).toEqual([
+      "I don't know how many integrations read that field directly; I'll ask the agent. ",
+      "So: keep user_id in v2. Right?",
+    ]);
+    expect(readbackSplit("Fair. So you're rejecting the question. Right?")).toEqual(["Fair. ", "So you're rejecting the question. Right?"]);
+  });
+  it("keeps the whole turn when it is all read-back, or has no So sentence", () => {
+    expect(readbackSplit("So: keep user_id. Right?")).toEqual(["", "So: keep user_id. Right?"]);
+    expect(readbackSplit("I'll ask the agent: How many, and set this aside.")).toEqual(["", "I'll ask the agent: How many, and set this aside."]);
+    expect(readbackSplit("Also, Sonia agrees. Right?")).toEqual(["", "Also, Sonia agrees. Right?"]);
   });
 });
 

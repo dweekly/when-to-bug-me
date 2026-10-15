@@ -189,7 +189,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .turn.bug { justify-self: stretch; display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; max-width: 100%; }
 .turn.bug p { grid-column: 2; color: var(--ink); padding-top: 2px; }
 .turn.bug .turn-src { grid-column: 2; justify-self: start; align-self: start; margin-top: 4px; }
-.turn.bug.readback p { color: var(--ink); font-weight: 600; }
+.turn.bug.readback p { color: var(--ink); }
+.turn.bug.readback .readback-line { font-weight: 600; }
 .bug-face { flex: none; width: 28px; height: 28px; border-radius: 50%; }
 .turn-src { flex: none; align-self: center; font: 11px var(--mono); color: var(--ink-3); }
 .turn.typing .dots { display: inline-block; letter-spacing: 2px; animation: pulse 1.2s infinite; color: var(--ink-3); }
