@@ -102,6 +102,8 @@ test("words with no recorded reply say so, and Jordan's words still carry on", a
   await expect(title(page)).toHaveText("Say no");
   await page.locator("#think").fill("I prefer a later flight because I cannot leave home until after school drop-off.");
   await page.locator("#now .send").click();
-  await expect(page.locator("#now .think-msg")).toContainText("Bug Me couldn't reply just now");
+  // No recording for words of one's own: the card says why, and offers deciding without a reply (issue #51).
+  await expect(page.locator("#now .unread")).toContainText("Bug Me can't reply to this here");
+  await expect(page.locator("#now .unread .decide-unread")).toHaveCount(2);
   await expect(title(page)).toHaveText("Say no");
 });

@@ -41,6 +41,7 @@ test("starting over discards a response that arrives afterwards", async ({ page 
   await decideQuietly(page, "9:40am flight");
   await goRecord(page);
   await page.getByRole("button", { name: "Start the morning over" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start over" }).click();
   release();
   await page.waitForTimeout(500);
   expect(Object.keys((await state(page)).answered)).toHaveLength(0);

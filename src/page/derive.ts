@@ -35,6 +35,12 @@ export function agenda() {
   return buildAgenda(decidable(), routesForAgenda(), Q.persona.projects, new Set(Object.keys(S.answered)), new Set(Object.keys(S.punts)));
 }
 
+/** Decisions still the person's whose route never came back (issue #55). They are never dropped from
+ *  view: Home lists them with a retry, and nothing says "All clear" while any remain. */
+export function unroutedIds(): string[] {
+  return decidable().filter((d) => !S.answered[d.id] && !S.punts[d.id] && !isCard(S.cards[d.id])).map((d) => d.id);
+}
+
 /** Decisions not yet answered by the person, including ones Bug Me settled: all can be re-routed. */
 export function waitingIds(): string[] {
   return decidable().filter((d) => !S.answered[d.id]).map((d) => d.id);

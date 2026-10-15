@@ -27,9 +27,9 @@ test("flight -> why -> kept fact -> Berlin sync re-checked and reframed, formatt
   await expect(page.locator("#now-q")).toContainText("6:05am flight");
   await decideQuietly(page, "9:40am flight");
 
-  // The nudge comes with the reveal: what the agent would have picked, and Bug Me's guess (docs/STAGE-6F.md).
+  // The nudge comes with the reveal: what the agent recommended, and what Bug Me expected (docs/STAGE-6F.md).
   await expect(page.locator("#now .why-lead")).toBeVisible();
-  await expect(page.locator("#now .reveal-line")).toContainText("The agent would have picked");
+  await expect(page.locator("#now .reveal-line")).toContainText("The agent recommended");
 
   await page.getByLabel("Why did you choose that?").fill("I do school drop-off before 8:30, so no early-morning flights for me.");
   await page.getByRole("button", { name: "Tell Bug Me" }).click();

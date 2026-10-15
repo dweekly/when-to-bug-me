@@ -147,7 +147,7 @@ test("#/review draws the morning from the record: time by project against the st
   await expect(review.locator(".rv-finding")).toHaveText("Most time went to Launch, your #2.");
   await expect(review.locator('.rv-bars li[data-project="launch"] .rv-min')).toHaveText(new RegExp(`^~${LAUNCH_MINUTES}m( · \\d+(m \\d\\d)?s)?$`)); // the estimate, then any measured time
   await expect(review.locator('.rv-bars li[data-project="launch"] .rv-dots')).toHaveText("●●●●◐");
-  await expect(review.locator(".rv-legend")).toContainText("5 asked you: ● 4 · ◐ 1");
+  await expect(review.locator(".rv-legend")).toContainText("5 answered by you: ● 4 · ◐ 1");
   await expect(review.locator(".rv-legend")).toContainText("settled for you now");
   await expect(review.locator("#rv-worth")).toContainText("● 1");
   const brief = review.locator(".rv-briefs li");
@@ -197,6 +197,7 @@ test("after starting the morning over, copying a demo brief again brings its syn
   await expect(page.locator(".brief-outcome")).toContainText("done");
   await goRecord(page);
   await page.locator("#reset").click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start over" }).click();
   await page.goto("/app#/dispatch");
   await page.locator(".briefs li a").first().click();
   await page.locator("#copy-command").click();
@@ -230,6 +231,7 @@ test("after starting the morning over, a refused Copy doesn't bring the old synt
   await expect(page.locator(".brief-outcome")).toContainText("done");
   await goRecord(page);
   await page.locator("#reset").click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start over" }).click();
   await page.goto("/app#/dispatch");
   await page.evaluate("navigator.clipboard.writeText = () => Promise.reject(new Error('denied'))");
   await page.locator(".briefs li a").first().click();

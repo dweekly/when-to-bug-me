@@ -170,10 +170,19 @@ export interface Flow {
   error: string;
   /** The card as it was when the person answered: its sealed guess is the one both answer steps use. */
   card: Card | null;
+  /** Why Bug Me can't reply on this card (no model, no matching recording, budget spent), or "": the
+   *  card then offers deciding without Bug Me's reading (issue #51). */
+  unavailable: string;
+  /** The words a guidance proposal was asked for, kept until one arrives, so a failed or interrupted
+   *  request can be retried by the person without re-sending the answer (issue #54). */
+  guidanceEvidence: string;
+  /** What was in the box when "Huh?" was last pressed: the box changing after that is a new turn,
+   *  which replaces a "Huh?" that never got its answer (issue #58). */
+  huhDraft: string;
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, sent: 0, evidence: "", noMoreQuestions: false, questions: [], hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, sent: 0, evidence: "", noMoreQuestions: false, questions: [], hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null, unavailable: "", guidanceEvidence: "", huhDraft: "" };
 }
 
 /** A conversation has started on this decision and isn't finished: it stays with the person. */

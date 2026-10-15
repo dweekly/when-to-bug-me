@@ -17,6 +17,7 @@
     "eval": "esbuild scripts/eval.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/eval.mjs --log-level=warning && node dist/eval.mjs",
     "eval:parse": "esbuild scripts/eval-parse.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/eval-parse.mjs --log-level=warning && node dist/eval-parse.mjs",
     "smoke:live": "npm run build && node scripts/smoke-live.mjs",
+    "smoke:deployed": "node scripts/smoke-deployed.mjs",
     "smoke:dispatch": "npm run build && esbuild scripts/smoke-dispatch.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/smoke-dispatch.mjs --log-level=warning && node dist/smoke-dispatch.mjs",
     "eval:converse": "esbuild scripts/eval-converse.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/eval-converse.mjs --log-level=warning && node dist/eval-converse.mjs",
     "runner": "npm run build && esbuild runner/main.ts --bundle --platform=node --format=esm --packages=external --external:../mcp/bugme.mjs --outfile=dist/runner.mjs --log-level=warning && node dist/runner.mjs",

@@ -112,7 +112,7 @@ test.describe("views", () => {
     await expect(page).toHaveURL(/#\/rules$/);
     await expect(page.locator("#rules > li")).toHaveCount(12);
     await expect(page.locator("#facts > li").first()).toBeVisible();
-    await nav.getByRole("link", { name: "Record" }).click();
+    await nav.getByRole("link", { name: "Your decisions" }).click();
     await expect(page).toHaveURL(/#\/record$/);
     await expect(page.locator("#export")).toBeVisible();
     await expect(page.locator("#reset")).toBeVisible();

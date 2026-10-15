@@ -55,7 +55,7 @@ The layouts were agreed as mocks first: scratchpad screenshots, five states, at 
   Two housekeeping labels lean a little ("Apply fixes now; easy to undo", "Merge three small safe updates"). They show only on an undone job; label fidelity is on the roadmap.
 - **Title retries.** Adding the labels line made Haiku's titles a word longer. The prompt now says so plainly (2026-10-13.2). One title, tax-mapper-lint, comes back at seven words on every retry; its row shows the headline, as dockerfile-format's did before.
 - **Read-backs.** Recorded read-backs now speak the labels ("Keep using the old tax table and don't rewrite invoices people already paid, but fix the tax going forward. Right?"). Routing was not re-recorded (no route calls in the dry run), so the pros and cons are the recorded ones.
-- **The reveal** says a shared expectation once: "The agent would have picked **6:05am flight**, and so would I."
+- **The reveal** says a shared expectation once: "The agent recommended **6:05am flight**, and I expected you to choose it too." (Reworded for issue #56: the guess forecasts the person, it is not Bug Me's recommendation.)
 - **The corner firefly** scrolls away with the header on a phone. Pinned, it floated over the thread, the second firefly in David's screenshot.
 - **The why box's "Use Jordan's recorded reason" link** is a DEMO REPLY button beside its microphone too.
 - **Cost.** Re-recording about $0.42 (mostly the conversation turns; the titles are under a cent); eval 10/10, $0.68.

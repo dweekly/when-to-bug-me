@@ -16,7 +16,7 @@ import { type Queue, Q, S, STORE_KEY, byId, fresh, load, save, setById, setF, se
 import { OWNER_POLL_MS } from "../shared/constants";
 import type { PuntKind } from "../shared/punt";
 import { plainOptions } from "../shared/titles";
-import { startTour } from "./tour";
+import { confirmDialog, startTour } from "./tour";
 import { MIRRORS, setMirrors } from "./mirror";
 import { render } from "./views";
 
@@ -55,12 +55,21 @@ async function boot(): Promise<void> {
       localStorage.removeItem(STORE_KEY);
       location.reload();
     } else if (t.id === "reset") {
-      setS(fresh(Q));
-      setF(null);
-      voiceOff();
-      save();
-      announce("Started the morning over.");
-      go({ view: "home" });
+      // Nothing can bring the morning back, so ask first (issue #60), as starting a demo does.
+      confirmDialog(
+        "Start the morning over?",
+        "This clears your answers, the guidance you kept, your edits, what you set aside and your record, in this browser. Export your record first if you want to keep it.",
+        "Start over",
+        "Keep my morning",
+        () => {
+          setS(fresh(Q));
+          setF(null);
+          voiceOff();
+          save();
+          announce("Started the morning over.");
+          go({ view: "home" });
+        },
+      );
     }
   });
   // "Skip to content" must not change the hash (the router would read it as Home): move focus instead.

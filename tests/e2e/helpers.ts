@@ -79,7 +79,7 @@ export async function goRules(page: Page): Promise<void> {
 }
 
 export async function goRecord(page: Page): Promise<void> {
-  await navLink(page, /^Record$/).click();
+  await navLink(page, /^Your decisions$/).click();
   await expect(page.locator("#export")).toBeVisible();
 }
 

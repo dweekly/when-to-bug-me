@@ -7,7 +7,7 @@ import { type JordanTurn, type Quote, jordanTurns, primaryLabel, readbackSplit }
 import { type GlowEvent, hasBasis, topGuess } from "../shared/lifecycle";
 import type { Card, Decision, Mark, RouteKind } from "../shared/types";
 import { PUNT_KINDS } from "../shared/punt";
-import { canHuh, confirmThread, done, finalize, glowEvent, isSending, keepFact, next, pick, propose, readyToConfirm, resume, scriptIndex, sendTurn, setAside, showing, thinkEdited, unanswered } from "./actions";
+import { canHuh, confirmThread, decideUnread, replacesUnanswered, done, finalize, glowEvent, isSending, keepFact, next, pick, propose, readyToConfirm, resume, retryGuidance, retryRouting, scriptIndex, sendTurn, setAside, showing, thinkEdited, unanswered } from "./actions";
 import { drawableMarks } from "../shared/parse";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import { payloadLine } from "./visuals-layout";
@@ -83,7 +83,16 @@ function drawNow(): void {
   if (!F || F.id !== id) setF((S.flows[id] ??= newFlow(id)));
   const flow = F!;
   if (!isCard(c)) {
-    root.append(h("div", { class: "card" }, h("h3", { id: "now-q" }, d.question), h("p", { class: "adjusted" }, `Couldn't evaluate this one: ${c?.unavailable ?? "no route yet"}.`)));
+    // Never sorted (issue #55): it stays the person's, with the reason and a retry, until a route comes back.
+    root.append(
+      h(
+        "div",
+        { class: "card" },
+        h("h3", { id: "now-q" }, d.question),
+        h("p", { class: "adjusted" }, `Couldn't evaluate this one: ${c?.unavailable ?? "no route yet"}.`),
+        h("div", { class: "actions" }, h("button", { type: "button", class: "ghost retry-route", onclick: () => void retryRouting([id]) }, "Try again")),
+      ),
+    );
     return;
   }
   const route = routeOf(id)!;
@@ -154,6 +163,8 @@ function drawNow(): void {
       h("span", { class: "glyph", "aria-hidden": "true" }, GLYPH[route]),
       h("span", { class: "route-label" }, ROUTE_LABEL[route]),
       h("span", { class: "chain" }, d.agent.join(" › ")),
+      // Where the routing, briefing and notes came from, visible before anything is pressed (issue #57).
+      h("span", { class: `src-badge src-${c.source}`, title: `Routing, briefing and notes: ${SOURCE_LABEL[c.source]}` }, SOURCE_LABEL[c.source]),
     ),
     // Brief first, then why it is the person's, then any more context, then the question; the
     // conversation starts below the options.
@@ -257,6 +268,7 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
     h("div", { class: "huh-row" }, huhButton(flow, d, route)),
     h("div", { class: "think-field composer" }, ta, demo),
     h("p", { class: "think-msg adjusted", role: "status" }),
+    h("div", { class: "unread", hidden: true }),
     h(
       "div",
       { class: "think-actions" },
@@ -339,7 +351,7 @@ function bugTurn(t: ShownBugTurn): HTMLElement {
     { class: `turn bug${t.next === "confirm" ? " readback" : t.next === "explain" ? " explain" : ""}` },
     face(),
     h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), before, said ? h("strong", { class: "readback-line" }, said) : null),
-    t.source && t.source !== "live" ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "code" ? "stand-in" : t.source) : null,
+    t.source ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "code" ? "stand-in" : t.source) : null,
   );
 }
 
@@ -385,12 +397,17 @@ export function paintThread(): void {
   if (btn) {
     btn.hidden = !choosing;
     const confirm = readyToConfirm(flow);
-    btn.textContent = confirm ? primaryLabel(d, flow.ledger!) : unanswered(flow) ? "Send again" : "Send";
+    // New words or a click replace an unanswered turn, so the button says Send for them.
+    btn.textContent = confirm ? primaryLabel(d, flow.ledger!) : unanswered(flow) && !replacesUnanswered(flow) ? "Send again" : "Send";
     btn.classList.toggle("decide", confirm);
+    // Sending again can't work when no model can reply: the decide buttons above lead instead (issue #51).
+    btn.classList.toggle("primary", !flow.unavailable);
+    btn.classList.toggle("ghost", Boolean(flow.unavailable));
     btn.disabled = busy || (!confirm && !unanswered(flow) && !flow.think.trim() && !flow.pick);
   }
   const msg = area.querySelector(".think-msg")!;
   msg.textContent = flow.error || (choosing ? flow.message : "");
+  paintUnread(area, flow, d, busy);
   const demo = area.querySelector<HTMLElement>(".demo-reply");
   const script = CONVERSATIONS.find((c) => c.id === d.id);
   if (demo) {
@@ -414,6 +431,35 @@ export function paintThread(): void {
   // A turn of Jordan's sent is a new voice target (its key carries Jordan's turn count), so a late
   // phrase from that turn can't land in the next; Bug Me's reply doesn't interrupt a correction being spoken.
   if (voiceTargetKey() && !voiceTargetKey().endsWith(`:${flow.sent}`)) setVoiceTarget(voiceTargetFor());
+}
+
+/**
+ * No model can reply on this card (issue #51): say why in plain terms, and offer the decision without
+ * Bug Me's reading. Sending again stays possible (a human check, say, may pass the second time).
+ */
+function paintUnread(area: HTMLElement, flow: Flow, d: Decision, busy: boolean): void {
+  const box = area.querySelector<HTMLElement>(".unread");
+  if (!box) return;
+  const show = flow.phase === "choose" && Boolean(flow.unavailable);
+  box.hidden = !show;
+  if (!show) return box.replaceChildren();
+  const route = threadNodes.get(flow.id)?.route ?? routeOf(flow.id) ?? "decide";
+  box.replaceChildren(
+    h("p", { class: "lead" }, "Bug Me can't reply to this here."),
+    h("p", { class: "small" }, `(${flow.unavailable})`),
+    // Off the owner's page, a keyless or out-of-budget copy only has Jordan's recorded run.
+    Q.owner
+      ? ""
+      : h("p", {}, "Without live Claude, Bug Me only has Jordan's recorded run: the demo's scripted replies, on a fresh morning. Guidance you kept since, or words of your own, change the request, so there's no recording to play."),
+    h("p", {}, "You can still decide. Pick one, and everything you said here goes to the agent exactly as you said it."),
+    h(
+      "div",
+      { class: "actions" },
+      ...d.options.map((o) =>
+        h("button", { type: "button", class: "ghost decide-unread", "data-key": o.key, disabled: busy, onclick: () => void decideUnread(flow, d, route, o.key) }, `Decide: ${o.label}`),
+      ),
+    ),
+  );
 }
 
 /** A read-only card for a decision that is answered, or set aside and waiting for Resume. */
@@ -586,7 +632,7 @@ export function followup(d: Decision, route: RouteKind): Child {
 
   const top = F.guess ? topGuess(F.guess) : null;
   const guessed = top ? d.options.find((o) => o.key === top.option)! : null;
-  // Revealed only now (docs/STAGE-6F.md): what the agent would have picked, then Bug Me's own guess.
+  // Revealed only now (docs/STAGE-6F.md): what the agent recommended, then what Bug Me expected the person to choose.
   const agentPick = d.no_recommendation ? undefined : d.options.find((o) => o.key === d.recommended);
   const parts: Child[] =
     !top || !guessed
@@ -595,14 +641,15 @@ export function followup(d: Decision, route: RouteKind): Child {
           h(
             "p",
             { class: "reveal-line" },
-            // Said once when the agent and Bug Me expected the same thing.
+            // The guess is a forecast of the person's choice, not Bug Me's opinion of the decision
+            // (issue #56): the agent recommends, Bug Me expects. Said once when they agree.
             ...(agentPick && agentPick.key === top.option
               ? agentPick.key === F.choice
-                ? ["The agent would have picked this one too, and so would I."]
-                : ["The agent would have picked ", h("b", {}, agentPick.label), ", and so would I."]
+                ? ["The agent recommended this one, and I expected you to choose it too."]
+                : ["The agent recommended ", h("b", {}, agentPick.label), ", and I expected you to choose it too."]
               : [
-                  ...(agentPick ? (agentPick.key === F.choice ? ["The agent would have picked this one too. "] : ["The agent would have picked ", h("b", {}, agentPick.label), ". "]) : []),
-                  ...(top.option === F.choice ? ["My guess was this one."] : ["My guess was ", h("b", {}, guessed.label), "."]),
+                  ...(agentPick ? (agentPick.key === F.choice ? ["The agent recommended this one. "] : ["The agent recommended ", h("b", {}, agentPick.label), ". "]) : []),
+                  ...(top.option === F.choice ? ["I expected that choice."] : ["I expected you to choose ", h("b", {}, guessed.label), "."]),
                 ]),
           ),
         ];
@@ -653,6 +700,11 @@ export function followup(d: Decision, route: RouteKind): Child {
   }
   if (F.phase === "done") {
     if (F.message) parts.push(h("p", {}, F.message));
+    // A guidance proposal that failed or was cut off by a reload (issue #54): ask again on a press.
+    if (F.guidanceEvidence && !F.proposal) {
+      const flow = F;
+      parts.push(h("div", { class: "actions" }, h("button", { type: "button", class: "ghost retry-guidance", onclick: () => void retryGuidance(flow, d) }, "Try the guidance again")));
+    }
     for (const rid of F.rerouted) {
       const rd = byId.get(rid)!;
       const rc = S.cards[rid];

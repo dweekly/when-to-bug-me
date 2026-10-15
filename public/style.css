@@ -132,6 +132,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .card .meta .glyph { color: var(--ink); font-size: 16px; }
 .route-label { color: var(--ink-2); }
 .chain { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+/* Where the card's routing came from (issue #57): quiet, but on the card before anything is pressed. */
+.src-badge { font: 11px var(--mono); color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.unread { border-left: 2px solid var(--ink-3); padding: 4px 0 4px 12px; margin: 10px 0; font-size: 14px; color: var(--ink-2); }
+.unread .lead { color: var(--ink); margin-top: 0; }
+.unread .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.build-id { font: 11px var(--mono); }
+/* A line under a list item that is not a change (no ↻): what was decided, or why it couldn't be sorted. */
+.note-plain { display: block; grid-column: 2; font-size: 13px; color: var(--ink-2); }
 .card h3 { font-size: clamp(24px, 3.6vw, 34px); line-height: 1.18; margin: 10px 0 18px; }
 .resumed { border-left: 2px solid var(--ink-3); padding: 4px 0 4px 12px; color: var(--ink-2); font-size: 14px; }
 
@@ -405,6 +413,16 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
 .dproj { color: var(--ink-3); }
 .dpick { color: var(--ink-2); }
 .dwhat .change-note { display: block; }
+/* Each settled job opens to what was decided and why (issue #64). */
+.dwhat > summary { list-style: none; cursor: pointer; }
+.drow:has(.dwhat[open]) { align-items: flex-start; }
+.dwhat > summary::-webkit-details-marker { display: none; }
+.dmore { margin-left: 8px; font-size: 12px; color: var(--ink-3); border-bottom: 1px dotted var(--ink-3); }
+.dwhat[open] .dmore { color: var(--ink-2); }
+.dwhat > summary:hover .ddone { text-decoration: underline; text-underline-offset: 3px; }
+.ddetail { padding: 6px 0 4px; font-size: 14px; color: var(--ink-2); max-width: 64ch; }
+.ddetail p { margin: 4px 0; }
+.ddetail q { color: var(--ink); }
 .dacts { display: flex; gap: 2px; color: var(--ink-3); flex: none; }
 .dacts button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; justify-content: center; padding: 0 10px; background: none; border: 1px solid transparent; border-radius: 8px; color: inherit; font: 13px var(--body); cursor: pointer; }
 .dacts button:hover { border-color: var(--line); color: var(--ink); background: var(--night-3); }
@@ -550,6 +568,7 @@ abbr.est { text-decoration: none; font: 12px var(--mono); color: var(--ink-3); b
 .rv-cell.decide, .rv-cell.check { color: var(--ink); }
 .rv-cell.settled { color: var(--ink-3); }
 .rv-cell.waiting { color: var(--ink-3); opacity: 0.45; }
+.rv-cell.aside, .rv-cell.unrouted { color: var(--ink-2); }
 .rv-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 14.5px; color: var(--ink-2); }
 .rv-n { color: var(--ink); font-family: var(--mono); }
 .rv-now { font: 11.5px var(--mono); color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; }
