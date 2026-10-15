@@ -64,7 +64,7 @@ When live calls are off (no key, or the daily budget is spent), only recorded an
   - **Checked by code:** a quoted rule exists word for word; the option's cost and reversibility are within the limits; a reserving rule or a bearing preference blocks settling.
   - **Not checked:** that the rule actually authorizes this action. That is the model's reading of natural language (`src/shared/route.ts`, `enforceSettleInvariant`).
   - **Where the limits come from:** in the demo, every option's cost and reversibility are hand-written and conservative. On the live queue they are what the asking agent declares, so they are claims, not verified facts.
-  - **What an MVP would add:**
+  - **What v1 would add:**
     - Permissions held outside the model: an allow-list per action type and project, so a rule maps to the tool calls it permits rather than to its words.
     - Reversibility taken from the action itself, not the agent's word: a branch or worktree write, a staging deploy, a held external action.
     - A spend ceiling enforced where the money moves.
