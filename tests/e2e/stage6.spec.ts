@@ -247,6 +247,7 @@ test("starting the morning over gives the card a fresh conversation", async ({ p
   await say(page, "Keep user_id, because integrators parse v1 responses.");
   await goRecord(page);
   await page.getByRole("button", { name: "Start the morning over" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start over" }).click();
   await openDecision(page, "api-rename");
   await expect(turns(page)).toHaveCount(0);
   await expect(page.locator("#think")).toHaveValue("");

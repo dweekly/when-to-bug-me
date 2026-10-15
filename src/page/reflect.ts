@@ -7,7 +7,7 @@
 import { MINUTES_PER_CHECK_IN, MINUTES_PER_DECISION } from "../shared/constants";
 import { duration, money } from "../shared/dispatch";
 import { FEEDBACK_CHOICES, type FeedbackChoice, SYNTHETIC_STATED_PRIORITIES, type Transition, planTransition, reviewOf } from "../shared/reflection";
-import { GLYPH, agenda } from "./derive";
+import { GLYPH, agenda, unroutedIds } from "./derive";
 import { announce, h } from "./dom";
 import { hrefFor } from "./router";
 import { Q, S, byId, log, save } from "./state";
@@ -123,6 +123,9 @@ export function renderReviewView(view: HTMLElement): void {
   const a = agenda();
   const settledNow = a.settled.filter((id) => !S.reopened.includes(id)).length;
   const waitingNow = a.sections.reduce((n, s) => n + s.decisions.length + s.check_ins.length, 0);
+  // Every question once (issue #52): answered, settled, set aside, never sorted, or still waiting.
+  const asideNow = Object.keys(S.punts).filter((id) => !S.answered[id]).length;
+  const unroutedNow = unroutedIds().length;
   const asked = r.asked.decide + r.asked.check_in;
 
   // Where the time went, by project, in the order of the stated priorities.
@@ -176,6 +179,8 @@ export function renderReviewView(view: HTMLElement): void {
     ...Array.from({ length: r.asked.decide }, () => ["decide", GLYPH.decide]),
     ...Array.from({ length: r.asked.check_in }, () => ["check", GLYPH.check_in]),
     ...Array.from({ length: settledNow }, () => ["settled", GLYPH.settle]),
+    ...Array.from({ length: asideNow }, () => ["aside", "◇"]),
+    ...Array.from({ length: unroutedNow }, () => ["unrouted", "?"]),
     ...Array.from({ length: waitingNow }, () => ["waiting", "◌"]),
   ];
   const fb = r.feedback;
@@ -188,8 +193,10 @@ export function renderReviewView(view: HTMLElement): void {
     h(
       "ul",
       { class: "rv-legend" },
-      h("li", {}, h("span", { class: "rv-n" }, String(asked)), " asked you: ", `${GLYPH.decide} ${r.asked.decide} · ${GLYPH.check_in} ${r.asked.check_in}`),
+      h("li", {}, h("span", { class: "rv-n" }, String(asked)), " answered by you: ", `${GLYPH.decide} ${r.asked.decide} · ${GLYPH.check_in} ${r.asked.check_in}`),
       h("li", {}, h("span", { class: "rv-n" }, String(settledNow)), ` ${GLYPH.settle} settled for you `, h("span", { class: "rv-now", title: "From the queue as it stands now" }, "now")),
+      asideNow ? h("li", {}, h("span", { class: "rv-n" }, String(asideNow)), " ◇ set aside by you ", h("span", { class: "rv-now", title: "From the queue as it stands now" }, "now")) : null,
+      unroutedNow ? h("li", {}, h("span", { class: "rv-n" }, String(unroutedNow)), " ? couldn't be sorted ", h("span", { class: "rv-now", title: "From the queue as it stands now" }, "now")) : null,
       waitingNow ? h("li", {}, h("span", { class: "rv-n" }, String(waitingNow)), " ◌ still waiting ", h("span", { class: "rv-now", title: "From the queue as it stands now" }, "now")) : null,
     ),
     fbTotal

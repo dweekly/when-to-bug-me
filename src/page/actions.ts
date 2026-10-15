@@ -29,7 +29,7 @@ import { paintThread, renderNow, startPunt } from "./card";
 import { ROUTE_LABEL, agenda, reroutableIds, routeOf, waitingIds } from "./derive";
 import { announce } from "./dom";
 import { go } from "./router";
-import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, log, newFlow, save, setF, talking } from "./state";
+import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, isCard, log, newFlow, save, setF, talking } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
 import { recordTransition } from "./reflect";
 import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext, saveOneFact } from "./live";
@@ -109,6 +109,20 @@ export function unanswered(flow: Flow): boolean {
   return flow.turns.at(-1)?.who === "jordan" && !sending.has(flow);
 }
 
+/**
+ * Whether Send replaces the turn that never got a reply instead of asking it again: a click, or words
+ * in the box. For an unanswered "Huh?", only words changed since it was pressed: the draft that was
+ * already there was kept on purpose, but new words mean the person moved on, and the explanation that
+ * never came must not stand in their way (issue #58).
+ */
+export function replacesUnanswered(flow: Flow): boolean {
+  const last = flow.turns.at(-1);
+  if (last?.who !== "jordan") return false;
+  if (flow.pick) return true;
+  const words = flow.think.trim();
+  return last.huh ? Boolean(words) && words !== flow.huhDraft : Boolean(words);
+}
+
 /** Which of Jordan's scripted words come next (examples.ts scriptWords): an unanswered turn is still
  *  the current one, and a "Huh?" press is not words. */
 export function scriptIndex(flow: Flow): number {
@@ -150,6 +164,7 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind, huh = 
   const still = () => !left && alive(s0, flow) && flow.phase === "choose";
   flow.message = "";
   flow.error = "";
+  flow.unavailable = "";
   repaint(flow);
   let turn: JordanTurn | null = null;
   try {
@@ -157,9 +172,7 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind, huh = 
     if (!still()) return;
     // Decided after the microphone has finished: a turn that never got a reply is asked again as it
     // was, unless the person has since changed the words or the pick; then the new input replaces it.
-    // An unanswered "Huh?" is always asked again as it was: the words in the box were kept on purpose.
-    const waitingTurn = flow.turns.at(-1)?.who === "jordan" && !(flow.turns.at(-1) as JordanTurn).huh;
-    if (waitingTurn && !huh && (flow.think.trim() || flow.pick)) {
+    if (!huh && replacesUnanswered(flow)) {
       const old = flow.turns.pop() as JordanTurn;
       if (!flow.pick && old.pick) flow.pick = old.pick;
     }
@@ -171,6 +184,7 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind, huh = 
       if (retry || huhs(flow.turns) >= MAX_HUH) return;
       turn = { who: "jordan", text: "", huh: true };
       flow.turns.push(turn);
+      flow.huhDraft = flow.think.trim();
       log("turn", { id: d.id, huh: true });
       save();
       repaint(flow);
@@ -207,7 +221,12 @@ export async function sendTurn(flow: Flow, d: Decision, route: RouteKind, huh = 
       });
     } catch (e) {
       if (!alive(s0, flow) || flow.turns.at(-1) !== asked) return;
-      flow.message = `Bug Me couldn't reply just now (${(e as Error).message}). Send again to retry.`;
+      const err = e as Error & { unavailable?: boolean };
+      // No model can answer this request (no key and no matching recording, the budget spent, the
+      // human check declined): sending again won't help, so the card offers deciding without Bug Me's
+      // reading (issue #51). Any other failure may be passing.
+      if (err.unavailable) flow.unavailable = err.message;
+      else flow.message = `Bug Me couldn't reply just now (${err.message}). Send again to retry.`;
       return;
     }
     // Only onto the thread it answers: a reset morning, a new turn or a left card drops it.
@@ -283,6 +302,47 @@ export async function confirmThread(flow: Flow, d: Decision, route: RouteKind): 
   } finally {
     sending.delete(flow);
     // A failed answer (or, on /me, a delivery that failed) returns to the conversation: the decision button comes back, ready to press again.
+    if (flow.phase === "choose") repaint(flow);
+  }
+}
+
+/**
+ * Decide without Bug Me's reading (issue #51), when no model can reply on this card: the person picks
+ * an option themselves, and everything they said here goes down whole, labeled as their words as
+ * said, since nothing picked out their reasons, conditions or questions. The answer then takes the
+ * usual path (pushback from the record, the sealed guess, guidance), all of which but guidance is code.
+ */
+export async function decideUnread(flow: Flow, d: Decision, route: RouteKind, key: string): Promise<void> {
+  if (flow.phase !== "choose" || sending.has(flow) || !flow.unavailable || !d.options.some((o) => o.key === key)) return;
+  sending.add(flow);
+  const s0 = S;
+  const why = flow.unavailable;
+  // Leaving the card while the last words finish cancels the decision, as it does a confirmation.
+  let left = false;
+  const leave = () => (left = true);
+  window.addEventListener("hashchange", leave);
+  try {
+    await drainVoice();
+    if (left || !alive(s0, flow) || !showing(flow) || flow.phase !== "choose" || !flow.unavailable) return;
+    // The draft stays in the box until the answer is recorded (finalize clears it), so a failed
+    // attempt keeps every word for the next one.
+    const words = [...jordanTurns(flow.turns).map((t) => t.text.trim()), flow.think.trim()].filter(Boolean).join(" ");
+    flow.choice = key;
+    flow.basis = words;
+    flow.evidence = words;
+    flow.conditions = "";
+    flow.questions = [];
+    flow.noMoreQuestions = false;
+    flow.hasFeedback = false;
+    log("decided_unread", { id: d.id, choice: key, why_unread: why });
+    flow.unavailable = "";
+    threadCard(flow, d);
+    await answer(flow, d, route, { narration: words, narrationMarks: [], unparsed: Boolean(words) });
+    // Not recorded (the check or the record failed): back to the same choice, panel and words.
+    if (alive(s0, flow) && flow.phase === "choose" && !S.answered[d.id]) flow.unavailable = why;
+  } finally {
+    window.removeEventListener("hashchange", leave);
+    sending.delete(flow);
     if (flow.phase === "choose") repaint(flow);
   }
 }
@@ -433,6 +493,9 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
   if (!alive(s0, flow)) return;
   flow.guess = r.guess;
   flow.send_down = send_down;
+  // Recorded: a draft kept through an unread decision (issue #51) has gone down with it.
+  flow.think = "";
+  flow.pick = null;
   S.answered[d.id] = {
     initial: flow.initial ?? choice,
     final: choice,
@@ -546,8 +609,16 @@ async function proposeNow(flow: Flow, d: Decision): Promise<void> {
       return;
     }
   }
+  await requestGuidance(flow, d, evidence);
+}
+
+/** Ask for a guidance proposal from these words. Kept on the flow until one arrives, so a failure (or a
+ *  reload while it was out) leaves a retry for the person to press; the answer is never re-sent. */
+async function requestGuidance(flow: Flow, d: Decision, evidence: string): Promise<void> {
+  const s0 = S;
   flow.phase = "busy";
   flow.message = "Turning that into guidance…";
+  flow.guidanceEvidence = evidence;
   save();
   if (showing(flow)) render();
   try {
@@ -564,17 +635,29 @@ async function proposeNow(flow: Flow, d: Decision): Promise<void> {
     if (!alive(s0, flow)) return;
     flow.proposal = p;
     flow.factDraft = p.text;
+    flow.guidanceEvidence = "";
     flow.phase = "proposal";
     log("guidance_proposed", { id: d.id, kind: p.kind, text: p.text, replaces: p.replaces, reroute: p.reroute, source: p.source });
   } catch (e) {
     if (!alive(s0, flow)) return;
     flow.phase = "done";
-    flow.message = `Couldn't turn that into guidance right now (${(e as Error).message}). Your answer and reason are recorded.`;
+    flow.message = `Couldn't turn that into guidance right now (${(e as Error).message}). Your answer and reason are recorded; you can try again.`;
     // A tour waiting for the guidance step listens for this, so it can say what happened instead of waiting.
     window.dispatchEvent(new CustomEvent("bugme:guidance-failed", { detail: { id: d.id } }));
   }
   save();
   if (showing(flow)) renderNow();
+}
+
+/** "Try again" after a guidance proposal failed (issue #54): the same words, asked again. */
+export async function retryGuidance(flow: Flow, d: Decision): Promise<void> {
+  if (flow.phase !== "done" || !flow.guidanceEvidence || whySending.has(flow)) return;
+  whySending.add(flow);
+  try {
+    await requestGuidance(flow, d, flow.guidanceEvidence);
+  } finally {
+    whySending.delete(flow);
+  }
 }
 
 /** Why a rule or fact text can't be saved, or "" if it can. Mirrors the Worker's limits. */
@@ -874,6 +957,52 @@ export async function refreshOwnerNote(): Promise<void> {
   } catch {
     // The next load brings it.
   }
+}
+
+/** A retry of failed routes is out: a second press does nothing. */
+let retryingRoutes = false;
+
+/**
+ * Ask again for the routes that couldn't be made (issue #55). A card that comes back joins the queue;
+ * one that fails again stays listed with the new reason. Only on the person's press.
+ */
+export async function retryRouting(ids: string[]): Promise<void> {
+  if (retryingRoutes || !ids.length) return;
+  retryingRoutes = true;
+  const s0 = S;
+  let fixed = 0;
+  try {
+    const queue = [...ids];
+    const worker = async () => {
+      while (queue.length && S === s0) {
+        const id = queue.shift()!;
+        // Routed under the rules and facts as they are now; an edit meanwhile (a newer version, which
+        // re-routes waiting decisions itself) or a card that arrived another way makes this one stale.
+        const version = S.version;
+        const current = () => S === s0 && S.version === version && !isCard(S.cards[id]);
+        try {
+          const card = await api<Card>("/api/route", { id, rules: S.rules, facts: S.facts });
+          if (!current()) continue;
+          S.cards[id] = card;
+          S.evaluated[id] = true;
+          fixed++;
+        } catch (e) {
+          if (!current()) continue;
+          S.cards[id] = { id, unavailable: (e as Error).message };
+        }
+        save();
+        render();
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(REROUTE_CONCURRENCY, ids.length) }, worker));
+  } finally {
+    retryingRoutes = false;
+  }
+  if (S !== s0) return;
+  const left = ids.filter((id) => !isCard(S.cards[id])).length;
+  fixed = ids.length - left;
+  announce(left ? `${fixed} sorted; ${left} still couldn't be sorted.` : `All ${fixed} sorted.`);
+  render();
 }
 
 /**

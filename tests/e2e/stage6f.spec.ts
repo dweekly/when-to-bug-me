@@ -17,7 +17,7 @@ test("the agent's pick isn't on the card; after deciding against it, the reveal 
   await expect(page.locator("#now .agent-pick")).toHaveCount(0);
   await expect(page.locator("#now")).not.toContainText("the agent's pick");
   await decideQuietly(page, "9:40am flight");
-  await expect(page.locator("#now .reveal-line")).toHaveText("The agent would have picked 6:05am flight, and so would I.");
+  await expect(page.locator("#now .reveal-line")).toHaveText("The agent recommended 6:05am flight, and I expected you to choose it too.");
   await expect(page.locator("#now .why-lead")).toHaveText("What made you go against the agent?");
   // The why box offers Jordan's recorded reason the same way: DEMO REPLY, beside the microphone.
   await page.locator("#now .basis-row .demo-reply").click();
@@ -28,8 +28,8 @@ test("the agent's pick isn't on the card; after deciding against it, the reveal 
 test("going with the agent and Bug Me's guess: the reveal says so, and there's no nudge", async ({ page }) => {
   await openDecision(page, "incident-action-items");
   await decideQuietly(page, "File all five as drafted");
-  // The agent and Bug Me expected the same: said once.
-  await expect(page.locator("#now .reveal-line")).toHaveText("The agent would have picked this one too, and so would I.");
+  // The agent recommended it and Bug Me expected it: said once, as two different things.
+  await expect(page.locator("#now .reveal-line")).toHaveText("The agent recommended this one, and I expected you to choose it too.");
   await expect(page.locator("#now .why-lead")).toHaveCount(0);
 });
 

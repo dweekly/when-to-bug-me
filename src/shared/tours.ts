@@ -83,7 +83,7 @@ export const TOURS: Tour[] = [
       say("onsite-flight", 1, "Talk to Bug Me", "Say it the way you'd say it to a colleague: take the 9:40. Then Send. Or press DEMO REPLY."),
       say("onsite-flight", 2, "One light question", "A bare pick earns one question: why? Answer it, or press DEMO REPLY."),
       decide("Bug Me read it back. The button is the decision itself, and its guess is still sealed: press it."),
-      { target: "#now .followup", title: "A reason becomes guidance", text: "Now you see what the agent and Bug Me would have picked. Keep your reason (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
+      { target: "#now .followup", title: "A reason becomes guidance", text: "Now you see what the agent recommended and what Bug Me expected you to choose. Keep your reason (edit it first if you like), and every agent gets it.", until: { appear: "#now .rerouted, #now .followup .senddown" } },
       { target: "#now .rerouted", title: "It travels", text: "The 7:30am Berlin invite was checked again under your new guidance.", until: { click: "#now .rerouted button" } },
       { target: "#now .skip-q", title: "Skip", text: "Not ready to decide? Set it aside, and say what you'd need.", until: { click: "#now .skip-q" } },
       { target: "#now .punt", title: "What would you need?", text: "Pick one and say it in a sentence. The agent is told exactly that.", until: { event: "bugme:set-aside" }, example: { textarea: "#punt-reason", text: "Ask the Berlin team whether 9:30am Pacific works; that's still 18:30 for them." } },

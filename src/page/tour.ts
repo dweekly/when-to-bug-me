@@ -48,13 +48,18 @@ export function startTour(id: string): void {
 }
 
 function confirmFresh(tour: Tour, ok: () => void): void {
-  const yes = h("button", { type: "button", class: "primary" }, `Start “${tour.title}”`);
-  const no = h("button", { type: "button", class: "ghost" }, "Not now");
+  confirmDialog("Start a fresh morning?", "Demos start from the beginning of Jordan's morning, so your answers so far will be cleared. You can export your record first from Your decisions.", `Start “${tour.title}”`, "Not now", ok);
+}
+
+/** An in-page confirmation (Cancel keeps everything as it was); `ok` runs only on the yes button. */
+export function confirmDialog(title: string, body: string, yesLabel: string, noLabel: string, ok: () => void): void {
+  const yes = h("button", { type: "button", class: "primary" }, yesLabel);
+  const no = h("button", { type: "button", class: "ghost" }, noLabel);
   const dlg = h(
     "dialog",
     { class: "ts", "aria-labelledby": "tour-confirm-h" },
-    h("h2", { id: "tour-confirm-h" }, "Start a fresh morning?"),
-    h("p", {}, "Demos start from the beginning of Jordan's morning, so your answers so far will be cleared. You can export your record first from Record."),
+    h("h2", { id: "tour-confirm-h" }, title),
+    h("p", {}, body),
     h("div", { class: "row" }, no, yes),
   ) as HTMLDialogElement;
   document.body.append(dlg);

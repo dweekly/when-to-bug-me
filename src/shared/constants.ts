@@ -92,6 +92,10 @@ export const MAX_CONVERSE_QUESTIONS = 2;
 /** Most of Jordan's turns in one thread, and their total characters; after that only the read-back. */
 export const MAX_CONVERSE_TURNS = 6;
 export const MAX_TRANSCRIPT_CHARS = 2400;
+/** Longest reason or instruction an answer can deliver to the asking session (/api/me/resolve). An
+ *  answer decided without Bug Me's reading (issue #51) carries every word said on the card: the whole
+ *  transcript plus the box, and the option's own instruction (up to 1,200, the earlier cap) in front. */
+export const MAX_DELIVERY_CHARS = MAX_TRANSCRIPT_CHARS + MAX_REASON_CHARS + 1200;
 
 /** Longest Bug Me reply, in characters: two short sentences. Code trims anything longer. */
 export const MAX_REPLY_CHARS = 300;

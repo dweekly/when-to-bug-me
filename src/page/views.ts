@@ -8,10 +8,10 @@ import { attend } from "./attention";
 import { estimateMinutes, nextInSession } from "../shared/agenda";
 import type { Mood } from "../shared/lifecycle";
 import type { Card, RouteKind } from "../shared/types";
-import { editFact, editRule, resume, startSession, undo } from "./actions";
+import { editFact, editRule, resume, retryRouting, startSession, undo } from "./actions";
 import { markButton, renderNow } from "./card";
 import { type Mood as Mood6, setGlowMood, setVoiceTarget } from "./voice";
-import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf } from "./derive";
+import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, agenda, routeOf, unroutedIds } from "./derive";
 import { $, h } from "./dom";
 import { type Route, go, hrefFor, parseRoute } from "./router";
 import { F, Q, S, byId, isCard, setF, unfinished } from "./state";
@@ -25,6 +25,10 @@ import { renderWelcomeView } from "./welcome";
 /** A rule being edited, kept across re-renders so an async update never wipes the draft. */
 let ruleDraft: { id: string; text: string; error: string; focus: boolean } | null = null;
 
+
+/** The commit this page was built from (scripts/build-page.mjs), shown on Your decisions (issue #49). */
+declare const __BUILD__: string;
+const BUILD = typeof __BUILD__ === "string" ? __BUILD__ : "dev";
 
 /** Glow level at which the firefly is delighted rather than pleased. Heuristic, near the top of 0..1. */
 const DELIGHTED_AT = 0.85;
@@ -59,9 +63,13 @@ function headline(id: string): string {
 // ---------- The bar ----------
 
 function renderBar(route: Route): void {
-  const waiting = waitingCount();
+  // Questions that couldn't be sorted are still waiting: the firefly doesn't rest on them (issue #55).
+  const waiting = waitingCount() + unroutedIds().length;
   const asset = moodAsset(S.mood, S.glow, waiting);
-  const reasons = S.record.filter((r) => (r.kind === "answer" && r.basis) || r.kind === "reason" || r.kind === "punt").length;
+  // One per decision answered with a reason (a reason given after the answer is written onto the
+  // answer and logged again, so it is counted by decision, not by event: issue #61), plus each set-aside.
+  const reasoned = new Set(S.record.filter((r) => (r.kind === "answer" && r.basis) || r.kind === "reason").map((r) => String(r.id)));
+  const reasons = reasoned.size + S.record.filter((r) => r.kind === "punt").length;
   const status: Record<string, string> = {
     resting: "Nothing is waiting on you.",
     attentive: reasons ? `${reasons} reason${reasons === 1 ? "" : "s"} given so far.` : "Glows brighter with every real reason you give.",
@@ -88,7 +96,8 @@ function renderBar(route: Route): void {
       nav({ view: "dispatch" }, "Dispatch"),
       nav({ view: "settled" }, `Decided for you${settledCount ? ` · ${settledCount}` : ""}`),
       nav({ view: "rules" }, "Rules"),
-      nav({ view: "record" }, "Record"),
+      // "Record" read as the verb, record with the microphone (issue #63).
+      nav({ view: "record" }, "Your decisions"),
       // The demos (guided tours) script Jordan's decisions, so the owner's live queue has none.
       Q.owner ? null : h("button", { type: "button", class: "nav tours-btn", onclick: () => openToursMenu() }, "Demos"),
     ),
@@ -103,16 +112,18 @@ function renderHome(view: HTMLElement): void {
   const a = agenda();
   const remaining = a.sections.reduce((m, s) => m + s.minutes, 0);
   const waiting = waitingCount();
+  // Never sorted: a failure, not a success, so these keep the morning open (issue #55).
+  const unrouted = unroutedIds();
 
   const settledCount = a.settled.filter((id) => !S.reopened.includes(id)).length;
   const hero = h(
     "section",
     { class: "hero", "aria-labelledby": "hello" },
-    h("h1", { id: "hello" }, waiting ? `Good morning, ${Q.persona.first_name}.` : "All clear."),
+    h("h1", { id: "hello" }, waiting || unrouted.length ? `Good morning, ${Q.persona.first_name}.` : "All clear."),
     h(
       "p",
       { class: "overnight", id: "overnight" },
-      waiting ? `${waiting} waiting on you · about ${remaining} min` : "Nothing is waiting on you.",
+      [waiting ? `${waiting} waiting on you · about ${remaining} min` : "", unrouted.length ? `${unrouted.length} couldn't be sorted` : ""].filter(Boolean).join(" · ") || "Nothing is waiting on you.",
       h("span", { class: "quiet" }, ` · ${Q.decisions.length} questions overnight, `),
       link({ view: "settled" }, `${settledCount} decided for you`),
     ),
@@ -153,7 +164,37 @@ function renderHome(view: HTMLElement): void {
   };
   const startCard = piles.length
     ? h("div", { class: "piles" }, pileCard(piles[0], 0), piles.length > 1 ? h("div", { class: "other-piles" }, ...piles.slice(1).map((g, i) => pileCard(g, i + 1))) : null)
-    : h("p", { class: "quiet all-clear" }, "The firefly is resting; so can you.");
+    : unrouted.length
+      ? null
+      : h("p", { class: "quiet all-clear" }, "The firefly is resting; so can you.");
+
+  const unroutedList = unrouted.length
+    ? h(
+        "section",
+        { class: "list-block", id: "unrouted", "aria-labelledby": "unrouted-h" },
+        h("h2", { class: "section-h", id: "unrouted-h" }, "Couldn't sort these"),
+        h("p", { class: "quiet" }, "Bug Me couldn't evaluate these, so it can't say whether they need you. They stay here until it can."),
+        h(
+          "ol",
+          { class: "items" },
+          ...unrouted.map((id) => {
+            const c = S.cards[id] as { unavailable?: string } | undefined;
+            return h(
+              "li",
+              {},
+              h(
+                "a",
+                { href: hrefFor({ view: "focus", id }), class: "item" },
+                h("span", { class: "glyph", "aria-hidden": "true" }, "?"),
+                h("span", { class: "q" }, byId.get(id)!.question),
+                h("span", { class: "note-plain" }, c?.unavailable ?? "no route yet"),
+              ),
+            );
+          }),
+        ),
+        h("button", { type: "button", class: "ghost", id: "retry-routes", onclick: () => void retryRouting(unrouted) }, "Try again"),
+      )
+    : null;
 
   const agendaList = h("section", { id: "agenda", class: "agenda", "aria-labelledby": "queue-h" }, piles.length ? h("h2", { class: "section-h", id: "queue-h" }, "The whole queue, in order") : null);
   let n = 0;
@@ -237,10 +278,10 @@ function renderHome(view: HTMLElement): void {
     "nav",
     { class: "more-links", "aria-label": "More" },
     link({ view: "rules" }, "Rules and what Bug Me knows"),
-    link({ view: "record" }, "Your record"),
+    link({ view: "record" }, "Your decisions"),
     link({ view: "review" }, "Weekly review sketch"),
   );
-  view.replaceChildren(hero, startCard, agendaList, mirrorList(byId) ?? "", unfinishedList ?? "", asideList ?? "", more);
+  view.replaceChildren(hero, startCard ?? "", unroutedList ?? "", agendaList, mirrorList(byId) ?? "", unfinishedList ?? "", asideList ?? "", more);
 }
 
 // ---------- Focus ----------
@@ -341,11 +382,14 @@ function iconAction(btn: HTMLElement, paths: string, label: string, name: string
 /** Groups the person has opened, so a re-render (an Undo, a mark) doesn't close them. Kept per
  *  morning: a fresh morning (a tour, starting over) replaces S and starts with every group closed. */
 const openGroups = new Set<WorkKind>();
+/** Settled jobs opened to their detail, kept across redraws (issue #64). */
+const openJobs = new Set<string>();
 let openGroupsFor: unknown = null;
 
 function renderSettledView(view: HTMLElement): void {
   if (openGroupsFor !== S) {
     openGroups.clear();
+    openJobs.clear();
     openGroupsFor = S;
   }
   const a = agenda();
@@ -405,20 +449,30 @@ function settledRow(id: string): HTMLElement {
   const done = c.done?.[c.settle_option] || "";
   const picked = d.options.find((o) => o.key === c.settle_option)?.label ?? c.settle_option;
   const project = Q.persona.projects.find((x) => x.id === d.project)?.name ?? d.project;
-  return h(
-    "li",
-    { class: S.changes[id] ? "drow changed" : "drow", "data-id": id },
+  // Opens to what was decided and why (issue #64): the question, the option taken and the ones not
+  // taken, the rule that let Bug Me act, what it relied on, and its own reasoning.
+  const what = h(
+    "details",
+    { class: "dwhat", open: openJobs.has(id) },
     h(
-      "span",
-      { class: "dwhat" },
+      "summary",
+      {},
       c.emoji ? h("span", { class: "demoji", "aria-hidden": "true" }, c.emoji) : null,
       h("span", { class: "ddone" }, done || asked),
       done ? null : h("span", { class: "dpick" }, ` → ${picked}`),
       h("span", { class: "dproj" }, ` · ${project}`),
       done ? h("span", { class: "sr-only" }, `. Asked: ${asked}`) : null,
+      h("span", { class: "dmore" }, "Why"),
       S.changes[id] ? h("span", { class: "change-note" }, S.changes[id]) : null,
       S.pending.includes(id) ? h("span", { class: "change-note" }, "re-checking…") : null,
     ),
+    settledDetail(id),
+  );
+  what.addEventListener("toggle", () => ((what as HTMLDetailsElement).open ? openJobs.add(id) : openJobs.delete(id)));
+  return h(
+    "li",
+    { class: S.changes[id] ? "drow changed" : "drow", "data-id": id },
+    what,
     h(
       "span",
       { class: "dacts" },
@@ -426,6 +480,29 @@ function settledRow(id: string): HTMLElement {
       iconAction(markButton(id, "should_have_asked", "You should have asked me"), ACT_ICON.ask, "Ask!", "Ask! You should have asked me"),
       iconAction(markButton(id, "wrong_call", "Right to decide, wrong call"), ACT_ICON.disagree, "Disagree", "Disagree: right to decide, wrong call"),
     ),
+  );
+}
+
+const REVERSIBLE: Record<string, string> = { yes: "undoable", partly: "partly undoable", no: "not undoable" };
+
+/** What a settled job's row opens to: the decision as Bug Me made it, and what let it. */
+function settledDetail(id: string): HTMLElement {
+  const d = byId.get(id)!;
+  const c = S.cards[id] as Card;
+  const chosen = d.options.find((o) => o.key === c.settle_option);
+  const note = c.option_notes?.find((n) => n.option === c.settle_option);
+  const others = d.options.filter((o) => o.key !== c.settle_option);
+  const line = (label: string, ...rest: (Node | string)[]) => h("p", {}, h("span", { class: "quiet" }, label), ...rest);
+  return h(
+    "div",
+    { class: "ddetail" },
+    line("The agent asked: ", h("q", {}, d.question), h("span", { class: "quiet" }, ` (${d.agent.join(" › ")})`)),
+    line("Bug Me chose: ", h("b", {}, chosen?.label ?? c.settle_option), note?.consequence ? `. ${note.consequence}` : chosen?.description ? `. ${chosen.description}` : ""),
+    others.length ? line("Instead of: ", others.map((o) => o.label).join(" · ")) : null,
+    c.clearing_rule ? line("Why it could act: ", "your rule ", h("q", {}, c.clearing_rule)) : null,
+    c.fact_quoted ? line("What it went on: ", h("q", {}, c.fact_quoted)) : null,
+    c.why_here ? line("Its reasoning: ", c.why_here) : null,
+    line("", `${REVERSIBLE[c.reversible] ?? c.reversible}, ${c.cost}. Decided by ${SOURCE_LABEL[c.source]}.`.replace(/^./, (x) => x.toUpperCase())),
   );
 }
 
@@ -531,14 +608,41 @@ function renderRecordView(view: HTMLElement): void {
     h(
       "section",
       { class: "page" },
-      h("h1", {}, "Your record"),
+      h("h1", {}, "Your decisions"),
       h(
         "p",
         { id: "record-summary" },
         `${S.record.filter((r) => r.kind === "answer").length} answers, ${Object.keys(S.punts).length} set aside, ${S.record.filter((r) => r.kind === "mark").length} marks, ${S.record.length} events. Every guess made before an answer is kept with the answer and your reason. It stays in this browser.`,
       ),
+      answeredList(),
       h("div", { class: "row" }, h("button", { type: "button", id: "export", class: "ghost" }, "Export JSON"), h("button", { type: "button", id: "reset", class: "ghost" }, "Start the morning over")),
       h("p", { class: "quiet" }, link({ view: "review" }, "Weekly review sketch →")),
+      h("p", { class: "quiet small build-id" }, `Build ${BUILD}`),
+    ),
+  );
+}
+
+/** What the person decided this morning, newest first, each opening its read-only card (issue #59). */
+function answeredList(): HTMLElement | null {
+  const ids = [...new Set(S.record.filter((r) => r.kind === "answer").map((r) => String(r.id)).reverse())].filter((id) => S.answered[id] && byId.has(id));
+  if (!ids.length) return null;
+  return h(
+    "section",
+    { class: "list-block", id: "decided-list", "aria-labelledby": "decided-h" },
+    h("h2", { class: "section-h", id: "decided-h" }, "What you decided"),
+    h(
+      "ol",
+      { class: "items" },
+      ...ids.map((id) => {
+        const a = S.answered[id];
+        const d = byId.get(id)!;
+        const outcome = a.outcome === "rejected" ? "Rejected the question" : a.other ? `Something else: ${a.other}` : (d.options.find((o) => o.key === a.final)?.label ?? a.final);
+        return h(
+          "li",
+          {},
+          h("a", { href: hrefFor({ view: "focus", id }), class: "item" }, h("span", { class: "glyph", "aria-hidden": "true" }, "✓"), h("span", { class: "q" }, headline(id)), h("span", { class: "note-plain" }, outcome)),
+        );
+      }),
     ),
   );
 }

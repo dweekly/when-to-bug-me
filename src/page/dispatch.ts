@@ -296,6 +296,8 @@ async function draftBrief(redraft?: Shown): Promise<void> {
     draft.error = problem;
     return paint();
   }
+  // Where the person was when they asked: the brief opens only if they are still there (issue #53).
+  const from = location.hash;
   try {
     // Every answer so far goes along, so a second round of questions doesn't lose the first round's answers.
     const all = [redraft?.answers, said].filter(Boolean).join("\n\n");
@@ -308,8 +310,14 @@ async function draftBrief(redraft?: Shown): Promise<void> {
     if (redraft && (answers.get(redraft.id) ?? "").trim() === said) answers.delete(redraft.id);
     savePublic();
     draft.busy = "";
-    go({ view: "dispatch", id: b.id });
-    announce(`Brief drafted: ${b.headline}.`);
+    // Left for something else while it drafted: stay there; the brief waits in Dispatch.
+    if (location.hash === from) {
+      go({ view: "dispatch", id: b.id });
+      announce(`Brief drafted: ${b.headline}.`);
+    } else {
+      paint();
+      announce(`Brief drafted: ${b.headline}. It's waiting in Dispatch.`);
+    }
   } catch (e) {
     const err = e as Error & { unavailable?: boolean };
     draft.error = err.unavailable ? `Bug Me couldn't draft this one (${err.message}).${Q.owner ? "" : " The three demo tasks work without live calls."}` : `Couldn't draft it: ${err.message}`;
