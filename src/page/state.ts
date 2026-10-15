@@ -144,6 +144,8 @@ export interface Flow {
    *  feedback quotes), and what the "why?" backstop and the guidance offer need to know. */
   evidence: string;
   noMoreQuestions: boolean;
+  /** The person's questions the agent's material didn't answer, sent down with the decision (issue #47). */
+  questions: string[];
   hasFeedback: boolean;
   /** The person's "but…" phrases as sent with the answer. */
   conditions: string;
@@ -171,7 +173,7 @@ export interface Flow {
 }
 
 export function newFlow(id: string): Flow {
-  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, sent: 0, evidence: "", noMoreQuestions: false, hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
+  return { id, choice: null, pick: null, basis: "", phase: "choose", turns: [], ledger: null, think: "", rev: 0, sent: 0, evidence: "", noMoreQuestions: false, questions: [], hasFeedback: false, conditions: "", narration: null, pushback: null, initial: null, guess: null, send_down: "", proposal: null, message: "", rerouted: [], factDraft: "", error: "", card: null, puntKind: null, puntReason: "", puntFrom: null };
 }
 
 /** A conversation has started on this decision and isn't finished: it stays with the person. */

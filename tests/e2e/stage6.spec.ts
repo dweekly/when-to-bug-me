@@ -130,6 +130,21 @@ test("a question the agent's material can't answer goes back to the agent, and t
   await expect.poll(async () => (await stored(page))?.punts?.["api-rename"]?.kind).toBe("info");
 });
 
+test("a decision with a question the material can't answer: the answer goes down with the question (issues #47, #48)", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await say(page, "Hmm. I'd keep user_id. Renaming a field breaks every integrator who already parses v1 responses. How many integrations read that field directly?");
+  await say(page, "Just do it.");
+  const last = turns(page).last();
+  await expect(last).toContainText("So:");
+  // Only the read-back itself is bold; anything said before it stays plain.
+  await expect(last.locator(".readback-line")).toHaveText(/^So/);
+  await sendBtn(page).click();
+  await expect.poll(async () => (await answered(page, "api-rename"))?.final).toBe("B");
+  const sent = String((await answered(page, "api-rename"))!.send_down);
+  expect(sent).toContain("also asks: “How many integrations read that field directly?”");
+  await expect(page.locator("#now .senddown")).toContainText("also asks");
+});
+
 test("\"just do it\" stops the questions, and the why backstop stays quiet", async ({ page }) => {
   await openDecision(page, "onsite-flight");
   await option(page, "9:40am flight").click();

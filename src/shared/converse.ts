@@ -198,11 +198,17 @@ export type Outcome =
   | { kind: "ask-agent"; questions: string[] }
   | { kind: "set-aside" };
 
+/** Jordan's questions the agent's material didn't answer, in Jordan's words. With a decision they go
+ *  down with it; with none, they are the outcome ("ask-agent"). */
+export function openQuestions(l: Ledger): string[] {
+  return l.questions.filter((q) => q.answer === null).map((q) => q.quote.quote.trim()).filter(Boolean);
+}
+
 export function outcomeOf(d: Decision, l: Ledger): Outcome {
   if (d.options.some((o) => o.key === l.choice)) return { kind: "option", key: l.choice };
   if (l.choice === "other" && l.course) return { kind: "other" };
   if (l.choice === "reject" && l.course) return { kind: "rejected" };
-  const open = l.questions.filter((q) => q.answer === null).map((q) => q.quote.quote);
+  const open = openQuestions(l);
   return open.length ? { kind: "ask-agent", questions: open } : { kind: "set-aside" };
 }
 
@@ -222,14 +228,28 @@ export function primaryLabel(d: Decision, l: Ledger): string {
 export function readBack(d: Decision, l: Ledger): string {
   const o = outcomeOf(d, l);
   const conds = l.conditions.map((c) => lowerFirst(sentence(c.quote))).join("; ");
+  // Questions still open go down with the decision, so the read-back says so (issue #47).
+  const open = openQuestions(l);
+  const ask = open.length ? ` I'll also ask the agent: ${open.map((q) => `“${q}”`).join(" ")}` : "";
   if (o.kind === "option") {
     const label = lowerFirst(d.options.find((x) => x.key === o.key)!.label);
-    return `So: ${label}${conds ? `, ${conds}` : ""}. Right?`;
+    return `So: ${label}${conds ? `, ${conds}` : ""}.${ask} Right?`;
   }
-  if (o.kind === "other") return `So: not either option. ${sentence(l.course!.quote)}${conds ? `, ${conds}` : ""}. Right?`;
-  if (o.kind === "rejected") return `So you're rejecting the question: ${sentence(l.course!.quote)}${conds ? `; ${conds}` : ""}. I'll tell the agent. Right?`;
+  if (o.kind === "other") return `So: not either option. ${sentence(l.course!.quote)}${conds ? `, ${conds}` : ""}.${ask} Right?`;
+  if (o.kind === "rejected") return `So you're rejecting the question: ${sentence(l.course!.quote)}${conds ? `; ${conds}` : ""}. I'll tell the agent.${ask} Right?`;
   if (o.kind === "ask-agent") return `I'll ask the agent: ${o.questions.map(sentence).join("; ")}, and set this aside.`;
   return "Want to set this aside for now?";
+}
+
+/**
+ * A read-back's own words, from its last sentence starting "So", are bold; anything the model said
+ * before them (an answer, "I'll ask the agent") stays plain (issue #48). With no such sentence the
+ * whole turn is the read-back.
+ */
+export function readbackSplit(text: string): [string, string] {
+  let at = -1;
+  for (const m of text.matchAll(/(^|[.!?;]\s+)So\b/g)) at = m.index! + m[1].length;
+  return at > 0 ? [text.slice(0, at), text.slice(at)] : ["", text];
 }
 
 /** Code's own plainer restatement, for the stand-in and for a "Huh?" the model left unanswered: the
@@ -335,6 +355,9 @@ export interface CloseInputs {
   reason: string;
   /** The condition quotes joined. */
   conditions: string;
+  /** Questions the agent's material didn't answer: sent down with a decision (empty for "ask-agent",
+   *  where they are the outcome, and for "set-aside"). */
+  questions: string[];
   /** For "other" and "rejected": Jordan's words for the course. */
   course: string;
   /** All of Jordan's turns, in order. */
@@ -380,6 +403,7 @@ export function closeInputs(d: Decision, turns: ConvTurn[], l: Ledger): CloseInp
     outcome: outcomeOf(d, l),
     reason: join(l.why),
     conditions: join(l.conditions),
+    questions: ["option", "other", "rejected"].includes(outcomeOf(d, l).kind) ? openQuestions(l) : [],
     course: l.course?.quote.trim() ?? "",
     narration: jordanTurns(turns).map((t) => t.text.trim()).filter(Boolean).join("\n"),
     evidence,

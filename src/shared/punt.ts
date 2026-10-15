@@ -40,6 +40,14 @@ export function puntProblem(kind: PuntKind | null, reason: string): string {
 }
 
 /** What the asking agent is told, in its own terms. */
+/** What the asking session is told when the person decides and also asks something its material
+ *  didn't answer (issue #47): the decision stands; the answer comes back only if it would change it. */
+export function alsoAskInstruction(questions: string[], personFirstName: string): string {
+  if (!questions.length) return "";
+  const qs = questions.map((q) => `“${q.trim().replace(/\s+/g, " ")}”`).join(" ");
+  return `${personFirstName} also asks: ${qs} Find out. If the answer would change this decision, ask Bug Me again with what you found; otherwise mention it in your next update.`;
+}
+
 export function puntInstruction(kind: PuntKind, reason: string, personFirstName: string): string {
   const r = reason.trim().replace(/\s+/g, " ");
   switch (kind) {
