@@ -2,9 +2,9 @@
 
 **A chief of staff for people who run fleets of agents.** Every question your agents raise flows into Bug Me instead of interrupting you. It settles what your written rules already cover (and only if it is reversible and cheap), puts the rest in the order to work them, briefs you before it asks, takes your answer in one click or one sentence, asks you why when your answer surprises it, and turns your reasons into guidance every agent follows from then on.
 
-**Try it:** [bugme.weekly.org](https://bugme.weekly.org), live Claude behind a daily spend cap. This repo is the working prototype for an Anthropic Labs take-home.
+**Try it:** [bugme.weekly.org](https://bugme.weekly.org), live Claude behind a daily spend cap. This repo is the MVP for an Anthropic Labs take-home (the assignment calls it the working prototype); the proposal calls what would ship to customers v1.
 
-Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the prototype's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11), [`docs/STAGE-4.md`](docs/STAGE-4.md) (think out loud: one place to talk a decision through, marked up as Bug Me reads it; fresh as of 2026-10-12), [`docs/STAGE-6.md`](docs/STAGE-6.md) (the decision as a conversation; fresh as of 2026-10-12), [`docs/STAGE-6E.md`](docs/STAGE-6E.md) ("Huh?": say that again, plainly; fresh as of 2026-10-13), [`docs/STAGE-6F.md`](docs/STAGE-6F.md) (the card in Jordan's words; fresh as of 2026-10-13), [`docs/STAGE-8.md`](docs/STAGE-8.md) (Dispatch: work sent out at the right size; fresh as of 2026-10-13).
+Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the MVP's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11), [`docs/STAGE-4.md`](docs/STAGE-4.md) (think out loud: one place to talk a decision through, marked up as Bug Me reads it; fresh as of 2026-10-12), [`docs/STAGE-6.md`](docs/STAGE-6.md) (the decision as a conversation; fresh as of 2026-10-12), [`docs/STAGE-6E.md`](docs/STAGE-6E.md) ("Huh?": say that again, plainly; fresh as of 2026-10-13), [`docs/STAGE-6F.md`](docs/STAGE-6F.md) (the card in Jordan's words; fresh as of 2026-10-13), [`docs/STAGE-8.md`](docs/STAGE-8.md) (Dispatch: work sent out at the right size; fresh as of 2026-10-13).
 
 > **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 40 of their questions are made up. No real agent receives anything Bug Me "sends down".
 
@@ -64,7 +64,7 @@ When live calls are off (no key, or the daily budget is spent), only recorded an
   - **Checked by code:** a quoted rule exists word for word; the option's cost and reversibility are within the limits; a reserving rule or a bearing preference blocks settling.
   - **Not checked:** that the rule actually authorizes this action. That is the model's reading of natural language (`src/shared/route.ts`, `enforceSettleInvariant`).
   - **Where the limits come from:** in the demo, every option's cost and reversibility are hand-written and conservative. On the live queue they are what the asking agent declares, so they are claims, not verified facts.
-  - **What an MVP would add:**
+  - **What v1 would add:**
     - Permissions held outside the model: an allow-list per action type and project, so a rule maps to the tool calls it permits rather than to its words.
     - Reversibility taken from the action itself, not the agent's word: a branch or worktree write, a staging deploy, a held external action.
     - A spend ceiling enforced where the money moves.
@@ -182,7 +182,7 @@ Then open `/me#/welcome` on the runner, do the interview, and press **Keep it**:
 
 ## Limitations
 
-- **The evidence boundary.** In the research behind the proposal, a check that quotes the person's written rules, ordering with reasons, and hidden guesses all worked; and with one deciding fact supplied, Opus 5.5 got 11 of 17 previously missed decisions right, against 0 without it. Nothing measured shows that a model can predict when a person will reject a strong agent's recommendation. The prototype does not claim it.
+- **The evidence boundary.** In the research behind the proposal, a check that quotes the person's written rules, ordering with reasons, and hidden guesses all worked; and with one deciding fact supplied, Opus 5.5 got 11 of 17 previously missed decisions right, against 0 without it. Nothing measured shows that a model can predict when a person will reject a strong agent's recommendation. The MVP does not claim it.
 - One synthetic persona and a fixed set of 40 decisions; no real agents, intake or send-down.
 - Visitor state lives in the browser only. The record can be exported as JSON.
 - Re-routing after kept guidance checks decisions that share a topic tag with the answered one plus the model's suggestions, capped; it can miss a decision that shares neither.
