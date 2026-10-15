@@ -106,6 +106,8 @@ export interface ReviewProject {
   decided: number;
   checked: number;
   minutes_est: number;
+  /** Seconds its cards were in front of the person, from the record's attention events. */
+  seconds_measured: number;
 }
 
 export interface ReviewDispatch {
@@ -129,6 +131,8 @@ export interface Review {
   asked: { decide: number; check_in: number };
   feedback: Record<FeedbackChoice, number>;
   dispatch: ReviewDispatch[];
+  /** Measured time on cards this morning, every prompt counted, and how many decisions it covers. */
+  measured: { seconds: number; decisions: number };
 }
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -152,7 +156,7 @@ export function reviewOf(input: {
   const order = [...(priorities ?? []).filter((id) => projects.some((p) => p.id === id)), ...projects.map((p) => p.id).filter((id) => !priorities?.includes(id))];
   for (const id of order) {
     const rank = priorities ? priorities.indexOf(id) : -1;
-    rows.set(id, { id, name: projects.find((p) => p.id === id)!.name, rank: rank >= 0 ? rank + 1 : null, decided: 0, checked: 0, minutes_est: 0 });
+    rows.set(id, { id, name: projects.find((p) => p.id === id)!.name, rank: rank >= 0 ? rank + 1 : null, decided: 0, checked: 0, minutes_est: 0, seconds_measured: 0 });
   }
   const asked = { decide: 0, check_in: 0 };
   for (const [id, r] of answers) {
@@ -165,6 +169,18 @@ export function reviewOf(input: {
     else row.checked++;
     row.minutes_est += answerMinutes(r.route);
   }
+  // Measured attention (docs/STAGE-11.md): every stretch a card was in front of the person.
+  const measured = { seconds: 0, decisions: 0 };
+  const timed = new Set<string>();
+  for (const r of record) {
+    const s = r.kind === "attention" && r.id ? num(r.seconds) : null;
+    if (s === null || s <= 0) continue;
+    measured.seconds += s;
+    timed.add(r.id!);
+    const row = rows.get(projectOf(r.id!) ?? "");
+    if (row) row.seconds_measured += s;
+  }
+  measured.decisions = timed.size;
   const list = [...rows.values()];
   const top = list.reduce<ReviewProject | null>((best, p) => (p.minutes_est > (best?.minutes_est ?? 0) ? p : best), null);
 
@@ -190,7 +206,7 @@ export function reviewOf(input: {
     }
     briefs.set(r.brief, row);
   }
-  return { projects: list, top, asked, feedback, dispatch: [...briefs.values()] };
+  return { projects: list, top, asked, feedback, dispatch: [...briefs.values()], measured };
 }
 
 /** A runner launch counts as sent once it is running; one still starting may yet fail. */

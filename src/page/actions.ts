@@ -379,7 +379,7 @@ export async function answer(flow: Flow, d: Decision, route: RouteKind, n: Narra
   try {
     const r = await api<{ pushback: string | null }>("/api/answer", { id: d.id, sealed: c.sealed, choice, stage: "check" });
     if (!alive(s0, flow)) return;
-    if (shouldPushBack(r.pushback, S.pushbacksUsed)) {
+    if (shouldPushBack(r.pushback, S.pushbacksUsed, flow.basis)) {
       S.pushbacksUsed++;
       flow.pushback = r.pushback;
       flow.phase = "pushback";

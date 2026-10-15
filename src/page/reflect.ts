@@ -13,6 +13,13 @@ import { hrefFor } from "./router";
 import { Q, S, byId, log, save } from "./state";
 import { render } from "./views";
 
+/** Measured seconds as "2m 05s" (or "40s"). */
+function clock(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return m ? `${m}m ${String(s).padStart(2, "0")}s` : `${s}s`;
+}
+
 const projectOf = (id: string) => byId.get(id)?.project;
 const projectName = (id: string | null) => (id && Q.persona.projects.find((p) => p.id === id)?.name) || id || "";
 
@@ -142,7 +149,7 @@ export function renderReviewView(view: HTMLElement): void {
             { class: "rv-track" },
             h("span", { class: "rv-fill", style: `width:${Math.round((p.minutes_est / max) * 100)}%` }),
           ),
-          h("span", { class: "rv-min" }, p.minutes_est ? `~${p.minutes_est}m` : "—"),
+          h("span", { class: "rv-min" }, p.minutes_est ? `~${p.minutes_est}m` : "—", p.seconds_measured ? h("span", { class: "rv-meas", title: "Measured on its cards" }, ` · ${clock(p.seconds_measured)}`) : null),
           h("span", { class: "rv-dots", "aria-label": `${p.decided} decided, ${p.checked} quick checks` }, GLYPH.decide.repeat(p.decided) + GLYPH.check_in.repeat(p.checked)),
         ),
       ),
@@ -155,6 +162,13 @@ export function renderReviewView(view: HTMLElement): void {
       est(),
       `: ${GLYPH.decide} ${duration(MINUTES_PER_DECISION)}, ${GLYPH.check_in} ${duration(MINUTES_PER_CHECK_IN)} each.`,
     ),
+    r.measured.seconds
+      ? h(
+          "p",
+          { class: "rv-note", id: "rv-measured" },
+          `Measured: ${clock(r.measured.seconds)} with a card in front of you, across ${r.measured.decisions} decision${r.measured.decisions === 1 ? "" : "s"}, every follow-up question counted.`,
+        )
+      : null,
   );
 
   // Settled versus asked: one mark per question this morning.

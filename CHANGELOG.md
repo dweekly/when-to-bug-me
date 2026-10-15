@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Stage 11: answering the submission review.**
+  - **Pushback:** Bug Me no longer argues with a reason already given. The rule is quoted back only when the person picked with no reason, so the flight decision is one prompt shorter.
+  - **Measured time:** each stretch a decision's card is on screen, while the tab is visible, is logged to the record as `{kind: "attention"}`. `#/review` shows it next to the estimate.
+  - **README:** the settle invariant now separates what code checks from what the asking agent declares, and says what an MVP would enforce on its own. See `docs/STAGE-11.md`.
+
 - **Stage 10b: onboarding on your own history (runner only).** `npm run onboard` turns rows extracted from your transcripts into onboarding's history: answered questions only, newest 200, allowed projects only (an allow list you pass; a private deny file can exclude more). It sends them to the runner, which drafts the note with your Claude login; the interview and revision run on `/me#/welcome`. **Keep it** makes the lines facts (by id, so keeping twice adds nothing; never rules) and your "how to work with me" note, which every owner model call then uses. Facts are editable in Rules on `/me`. The hosted Worker refuses owner onboarding; every call is uncached and unrecorded.
 
 - **Stage 10d: hooks into Bug Me (mirror only).** Best-effort mirroring of Claude Code questions and plan approvals on configured machines. A hook script, `mcp/bugme-hook.mjs` (dependency-free, a 2-second deadline, silent, always exits 0), posts AskUserQuestion and ExitPlanMode to a new `/api/me/mirror`, which stores the question and answers at once; routing and titling run afterwards from the owner's Durable Object alarm. Each question gets one ticket per session, tool call and question, so repeats and a lost PreToolUse don't matter, and an answer that lands before routing finishes stands. On `/me` a mirror shows under "In your sessions", briefed, with what Bug Me would have done and "Answer it in the session"; it has no decide button, and the server refuses to settle, resolve or send anything down for it. PostToolUse records the answer by session (picked, typed, or several picks); Stop, SessionEnd or 18 hours with nothing closes it. The open page updates and closes mirrors without a reload. Plan approvals carry no plan text.

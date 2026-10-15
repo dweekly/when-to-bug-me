@@ -321,7 +321,7 @@ test.describe("Skip", () => {
 
   test("is offered at pushback, and not once an answer is final", async ({ page }) => {
     await openDecision(page, "sdk-dependency");
-    await decide(page, "Add the library", "Because generated validators stay in sync with the OpenAPI spec for free.");
+    await decide(page, "Add the library"); // no reason given, so the rule is quoted back
     const push = page.locator("#now .followup.push");
     await expect(push).toBeVisible();
     await push.locator(".skip-q").click();

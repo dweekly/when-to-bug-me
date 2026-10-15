@@ -19,6 +19,7 @@ import { renderVisual } from "./visuals";
 import { type Child, $, announce, h } from "./dom";
 import { type Flow, type ShownBugTurn, F, Q, S, byId, isCard, log, newFlow, save, setF, unfinished } from "./state";
 import { render } from "./views";
+import { attend } from "./attention";
 import { OWNER_PAGE } from "./livemode";
 import { MIRRORS, renderMirror } from "./mirror";
 
@@ -35,6 +36,7 @@ export function quoteLine(c: Card): Child {
 export function renderNow(): void {
   drawNow();
   setVoiceTarget(voiceTargetFor());
+  attend();
 }
 
 /** The box on this card that speech fills: the Why box, the "why?" prompt, or the set-aside reason. */

@@ -1,7 +1,7 @@
 // The answer lifecycle and the firefly's glow, as pure functions so they can be unit-tested apart
 // from the page. The page calls these; it does not make these choices itself.
 //
-//   pick an option -> give a basis or skip -> pushback check -> final answer, guess revealed
+//   pick an option -> give a basis or skip -> pushback check (only with no basis) -> final answer, guess revealed
 //   -> "I'm curious: why?" if surprising and no basis yet -> proposed guidance -> kept -> re-route
 
 import { MAX_PUSHBACKS_PER_SESSION, MIN_BASIS_CHARS, WHY_THRESHOLD } from "./constants";
@@ -23,9 +23,13 @@ export function substantiveBasis(basis: string | undefined): boolean {
   return (basis ?? "").trim().length >= MIN_BASIS_CHARS;
 }
 
-/** Push back only when the choice contradicts the record and the session's ration is not spent. */
-export function shouldPushBack(conflictQuote: string | null, pushbacksUsed: number): boolean {
-  return Boolean(conflictQuote) && pushbacksUsed < MAX_PUSHBACKS_PER_SESSION;
+/**
+ * Push back only when the choice contradicts the record, the person gave no reason, and the session's
+ * ration is not spent. A reason already given is taken as the exception's explanation: quoting the
+ * rule back at it would be one more prompt that changes nothing (review feedback, docs/STAGE-11.md).
+ */
+export function shouldPushBack(conflictQuote: string | null, pushbacksUsed: number, basis?: string): boolean {
+  return Boolean(conflictQuote) && pushbacksUsed < MAX_PUSHBACKS_PER_SESSION && !hasBasis(basis);
 }
 
 /** True when the final answer went against a guess Bug Me was confident in. */

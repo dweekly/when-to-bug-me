@@ -5,7 +5,7 @@
 // once, however the screen is revisited; #/review draws from the record; nothing scrolls sideways at 320px.
 import { type Page, expect, test } from "@playwright/test";
 import { MINUTES_PER_CHECK_IN, MINUTES_PER_DECISION } from "../../src/shared/constants";
-import { freshPage, goRecord, stored, toDecision } from "./helpers";
+import { freshPage, goRecord, openDecision, stored, toDecision } from "./helpers";
 
 const LAUNCH = ["api-rename", "webhook-rename", "settings-redesign", "sdk-dependency", "free-tier"];
 const LAUNCH_MINUTES = 4 * MINUTES_PER_DECISION + MINUTES_PER_CHECK_IN;
@@ -145,7 +145,7 @@ test("#/review draws the morning from the record: time by project against the st
   await expect(review.locator(".rv-bars li .rv-name")).toHaveText(["Billing", "Launch", "Platform"]);
   await expect(review.locator(".rv-bars li .rv-rank")).toHaveText(["#1", "#2", "#3"]);
   await expect(review.locator(".rv-finding")).toHaveText("Most time went to Launch, your #2.");
-  await expect(review.locator('.rv-bars li[data-project="launch"] .rv-min')).toHaveText(`~${LAUNCH_MINUTES}m`);
+  await expect(review.locator('.rv-bars li[data-project="launch"] .rv-min')).toHaveText(new RegExp(`^~${LAUNCH_MINUTES}m( · \\d+(m \\d\\d)?s)?$`)); // the estimate, then any measured time
   await expect(review.locator('.rv-bars li[data-project="launch"] .rv-dots')).toHaveText("●●●●◐");
   await expect(review.locator(".rv-legend")).toContainText("5 asked you: ● 4 · ◐ 1");
   await expect(review.locator(".rv-legend")).toContainText("settled for you now");
@@ -237,4 +237,45 @@ test("after starting the morning over, a refused Copy doesn't bring the old synt
   await expect(page.locator("#brief .brief-actions .think-msg")).toContainText("Couldn't copy");
   const s = (await stored(page))!;
   expect(s.record.filter((r) => r.kind === "dispatch_report")).toHaveLength(0);
+});
+
+test("time with a card in front of you is measured, logged to the record and shown beside the estimate", async ({ page }) => {
+  await freshPage(page);
+  await openDecision(page, "api-rename");
+  await page.waitForTimeout(1600);
+  await page.evaluate("location.hash = '#/review'");
+  await expect.poll(async () => (await stored(page))?.record.filter((r) => r.kind === "attention" && r.id === "api-rename").length).toBe(1);
+  const ev = (await stored(page))!.record.find((r) => r.kind === "attention") as unknown as { seconds: number };
+  expect(ev.seconds).toBeGreaterThanOrEqual(1);
+  expect(ev.seconds).toBeLessThan(10);
+  await expect(page.locator("#rv-measured")).toContainText("across 1 decision,");
+  await expect(page.locator('#rv-projects li[data-project="launch"] .rv-meas')).toBeVisible();
+  // The review isn't a card: no further time is logged while it is open.
+  await page.waitForTimeout(1200);
+  expect((await stored(page))!.record.filter((r) => r.kind === "attention")).toHaveLength(1);
+});
+
+test("a hidden tab stops the clock: time away from the page isn't counted", async ({ page }) => {
+  await freshPage(page);
+  await openDecision(page, "api-rename");
+  await page.waitForTimeout(1200);
+  await page.evaluate(`Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));`);
+  await page.waitForTimeout(2500);
+  await page.evaluate("location.hash = '#/review'");
+  await expect.poll(async () => (await stored(page))?.record.filter((r) => r.kind === "attention").length).toBe(1);
+  const ev = (await stored(page))!.record.find((r) => r.kind === "attention") as unknown as { seconds: number };
+  expect(ev.seconds).toBeLessThan(3);
+});
+
+test("leaving the page and coming back with Back restarts the clock on the card in front", async ({ page }) => {
+  await freshPage(page);
+  await openDecision(page, "api-rename");
+  await page.waitForTimeout(1200);
+  // What the back-forward cache does: the page is hidden and shown again, with no render in between.
+  await page.evaluate(`window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }))`);
+  await page.evaluate(`window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))`);
+  await page.waitForTimeout(1200);
+  await page.evaluate("location.hash = '#/review'");
+  await expect.poll(async () => (await stored(page))?.record.filter((r) => r.kind === "attention" && r.id === "api-rename").length).toBe(2);
 });
