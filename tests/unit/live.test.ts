@@ -5,6 +5,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Card } from "../../src/shared/types";
 import { enforceSettleInvariant } from "../../src/shared/route";
+import { MAX_DELIVERY_CHARS, MAX_REASON_CHARS, MAX_TRANSCRIPT_CHARS } from "../../src/shared/constants";
 import type { RouteOutput } from "../../src/shared/types";
 import {
   AskError,
@@ -96,6 +97,16 @@ describe("the ticket lifecycle", () => {
     const d = decisionFromAsk(ASK, "t-settle");
     const t = await q.add(d, cardFor(d.id, "settle", "B"), "Wait until Monday, then deploy.", 0);
     expect(reply(t)).toEqual({ status: "settled", ticket: "t-settle", choice: "B", label: "Wait for Monday", rule: OWNER_RULES[2].text, instruction: "Wait until Monday, then deploy." });
+  });
+
+  it("delivers a whole transcript decided without Bug Me's reading, final condition included (issue #51)", () => {
+    const d = decisionFromAsk(ASK, "t-long");
+    const words = `${"I'd wait for Monday, since nobody is around this weekend to watch it. ".repeat(40).slice(0, MAX_TRANSCRIPT_CHARS + MAX_REASON_CHARS - 40).trimEnd()} Do not deploy before Friday.`;
+    const instruction = `${"Hold the deploy. ".repeat(60).slice(0, 1000).trimEnd()} Owner's words, as said: “${words}”`;
+    const r = parseResolution({ outcome: "option", choice: "B", reason: words, instruction }, d);
+    expect(r.reason).toBe(words);
+    expect(r.instruction).toBe(instruction);
+    expect(r.instruction!.endsWith("Do not deploy before Friday.”")).toBe(true);
   });
 
   it("queues anything else as pending, then answers with the owner's choice and reason", async () => {
@@ -193,8 +204,8 @@ describe("the ticket lifecycle", () => {
 
   it("clips an over-long reason rather than refusing it, so a delivery can never jam", () => {
     const d = decisionFromAsk(ASK, "t-long");
-    const r = parseResolution({ outcome: "set-aside", reason: "x".repeat(2000), instruction: "y".repeat(2000) }, d);
-    expect(r.reason!.length).toBe(1200);
+    const r = parseResolution({ outcome: "set-aside", reason: "x".repeat(MAX_DELIVERY_CHARS + 800), instruction: "y".repeat(MAX_DELIVERY_CHARS + 800) }, d);
+    expect(r.reason!.length).toBe(MAX_DELIVERY_CHARS);
     expect(r.instruction!.endsWith("…")).toBe(true);
   });
 

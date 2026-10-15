@@ -4,7 +4,7 @@
 
 import type { Brief, BriefEdits, Catalog, Launch, Report, StoredWalk } from "../shared/dispatch";
 import type { OnboardingRun } from "../shared/onboarding";
-import { MAX_REASON_CHARS, MIRROR_KEPT_MS, MIRROR_ORPHAN_MS } from "../shared/constants";
+import { MAX_DELIVERY_CHARS, MAX_REASON_CHARS, MIRROR_KEPT_MS, MIRROR_ORPHAN_MS } from "../shared/constants";
 import type { Card, Decision, Fact, MirrorAnswer, Persona, Reversible, Rule } from "../shared/types";
 import type { MirrorRecord } from "./mirror";
 
@@ -315,9 +315,9 @@ export function parseResolution(raw: unknown, d: Decision): Resolution {
     if (t) (r as unknown as Record<string, unknown>)[k] = t.length > max ? `${t.slice(0, max - 1)}…` : t;
   };
   opt("course", MAX_REASON_CHARS);
-  opt("reason", 1200);
+  opt("reason", MAX_DELIVERY_CHARS);
   opt("conditions", 1200);
-  opt("instruction", 1200);
+  opt("instruction", MAX_DELIVERY_CHARS);
   opt("guidance", 600);
   opt("kind", 20);
   if (b.update === true) r.update = true;

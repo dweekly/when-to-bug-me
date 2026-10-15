@@ -29,7 +29,7 @@ import { paintThread, renderNow, startPunt } from "./card";
 import { ROUTE_LABEL, agenda, reroutableIds, routeOf, waitingIds } from "./derive";
 import { announce } from "./dom";
 import { go } from "./router";
-import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, log, newFlow, save, setF, talking } from "./state";
+import { type Flow, type ShownBugTurn, type State, type Thread, F, Q, S, byId, isCard, log, newFlow, save, setF, talking } from "./state";
 import { render, renderRules, setRuleDraft } from "./views";
 import { recordTransition } from "./reflect";
 import { type Delivery, OWNER_PAGE, deliver, deliveryProblem, saveContext, saveOneFact } from "./live";
@@ -315,24 +315,33 @@ export async function confirmThread(flow: Flow, d: Decision, route: RouteKind): 
 export async function decideUnread(flow: Flow, d: Decision, route: RouteKind, key: string): Promise<void> {
   if (flow.phase !== "choose" || sending.has(flow) || !flow.unavailable || !d.options.some((o) => o.key === key)) return;
   sending.add(flow);
+  const s0 = S;
+  const why = flow.unavailable;
+  // Leaving the card while the last words finish cancels the decision, as it does a confirmation.
+  let left = false;
+  const leave = () => (left = true);
+  window.addEventListener("hashchange", leave);
   try {
     await drainVoice();
-    if (flow.phase !== "choose") return;
+    if (left || !alive(s0, flow) || !showing(flow) || flow.phase !== "choose" || !flow.unavailable) return;
+    // The draft stays in the box until the answer is recorded (finalize clears it), so a failed
+    // attempt keeps every word for the next one.
     const words = [...jordanTurns(flow.turns).map((t) => t.text.trim()), flow.think.trim()].filter(Boolean).join(" ");
     flow.choice = key;
-    flow.pick = null;
-    flow.think = "";
     flow.basis = words;
     flow.evidence = words;
     flow.conditions = "";
     flow.questions = [];
     flow.noMoreQuestions = false;
     flow.hasFeedback = false;
-    log("decided_unread", { id: d.id, choice: key, why_unread: flow.unavailable });
+    log("decided_unread", { id: d.id, choice: key, why_unread: why });
     flow.unavailable = "";
     threadCard(flow, d);
     await answer(flow, d, route, { narration: words, narrationMarks: [], unparsed: Boolean(words) });
+    // Not recorded (the check or the record failed): back to the same choice, panel and words.
+    if (alive(s0, flow) && flow.phase === "choose" && !S.answered[d.id]) flow.unavailable = why;
   } finally {
+    window.removeEventListener("hashchange", leave);
     sending.delete(flow);
     if (flow.phase === "choose") repaint(flow);
   }
@@ -484,6 +493,9 @@ export async function finalize(flow: Flow, d: Decision, route: RouteKind, choice
   if (!alive(s0, flow)) return;
   flow.guess = r.guess;
   flow.send_down = send_down;
+  // Recorded: a draft kept through an unread decision (issue #51) has gone down with it.
+  flow.think = "";
+  flow.pick = null;
   S.answered[d.id] = {
     initial: flow.initial ?? choice,
     final: choice,
@@ -964,14 +976,18 @@ export async function retryRouting(ids: string[]): Promise<void> {
     const worker = async () => {
       while (queue.length && S === s0) {
         const id = queue.shift()!;
+        // Routed under the rules and facts as they are now; an edit meanwhile (a newer version, which
+        // re-routes waiting decisions itself) or a card that arrived another way makes this one stale.
+        const version = S.version;
+        const current = () => S === s0 && S.version === version && !isCard(S.cards[id]);
         try {
           const card = await api<Card>("/api/route", { id, rules: S.rules, facts: S.facts });
-          if (S !== s0) return;
+          if (!current()) continue;
           S.cards[id] = card;
           S.evaluated[id] = true;
           fixed++;
         } catch (e) {
-          if (S !== s0) return;
+          if (!current()) continue;
           S.cards[id] = { id, unavailable: (e as Error).message };
         }
         save();
@@ -983,7 +999,8 @@ export async function retryRouting(ids: string[]): Promise<void> {
     retryingRoutes = false;
   }
   if (S !== s0) return;
-  const left = ids.length - fixed;
+  const left = ids.filter((id) => !isCard(S.cards[id])).length;
+  fixed = ids.length - left;
   announce(left ? `${fixed} sorted; ${left} still couldn't be sorted.` : `All ${fixed} sorted.`);
   render();
 }

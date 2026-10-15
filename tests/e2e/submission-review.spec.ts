@@ -4,7 +4,7 @@
 // the card's source badge (#57), review totals (#52), Dispatch not stealing navigation (#53), the list
 // of decisions (#59), the reset guard (#60), the reason count (#61) and the build id (#49).
 import { type Page, expect, test } from "@playwright/test";
-import { decideQuietly, freshPage, goRecord, openDecision, reply, stored } from "./helpers";
+import { decideQuietly, editRule, freshPage, goRecord, openDecision, reply, stored } from "./helpers";
 
 const unavailable = (error = "no API key configured; only recorded answers are available") => ({ status: 503, contentType: "application/json", body: JSON.stringify({ error, unavailable: true }) });
 
@@ -194,4 +194,53 @@ test("#64: a job Bug Me decided opens to what it decided and why", async ({ page
   await expect(detail).toContainText(/Decided by (live Claude|cached Claude|recorded Claude run|code stand-in)\./);
   // Undo and the marks are still there beside it.
   await expect(row.locator(".dundo")).toBeVisible();
+});
+
+test("#51: if recording an unread answer fails, the words typed after the notice are kept for the next try", async ({ page }) => {
+  await openDecision(page, "api-rename");
+  await page.route("**/api/converse", (route) => route.fulfill(unavailable()));
+  await page.locator("#think").fill("Keep user_id.");
+  await page.locator("#now .send").click();
+  await expect(page.locator("#now .unread")).toBeVisible();
+  await page.locator("#think").fill("Do not deploy before Friday.");
+  let failOnce = true;
+  await page.route("**/api/answer", (route) => {
+    if (failOnce) {
+      failOnce = false;
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "down for a moment" }) });
+    }
+    return route.continue();
+  });
+  await page.locator("#now .unread .decide-unread", { hasText: "Keep" }).click();
+  await expect(page.locator("#now .unread")).toBeVisible();
+  await expect(page.locator("#think")).toHaveValue("Do not deploy before Friday.");
+  await page.locator("#now .unread .decide-unread", { hasText: "Keep" }).click();
+  await expect(page.locator("#now .reveal-line")).toBeVisible();
+  const s = (await stored(page))!;
+  expect(s.answered["api-rename"].send_down).toContain("“Keep user_id. Do not deploy before Friday.”");
+});
+
+test("#55: a routing retry that comes back after a rule edit doesn't overwrite the newer route", async ({ page }) => {
+  await failRoutes(page, (id) => id === "formatter-run");
+  await page.unroute("**/api/queue");
+  // Hold only the retry's request; the re-route the rule edit starts goes through.
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  let held = false;
+  await page.route("**/api/route", async (route) => {
+    const body = route.request().postDataJSON() as { id?: string };
+    if (!held && body.id === "formatter-run") {
+      held = true;
+      await gate;
+    }
+    await route.continue();
+  });
+  await page.locator("#retry-routes").click();
+  await expect.poll(() => held).toBe(true);
+  await editRule(page, "R2", "Housekeeping in our own repos (formatting, lint fixes, dependency bumps, deleting branches): always ask me first.");
+  await expect.poll(async () => (await stored(page))!.cards["formatter-run"].route, { timeout: 15_000 }).toBeTruthy();
+  const newer = (await stored(page))!.cards["formatter-run"].route;
+  release();
+  await page.waitForTimeout(1000);
+  expect((await stored(page))!.cards["formatter-run"].route).toBe(newer);
 });
