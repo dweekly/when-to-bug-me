@@ -171,6 +171,24 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
   paint();
 }
 
+/**
+ * On the public demo, reading the history and asking about it is Bug Me's own work, so it just happens
+ * when the page opens (issue #71): the person's only job is to answer. Both steps replay recorded
+ * Claude runs, so this costs nothing. The owner's page keeps its button: there it is a live call.
+ */
+/** The reset (generation) a read is running for: one per reset, so a tour restarting onboarding mid-read starts a fresh one. */
+let readingFor = -1;
+async function readAndAsk(): Promise<void> {
+  if (Q.owner || readingFor === generation) return;
+  const g = (readingFor = generation);
+  try {
+    if (!w.note) await step("draft");
+    if (g === generation && w.note && !w.questions && !w.error) await step("interview");
+  } finally {
+    if (readingFor === g) readingFor = -1;
+  }
+}
+
 const pct = (n: number) => `${n}`;
 function stats(): HTMLElement {
   const quick = history.filter((x) => (x.seconds ?? 99) <= 5).length;
@@ -335,7 +353,7 @@ export function renderWelcomeView(view: HTMLElement): void {
         { class: "quiet" },
         Q.owner
           ? "Bug Me reads your past decisions and writes down the rules you seem to follow, with the decisions behind each one. Then it asks about the rules it isn't sure of and fixes them using your answers. It all runs on this Mac, with your Claude login."
-          : "Before Bug Me decides anything for Jordan, it reads Jordan's past decisions and writes down the rules Jordan seems to follow, with the decisions behind each one. Then it asks about the rules it isn't sure of and fixes them using Jordan's answers.",
+          : `Before Bug Me decides anything for Jordan, it reads Jordan's last ${history.length} decisions to learn how Jordan decides. Here's what it found, and what it wants to ask Jordan.`,
       ),
       h(
         "ol",
@@ -343,27 +361,38 @@ export function renderWelcomeView(view: HTMLElement): void {
         h(
           "li",
           { id: "step-read" },
-          h("h2", {}, Q.owner ? "Read your past decisions" : "Read Jordan's past decisions"),
+          h("h2", {}, Q.owner ? "Read your past decisions" : "What it read"),
           stats(),
-          w.note || Q.owner ? null : h("button", { type: "button", class: "primary", id: "draft-note", disabled: Boolean(w.busy), onclick: () => void step("draft") }, busyLabel("draft", "Find Jordan's rules", "Reading…")),
+          !Q.owner && w.busy === "draft" ? h("p", { class: "quiet small", role: "status" }, "Reading Jordan's decisions…") : null,
+          // Nothing to press: it reads on its own. If that failed, the one way forward is to try again.
+          !Q.owner && !w.note && w.error && !w.busy ? h("button", { type: "button", class: "primary", id: "retry-read", onclick: () => ((w.error = ""), void readAndAsk()) }, "Try again") : null,
         ),
         w.note
           ? h(
               "li",
               { id: "step-draft" },
-              h("h2", {}, "The rules it found, and why"),
+              h("h2", {}, Q.owner ? "The rules it found, and why" : "How Jordan seems to decide"),
               w.revised
                 ? h("details", { class: "draft-was" }, h("summary", {}, `Before your answers, ${w.note.length} rules`), h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))))
                 : h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))),
               source(w.noteSource),
-              w.questions ? null : h("button", { type: "button", class: "primary", id: "start-interview", disabled: Boolean(w.busy), onclick: () => void step("interview") }, busyLabel("interview", Q.owner ? "Ask me about them" : "Ask Jordan about them", "Thinking…")),
+              w.questions
+                ? null
+                : Q.owner
+                  ? h("button", { type: "button", class: "primary", id: "start-interview", disabled: Boolean(w.busy), onclick: () => void step("interview") }, busyLabel("interview", "Ask me about them", "Thinking…"))
+                  : w.busy === "interview"
+                    ? h("p", { class: "quiet small", role: "status" }, "Working out what to ask…")
+                    : w.error && !w.busy
+                      ? h("button", { type: "button", class: "primary", id: "retry-read", onclick: () => ((w.error = ""), void readAndAsk()) }, "Try again")
+                      : null,
             )
           : null,
         w.questions
           ? h(
               "li",
               { id: "step-interview" },
-              h("h2", {}, "Questions about the rules it isn't sure of"),
+              h("h2", {}, Q.owner ? "Questions about the rules it isn't sure of" : "Questions for Jordan"),
+              Q.owner ? null : h("p", { class: "quiet small" }, "Bug Me isn't sure about these. Answer each in a sentence, or press DEMO REPLY for Jordan's answer."),
               interview(w.questions),
               source(w.questionsSource),
               w.revised
@@ -374,7 +403,7 @@ export function renderWelcomeView(view: HTMLElement): void {
                     "div",
                     { class: "row" },
                     h("p", { class: "think-msg", id: "revise-why", role: "status" }, canRevise().why),
-                    h("button", { type: "button", class: "primary", id: "revise-note", disabled: !canRevise().ok, onclick: () => void step("revise") }, busyLabel("revise", "Update the rules from these answers", "Updating…")),
+                    h("button", { type: "button", class: "primary", id: "revise-note", disabled: !canRevise().ok, onclick: () => void step("revise") }, busyLabel("revise", "Update the rules", "Updating…")),
                   ),
             )
           : null,
@@ -403,6 +432,7 @@ export function renderWelcomeView(view: HTMLElement): void {
     ),
   );
   if (!w.questions || w.revised) setVoiceTarget(null);
+  if (!Q.owner && !w.questions && !w.busy && !w.error) void readAndAsk();
   // Size the answer boxes to what's in them now that they're on the page (a box measures nothing detached).
   for (const ta of view.querySelectorAll<HTMLTextAreaElement>(".interview textarea")) {
     ta.style.height = "auto";
