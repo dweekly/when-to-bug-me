@@ -10,12 +10,10 @@ test.beforeEach(async ({ page }) => {
 test("Home links to onboarding; it reads, drafts with receipts, interviews and revises", async ({ page }) => {
   await page.locator(".welcome-link a").click();
   await expect(page.locator("#step-read .welcome-stats")).toContainText("30 decisions");
-  await page.locator("#draft-note").click();
   const lines = page.locator("#step-draft .note-line");
   await expect(lines.first()).toBeVisible();
   await lines.first().locator(".cites").click();
   await expect(page.locator("#step-draft .cites-list li").first()).toBeVisible();
-  await page.locator("#start-interview").click();
   const revise = page.locator("#revise-note");
   await expect(revise).toBeDisabled();
   await page.locator("#step-interview .demo-reply").first().click();
@@ -43,8 +41,6 @@ test("Rules points to how a note like Jordan's is drafted", async ({ page }) => 
 
 test("on a phone, onboarding fits the width @narrow", async ({ page }) => {
   await page.goto("/app#/welcome");
-  await page.locator("#draft-note").click();
-  await page.locator("#start-interview").click();
   await page.locator("#step-interview .demo-reply").first().click();
   await page.locator("#revise-note").click();
   await expect(page.locator("#step-note")).toBeVisible();
@@ -59,8 +55,6 @@ test("the hosted owner page refuses onboarding on your own history: it runs on t
 
 test("a revision in flight can't be sent twice, and an answer edited meanwhile isn't shown as the one it used", async ({ page }) => {
   await page.goto("/app#/welcome");
-  await page.locator("#draft-note").click();
-  await page.locator("#start-interview").click();
   await page.locator("#step-interview .demo-reply").first().click();
   let posts = 0;
   let release!: () => void;
@@ -113,9 +107,7 @@ test.describe("speech and the interview", () => {
 
   test("speech fills an open answer, and never a locked one", async ({ page }) => {
     await page.goto("/app#/welcome");
-    await page.locator("#draft-note").click();
-    await page.locator("#start-interview").click();
-    await page.locator("#answer-q1").focus();
+        await page.locator("#answer-q1").focus();
     await page.locator("#voice-btn").click();
     await say(page, "Yes, that's the line.");
     await expect(page.locator("#answer-q1")).toHaveValue(/Yes, that's the line\./);

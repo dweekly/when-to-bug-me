@@ -10,8 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 test("with no key, Revise waits for all three of Jordan's answers, and says why", async ({ page }) => {
   await page.goto("/app#/welcome");
-  await page.locator("#draft-note").click();
-  await page.locator("#start-interview").click();
+  // Nothing to press first: Bug Me reads and asks on its own (issue #71).
   const demos = page.locator("#step-interview .demo-reply");
   await expect(demos).toHaveCount(3);
   await demos.nth(0).click();
@@ -27,15 +26,17 @@ test("with no key, Revise waits for all three of Jordan's answers, and says why"
 
 test("the tour starts from the top after onboarding was done by hand", async ({ page }) => {
   await page.goto("/app#/welcome");
-  await page.locator("#draft-note").click();
-  await expect(page.locator("#step-draft")).toBeVisible();
+  await expect(page.locator("#step-interview")).toBeVisible();
+  await page.locator("#step-interview .demo-reply").first().click();
   await page.locator(".tours-btn").click();
   await page.locator('.tour-item[data-tour="welcome"]').click();
   await expect(page.locator(".driver-popover-title")).toHaveText("It reads first");
-  await expect(page.locator("#draft-note")).toBeVisible();
+  // Started over: the answer typed before is gone, and it has read and asked again on its own.
+  await expect(page.locator("#step-interview")).toBeVisible();
+  await expect(page.locator("#answer-q1")).toHaveValue("");
 });
 
-test("a draft that was still out when the tour restarted onboarding doesn't come back", async ({ page }) => {
+test("a read still out when the tour restarted onboarding is dropped, and the restart reads again", async ({ page }) => {
   await page.goto("/app#/welcome");
   let release!: () => void;
   const held = new Promise<void>((r) => (release = r));
@@ -43,12 +44,12 @@ test("a draft that was still out when the tour restarted onboarding doesn't come
     await held;
     await route.continue();
   });
-  await page.locator("#draft-note").click();
   await page.locator(".tours-btn").click();
   await page.locator('.tour-item[data-tour="welcome"]').click();
   await expect(page.locator(".driver-popover-title")).toHaveText("It reads first");
   release();
-  await page.waitForTimeout(1500);
-  await expect(page.locator("#draft-note")).toBeVisible();
-  await expect(page.locator("#step-draft")).toHaveCount(0);
+  // The read from before the restart is dropped; the restart's own read lands, once, with no error.
+  await expect(page.locator("#step-draft")).toHaveCount(1);
+  await expect(page.locator("#step-interview")).toBeVisible();
+  await expect(page.getByText("Couldn't do that")).toHaveCount(0);
 });
