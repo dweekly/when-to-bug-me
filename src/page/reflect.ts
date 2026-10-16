@@ -160,7 +160,7 @@ export function renderReviewView(view: HTMLElement): void {
     h(
       "p",
       { class: "rv-note" },
-      priorities ? "#: Jordan's stated priorities (synthetic). " : "",
+      priorities ? "#: Jordan's stated priorities (made up for this demo). " : "",
       "Minutes ",
       est(),
       `: ${GLYPH.decide} ${duration(MINUTES_PER_DECISION)}, ${GLYPH.check_in} ${duration(MINUTES_PER_CHECK_IN)} each.`,
