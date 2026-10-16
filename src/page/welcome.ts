@@ -9,7 +9,7 @@ import { type HistoryItem, type InterviewQuestion, MAX_ANSWER_CHARS, type NoteLi
 import { ONBOARDING_ANSWERS } from "../shared/onboardingScript";
 import type { Source } from "../shared/types";
 import { api } from "./api";
-import { SOURCE_LABEL } from "./derive";
+import { SOURCE_HINT, SOURCE_LABEL } from "./derive";
 import { $, announce, h } from "./dom";
 import { hrefFor } from "./router";
 import { Q, S, save } from "./state";
@@ -141,7 +141,7 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
           const edited = { ...w.answers };
           useRun(r.run);
           Object.assign(w, { answers: edited, revised: null, revisedSource: null });
-          throw new Error("you changed an answer while Bug Me revised; press Revise again");
+          throw new Error("you changed an answer while Bug Me updated the rules; press Update again");
         }
         useRun(r.run);
       }
@@ -159,10 +159,10 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
       const r = await api<{ lines: RevisedLine[]; source: Source }>("/api/onboarding/revise", { note: w.note, questions: w.questions, answers: sent });
       if (g !== generation) return;
       // An answer edited while Bug Me revised didn't make this note: leave the answers open to send again.
-      if (JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me revised; press Revise again");
+      if (JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me updated the rules; press Update again");
       Object.assign(w, { revised: r.lines, revisedSource: r.source, submitted: sent });
     }
-    announce(kind === "draft" ? "Note drafted." : kind === "interview" ? "Questions ready." : kind === "keep" ? "Kept." : "Note revised.");
+    announce(kind === "draft" ? "Rules inferred." : kind === "interview" ? "Questions ready." : kind === "keep" ? "Kept." : "Rules updated.");
   } catch (e) {
     if (g !== generation) return;
     w.error = (e as Error).message;
@@ -291,14 +291,15 @@ function interview(qs: InterviewQuestion[]): HTMLElement {
         "li",
         { class: "iq" },
         h("img", { class: "bug-face", src: "/firefly/clay/attentive.png", alt: "", width: 28, height: 28 }),
-        h("div", {}, h("p", { class: "turn-q" }, q.text), h("div", { class: "think-field composer" }, ta, demo)),
+        // The question is the firefly's; the answer below it is the person's, drawn as their turn (issue #66).
+        h("div", {}, h("p", { class: "turn-q" }, q.text), h("div", { class: "iq-answer" }, h("span", { class: "iq-who" }, Q.owner ? "You" : "Jordan"), h("div", { class: "think-field composer" }, ta, demo))),
       );
     }),
   );
 }
 
 const busyLabel = (k: typeof w.busy, idle: string, busy: string) => (w.busy === k ? busy : idle);
-const source = (s: Source | null) => (s ? h("p", { class: "quiet small" }, SOURCE_LABEL[s]) : null);
+const source = (s: Source | null) => (s ? h("p", { class: "quiet small", title: SOURCE_HINT[s] }, SOURCE_LABEL[s]) : null);
 
 export function renderWelcomeView(view: HTMLElement): void {
   if (Q.owner && run === null) {
@@ -315,7 +316,7 @@ export function renderWelcomeView(view: HTMLElement): void {
         "section",
         { class: "page welcome" },
         h("h1", {}, "Getting to know you"),
-        h("p", { class: "quiet" }, "Bug Me drafts your note from your own decisions, on the runner, with your Claude login. On this Mac:"),
+        h("p", { class: "quiet" }, "Bug Me infers the rules you seem to follow from your own decisions, on the runner, with your Claude login. On this Mac:"),
         h("pre", { class: "onboard-cmd" }, h("code", {}, "npm run onboard -- --allow <allow-list.json> <rows.jsonl>")),
         h("p", { class: "quiet small" }, "Rows extracted from your transcripts; only projects on your allow list are read."),
         w.error ? h("p", { class: "think-msg", role: "alert" }, w.error) : null,
@@ -329,34 +330,40 @@ export function renderWelcomeView(view: HTMLElement): void {
       "section",
       { class: "page welcome" },
       h("h1", {}, Q.owner ? "Getting to know you" : "Getting to know Jordan"),
-      h("p", { class: "quiet" }, Q.owner ? "From your own decisions, drafted on this Mac with your Claude login." : "Before it routes anything, Bug Me learns how Jordan decides."),
+      h(
+        "p",
+        { class: "quiet" },
+        Q.owner
+          ? "Bug Me reads your past decisions, infers the rules you seem to follow (each with the decisions behind it), asks about the ones it's unsure of, and updates them from your answers. On this Mac, with your Claude login."
+          : "Before it routes anything, Bug Me reads Jordan's past decisions, infers the rules Jordan seems to follow (each with the decisions behind it), asks about the ones it's unsure of, and updates them from the answers.",
+      ),
       h(
         "ol",
         { class: "welcome-steps" },
         h(
           "li",
           { id: "step-read" },
-          h("h2", {}, "Read"),
+          h("h2", {}, Q.owner ? "Read your past decisions" : "Read Jordan's past decisions"),
           stats(),
-          w.note || Q.owner ? null : h("button", { type: "button", class: "primary", id: "draft-note", disabled: Boolean(w.busy), onclick: () => void step("draft") }, busyLabel("draft", "Draft the note", "Reading…")),
+          w.note || Q.owner ? null : h("button", { type: "button", class: "primary", id: "draft-note", disabled: Boolean(w.busy), onclick: () => void step("draft") }, busyLabel("draft", "Infer Jordan's rules", "Reading…")),
         ),
         w.note
           ? h(
               "li",
               { id: "step-draft" },
-              h("h2", {}, "Draft"),
+              h("h2", {}, "Rules it inferred, and why"),
               w.revised
-                ? h("details", { class: "draft-was" }, h("summary", {}, `The first draft, ${w.note.length} lines`), h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))))
+                ? h("details", { class: "draft-was" }, h("summary", {}, `Before your answers, ${w.note.length} rules`), h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))))
                 : h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))),
               source(w.noteSource),
-              w.questions ? null : h("button", { type: "button", class: "primary", id: "start-interview", disabled: Boolean(w.busy), onclick: () => void step("interview") }, busyLabel("interview", Q.owner ? "Interview me" : "Interview Jordan", "Thinking…")),
+              w.questions ? null : h("button", { type: "button", class: "primary", id: "start-interview", disabled: Boolean(w.busy), onclick: () => void step("interview") }, busyLabel("interview", Q.owner ? "Ask me about them" : "Ask Jordan about them", "Thinking…")),
             )
           : null,
         w.questions
           ? h(
               "li",
               { id: "step-interview" },
-              h("h2", {}, "Interview"),
+              h("h2", {}, Q.owner ? "Questions about the unclear ones" : "Questions for Jordan about the unclear ones"),
               interview(w.questions),
               source(w.questionsSource),
               w.revised
@@ -367,7 +374,7 @@ export function renderWelcomeView(view: HTMLElement): void {
                     "div",
                     { class: "row" },
                     h("p", { class: "think-msg", id: "revise-why", role: "status" }, canRevise().why),
-                    h("button", { type: "button", class: "primary", id: "revise-note", disabled: !canRevise().ok, onclick: () => void step("revise") }, busyLabel("revise", "Revise the note", "Revising…")),
+                    h("button", { type: "button", class: "primary", id: "revise-note", disabled: !canRevise().ok, onclick: () => void step("revise") }, busyLabel("revise", "Update the rules from these answers", "Updating…")),
                   ),
             )
           : null,
@@ -375,17 +382,17 @@ export function renderWelcomeView(view: HTMLElement): void {
           ? h(
               "li",
               { id: "step-note" },
-              h("h2", {}, Q.owner ? "Your drafted note" : "Jordan's drafted note"),
+              h("h2", {}, Q.owner ? "Your rules, updated" : "Jordan's rules, updated"),
               h("ol", { class: "wnote revised" }, ...w.revised.map((l) => noteLine(l, true))),
               source(w.revisedSource),
               Q.owner
                 ? run && run !== "none" && run.kept_at
-                  ? h("p", { class: "quiet small" }, `Kept${kept ? `: ${kept} new facts` : ""}. It's your note now; edit any line in `, h("a", { href: hrefFor({ view: "rules" }) }, "Rules"), ".")
+                  ? h("p", { class: "quiet small" }, `Kept${kept ? `: ${kept} new facts` : ""}. They're your rules now; edit any of them in `, h("a", { href: hrefFor({ view: "rules" }) }, "Rules"), ".")
                   : h("button", { type: "button", class: "primary", id: "keep-note", disabled: Boolean(w.busy), onclick: () => void step("keep") }, busyLabel("keep", "Keep it", "Keeping…"))
                 : h(
                     "p",
                     { class: "quiet small" },
-                    "The morning runs on Jordan's hand-written note (",
+                    "This is a separate demonstration: the morning still runs on Jordan's hand-written rules (",
                     h("a", { href: hrefFor({ view: "rules" }) }, "Rules"),
                     "), so its recordings stay exact. Next, in a real release: a week of guessing before every answer, acting on none.",
                   ),

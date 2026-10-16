@@ -14,7 +14,7 @@ for (const x of DISPATCH_EXAMPLES) {
     await page.locator(`.demo-chip[data-example="${x.id}"]`).click();
     await page.locator("#draft-brief").click();
     await page.locator("#brief .brief-more summary").click();
-    await expect(page.locator("#brief .brief-more")).toContainText("recorded Claude run");
+    await expect(page.locator("#brief .brief-more")).toContainText("Claude, recorded earlier");
     await expect(page.locator("#brief .brief-meta")).toBeVisible();
     if (x.id === "billing-complaints") {
       await expect(page.locator("#brief .meta-chip.local")).toBeVisible();

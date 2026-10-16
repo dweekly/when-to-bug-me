@@ -23,7 +23,7 @@ test("Home links to onboarding; it reads, drafts with receipts, interviews and r
   await revise.click();
   await expect(page.locator("#step-note .note-line").first()).toBeVisible();
   await expect(page.locator("#step-note .change-changed")).toHaveCount(1);
-  await expect(page.locator("#step-note")).toContainText("hand-written note");
+  await expect(page.locator("#step-note")).toContainText("hand-written rules");
   // The draft folds away once there's a revision.
   await expect(page.locator("#step-draft details.draft-was")).toBeVisible();
   // The answers that made it are locked; Change answers drops the revision and unlocks them.
@@ -75,7 +75,7 @@ test("a revision in flight can't be sent twice, and an answer edited meanwhile i
   await expect(page.locator("#revise-note")).toBeDisabled();
   release();
   expect(posts).toBe(1);
-  await expect(page.getByRole("alert")).toContainText("changed an answer while Bug Me revised");
+  await expect(page.getByRole("alert")).toContainText("changed an answer while Bug Me updated the rules");
   await expect(page.locator("#step-interview textarea").nth(1)).toHaveValue("Typing while it's out.");
   await page.unroute("**/api/onboarding/revise");
   await page.locator("#revise-note").click();
