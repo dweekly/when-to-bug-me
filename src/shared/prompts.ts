@@ -20,7 +20,7 @@ export const TITLE_PROMPT_VERSION = "2026-10-13.2";
 /** The dispatch prompt (docs/STAGE-8.md), versioned on its own. */
 export const DISPATCH_PROMPT_VERSION = "2026-10-13.2";
 /** Onboarding: the note, the interview and the revision (docs/STAGE-10.md). */
-export const ONBOARD_PROMPT_VERSION = "2026-10-14.1";
+export const ONBOARD_PROMPT_VERSION = "2026-10-16.1";
 /** Walk me through it (docs/STAGE-9.md). */
 export const WALK_PROMPT_VERSION = "2026-10-14.1";
 
@@ -571,7 +571,8 @@ ${rules.map((r) => `- ${r.text}`).join("\n") || "(none)"}
 ${history.map(historyLine).join("\n")}
 
 === Write the note ===
-- At most 8 lines, each one short sentence (at most 25 words), in plain words, about ${n}, written so an agent can act on it.
+- At most 8 lines, each one short sentence (at most 25 words), about ${n}, written so an agent can act on it.
+- Write for ${n} to read: plain everyday words, the way you'd explain it to a smart 12-year-old, without talking down. Keep the real names of ${n}'s tools, projects and people; drop other jargon. Call these "rules" when you mention them; never say "line", "note" or "cite".
 - Only what is distinctive: leave out what any careful person would say ("prefers correct code").
 - Each line cites the decision ids it rests on (cites). Cite only ids above; two or more where you can.
 - kind: preference (how ${n} likes to be asked or briefed), rule-like (a standing call ${n} makes the same way every time, not yet written down), or contradiction (${n}'s decisions point two ways; say both sides in one line).
@@ -594,6 +595,7 @@ ${history.filter((h) => note.some((l) => l.cites.includes(h.id))).map(historyLin
 Ask at most 3 questions, the ones whose answers would most change the note. Lead with what you saw, quoting or naming the decisions, then ask: "You approved every cleanup within seconds but rewrote every pricing call. Is that the line?"
 - One question per line of doubt: a contradiction, a line resting on few decisions, or a line that would change what agents do.
 - Each at most 45 words, spoken aloud, friendly, no preamble.
+- Write for ${n} to read: plain everyday words, the way you'd explain it to a smart 12-year-old, without talking down. Keep the real names of ${n}'s tools, projects and people; drop other jargon. Call these "rules" when you mention them; never say "line", "note" or "cite".
 - about: the note line ids it asks about. ids: q1, q2, q3.`;
 }
 
@@ -614,5 +616,6 @@ Return every line of the draft, each with a change:
 - changed: reworded by an answer; set because to that question's id and why to a short clause in ${n}'s own terms.
 - removed: an answer showed it was wrong; because and why as above.
 - added: a new line an answer gave you (new id n9, n10, …); because and why as above; cites may be empty.
-Keep each line one short sentence (at most 25 words). At most 8 lines remain. Use ${n}'s words where they said it better. Don't change a line no answer touched.`;
+Keep each line one short sentence (at most 25 words). At most 8 lines remain (not counting removed ones): if an answer adds a rule, fold it into the closest line instead, or remove the weakest line. Use ${n}'s words where they said it better. Don't change a line no answer touched.
+Write for ${n} to read: plain everyday words, the way you'd explain it to a smart 12-year-old, without talking down. Keep the real names of ${n}'s tools, projects and people; drop other jargon. Call these "rules" when you mention them; never say "line", "note" or "cite". This applies to why, too.`;
 }

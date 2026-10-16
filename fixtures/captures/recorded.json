@@ -3173,7 +3173,7 @@
     "b334103d850c656dfa7a3fafba2113bc9aa4c91644d3e585e762d47da6512791": {
       "label": "titles sdk-dependency",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Add schema validation library to SDK",
         "done": {
           "A": "Added validation library to SDK",
@@ -3191,7 +3191,7 @@
     "bf2f91bb6f076b011fb0bba72d62947ae311baae54694149a6dfac57d01a1e7a": {
       "label": "titles webhook-rename",
       "output": {
-        "emoji": "🪝",
+        "emoji": "\ud83e\ude9d",
         "title": "Rename webhook created field",
         "done": {
           "A": "Renamed created to created_at",
@@ -3209,7 +3209,7 @@
     "349589694efa102da3e43b4f1ba84944c81703ebf4ac932d1442d99e9f8565f7": {
       "label": "titles api-rename",
       "output": {
-        "emoji": "🏷️",
+        "emoji": "\ud83c\udff7\ufe0f",
         "title": "Rename user_id to account_id in v2",
         "done": {
           "A": "Renamed user_id to account_id",
@@ -3227,7 +3227,7 @@
     "4845974e8e3c56877701f21eb97d5436fcd87c568d064c4c2b04125be09a8192": {
       "label": "titles free-tier",
       "output": {
-        "emoji": "🆓",
+        "emoji": "\ud83c\udd93",
         "title": "Set the v2 free tier limit",
         "done": {
           "A": "Set free tier to 1,000 requests",
@@ -3245,7 +3245,7 @@
     "1f48d9e3bdcfa73aa74fc880e74b5e9c4df03d57ee5426369a554868965c04f9": {
       "label": "titles onsite-flight",
       "output": {
-        "emoji": "✈️",
+        "emoji": "\u2708\ufe0f",
         "title": "Pick flight for Denver onsite",
         "done": {
           "A": "Booked 6:05am flight to Denver",
@@ -3263,7 +3263,7 @@
     "6440182047de3168de0f3aa0108c6d7bad1975de9aac341cec84f2792e165547": {
       "label": "titles reconciliation-path",
       "output": {
-        "emoji": "🧾",
+        "emoji": "\ud83e\uddfe",
         "title": "Choose tax mapping method for invoices",
         "done": {
           "A": "Applied v2 reconciliation, corrected invoices",
@@ -3281,7 +3281,7 @@
     "cb5555e00562e758d7a3e5889a69e85c4ba3d438d7b6ba2057c7184bff329d10": {
       "label": "titles berlin-sync",
       "output": {
-        "emoji": "📅",
+        "emoji": "\ud83d\udcc5",
         "title": "Accept the Berlin billing sync",
         "done": {
           "A": "Accepted weekly 7:30am sync",
@@ -3299,7 +3299,7 @@
     "8558524735182ab30132e1378da00e654eb539e28907d89c46dec9f9ffe405a4": {
       "label": "titles branch-cleanup",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 41 old merged feature branches",
         "done": {
           "A": "Deleted all 41 merged branches",
@@ -3317,7 +3317,7 @@
     "b570c96e88c78ee75c9965eeeeeeb89e5e054265e744107b8bb601bfaf9f11f3": {
       "label": "titles patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump nine dependencies by patch versions",
         "done": {
           "A": "Merged nine dependency patch bumps",
@@ -3335,7 +3335,7 @@
     "a24b313e60919f68084b61183d3c51bf51b1c32bfd9c2fd0a6a322f8babdbda8": {
       "label": "titles formatter-run",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run formatter across SDK repo",
         "done": {
           "A": "Formatted 412 files in SDK",
@@ -3353,7 +3353,7 @@
     "2dff24fb4c590df7408d7b30c7b295aa6ff990ffb85cfbc6660562070d2fd892": {
       "label": "titles ts-sdk-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 37 lint auto-fixes to SDK",
         "done": {
           "A": "Applied 37 lint auto-fixes",
@@ -3371,7 +3371,7 @@
     "b7c66c5c41d2ee534664d08c2afd9c48290de28aaa4adca4aa9ab1f6875b6180": {
       "label": "titles flaky-test",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine or delete flaky export test",
         "done": {
           "A": "Quarantined test with ticket filed",
@@ -3389,7 +3389,7 @@
     "da54f2e3db3257ef0d75af4fefdd05c0f233832916c497a46214c0c5ee52f6ec": {
       "label": "titles py-sdk-format",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run formatter on SDK tests folder",
         "done": {
           "A": "Formatted 58 test files, whitespace only",
@@ -3407,7 +3407,7 @@
     "48ca1f44c24cb4d168a94563a59ff1dcbdeffcadbff74b5a1f4f69aad496b03f": {
       "label": "titles launch-dash-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump dashboard dependencies by patch versions",
         "done": {
           "A": "Merged four patch dependency bumps",
@@ -3425,7 +3425,7 @@
     "39d0e7a82e5983ed4413116c0f68bcc3552a25fd9118370cece1dcff11a6bdf7": {
       "label": "titles webhooks-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 9 merged webhook branches",
         "done": {
           "A": "Deleted 9 merged branches",
@@ -3443,7 +3443,7 @@
     "2358d3a96cd781aa66e55764ff4386357ef9e5fc36b1fc711bc910e64b4479a6": {
       "label": "titles gateway-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 14 merged branches",
         "done": {
           "A": "Deleted 14 merged branches",
@@ -3461,7 +3461,7 @@
     "828f7be73020c8691b273e15cdf08cc48af037ed536b9c9ae190cc7b5e230c28": {
       "label": "titles ts-sdk-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine flaky test_retry_backoff with ticket",
         "done": {
           "A": "Quarantined test_retry_backoff with ticket",
@@ -3479,7 +3479,7 @@
     "c4d3395084fcfd0a5c77ec11a28766e49e984bb7fe9890a54663d59bbeb7a806": {
       "label": "titles web-patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump date library and icon set",
         "done": {
           "A": "Merged the patch version bumps",
@@ -3497,7 +3497,7 @@
     "9a5bc9e0f25f36b4db3340abfcbc5b7e6b8b1c6dbe50da57d8c5e3ad272f2cbb": {
       "label": "titles billing-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 17 merged billing branches",
         "done": {
           "A": "Deleted 17 merged branches",
@@ -3515,7 +3515,7 @@
     "549276c8aea8ec308e8e8eca0ed5344a84d1314bee32adf23b29dfbe11a712cc": {
       "label": "titles billing-gofmt",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run Go formatter on billing scheduler",
         "done": {
           "A": "Ran formatter on 19 files",
@@ -3533,7 +3533,7 @@
     "029998c7cc4a36d14102fbb690357214aa4f0dbd02d1d3162ccbd27caf723596": {
       "label": "titles billing-dash-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine the flaky dashboard test",
         "done": {
           "A": "Skipped flaky test, filed ticket",
@@ -3551,7 +3551,7 @@
     "6ca7cf9298720a4a2e05408e4f7c7078b1438b9dadde6ff3b726ce50f7f29d2a": {
       "label": "titles billing-dash-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump dashboard dependencies by patch versions",
         "done": {
           "A": "Merged three patch dependency bumps",
@@ -3569,7 +3569,7 @@
     "d3dcfdfff897a0abdf6a6d631b32354202841cb5f5c868b44a6db0961e8d758f": {
       "label": "titles tax-mapper-lint",
       "output": {
-        "emoji": "🧾",
+        "emoji": "\ud83e\uddfe",
         "title": "Fix 9 shadowed-variable lint warnings",
         "done": {
           "A": "Fixed 9 lint warnings",
@@ -3587,7 +3587,7 @@
     "8b9fc11cf50ea114b91103fbd0d71917d8833524d7979a82596a79b4faa3b82c": {
       "label": "titles cli-patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump CLI's seven Python dependencies",
         "done": {
           "A": "Merged seven patch-level dependency bumps",
@@ -3605,7 +3605,7 @@
     "596f9be868b75dc03f8b3526edf5226b27680041c0d2ec799fec91deffe6e791": {
       "label": "titles billing-ci-bumps",
       "output": {
-        "emoji": "🔧",
+        "emoji": "\ud83d\udd27",
         "title": "Bump billing repo CI actions",
         "done": {
           "A": "Merged checkout and cache patch bumps",
@@ -3623,7 +3623,7 @@
     "9a020cee300938834c5cecaa3aa91f7ec53aba60dd691293b3db5f51f4a0738f": {
       "label": "titles ci-yaml-format",
       "output": {
-        "emoji": "🛠️",
+        "emoji": "\ud83d\udee0\ufe0f",
         "title": "Format CI configuration files across platform",
         "done": {
           "A": "Formatted 31 CI configuration files",
@@ -3641,7 +3641,7 @@
     "912efbd3da00b8ef3d6717522d3adea46b31d885a3a6f25cab63bada93f219de": {
       "label": "titles cutover-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete six merged spike branches",
         "done": {
           "A": "Deleted 6 merged spike branches",
@@ -3659,7 +3659,7 @@
     "886e6cbef2b137ce49a5bacca02cc4cd03e5c674c87acee9eb66aa2659d896cc": {
       "label": "titles tooling-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 44 lint auto-fixes",
         "done": {
           "A": "Applied 44 lint auto-fixes",
@@ -3677,7 +3677,7 @@
     "41ea42a875d179894b524c784e852676a371b37d12edda2e0de9beb838223f72": {
       "label": "titles infra-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 23 merged infrastructure branches",
         "done": {
           "A": "Deleted 23 merged branches",
@@ -3695,7 +3695,7 @@
     "7d651a9402db64d17793367f92e6cce2481680defa7f820b38b1b75373cc2cad": {
       "label": "titles cache-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine flaky cache eviction test",
         "done": {
           "A": "Skipped test, ticket opened",
@@ -3713,7 +3713,7 @@
     "d0b4a63557fe4ef25a96ff1c4773edb5298ca70c9efb2943351cd5b20d0779f6": {
       "label": "titles admin-import-sort",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Sort imports across admin tool",
         "done": {
           "A": "Sorted imports in 64 files",
@@ -3731,7 +3731,7 @@
     "f721d40495bbedd9f93cf00a80fb03fb03fb36235e2eac276aba7199ae762de6": {
       "label": "titles precommit-bumps",
       "output": {
-        "emoji": "🪝",
+        "emoji": "\ud83e\ude9d",
         "title": "Bump pre-commit hooks by patch versions",
         "done": {
           "A": "Merged patch bumps for five hooks",
@@ -3749,7 +3749,7 @@
     "e2087ddfa5d362380ffbb55521b8b8b63806b438a05fbe0fc01c4760d489694a": {
       "label": "titles release-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 5 old release branches",
         "done": {
           "A": "Deleted 5 old release branches",
@@ -3767,7 +3767,7 @@
     "9eb279bc451d65f9e09f190cb4a1c6289ff6ccc695a0b8c03e33c2075c022232": {
       "label": "titles agent-go-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump three Go modules by patch",
         "done": {
           "A": "Merged three patch version bumps",
@@ -4051,7 +4051,7 @@
     "19ef338c781fe5aee4655b80c6b82089f35dcdcc76db390ac7d60a83207c667e": {
       "label": "titles incident-action-items",
       "output": {
-        "emoji": "🎫",
+        "emoji": "\ud83c\udfab",
         "title": "File incident review action items",
         "done": {
           "A": "Filed five tickets as drafted",
@@ -4069,7 +4069,7 @@
     "be162616e3e19043af71249b70a508e4b232cf07fded4e4f7df1c1cfb92d7c47": {
       "label": "titles settings-redesign",
       "output": {
-        "emoji": "⚙️",
+        "emoji": "\u2699\ufe0f",
         "title": "Choose settings page layout",
         "done": {
           "A": "Built tabbed settings page",
@@ -4087,7 +4087,7 @@
     "6a04a844e6a084aeb8a6f0e76a6da5b9ee9362df5138761a620e5a46e5c3bdbb": {
       "label": "titles settings-ui-format",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run formatter on settings page",
         "done": {
           "A": "Formatted 23 files",
@@ -4105,7 +4105,7 @@
     "680e79476b3f1effbfec8f82c40b1a57a1b083a72cb703369f2eaf8e3fac7af7": {
       "label": "titles billing-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 21 lint fixes to invoices",
         "done": {
           "A": "Applied 21 lint fixes",
@@ -4123,7 +4123,7 @@
     "60fa097f3547e4b82000c05c686505f3dfadbdc48578c58c2a1479344d4f3a82": {
       "label": "titles checklist-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Sort imports and apply lint fixes",
         "done": {
           "A": "Sorted imports, linted 6 files",
@@ -4141,7 +4141,7 @@
     "acd6738a03ecdfbd1306f75044ed6c699f097fa1b3a038fdc03a0205ebd29b61": {
       "label": "titles dockerfile-format",
       "output": {
-        "emoji": "🐳",
+        "emoji": "\ud83d\udc33",
         "title": "Trim whitespace and sort Dockerfile packages",
         "done": {
           "A": "Trimmed and sorted 12 Dockerfiles",
@@ -4515,7 +4515,7 @@
     "3c984eb6571d78bd6ce2cbed0e04c28383a47fb210f1516d477c7142ffe8451d": {
       "label": "titles webhook-rename",
       "output": {
-        "emoji": "🔗",
+        "emoji": "\ud83d\udd17",
         "title": "Rename the webhook created field",
         "done": {
           "A": "Renamed created to created_at",
@@ -4537,7 +4537,7 @@
     "c1949158d2fb8986387f70c339fd3273fa6fa27465021e146ad1110fed2246c5": {
       "label": "titles settings-redesign",
       "output": {
-        "emoji": "⚙️",
+        "emoji": "\u2699\ufe0f",
         "title": "Pick settings page layout style",
         "done": {
           "A": "Built tabs version for settings",
@@ -4559,7 +4559,7 @@
     "af0871391cc52e4128af975f9719a7cd9b514ebd305d9c05468b796a47ddf176": {
       "label": "titles api-rename",
       "output": {
-        "emoji": "🔤",
+        "emoji": "\ud83d\udd24",
         "title": "Rename user_id to account_id in v2",
         "done": {
           "A": "Renamed user_id to account_id",
@@ -4581,7 +4581,7 @@
     "bf36f7575515a0d8eb8710501ac2c7b77929f335c150353f0f448853b0604549": {
       "label": "titles incident-action-items",
       "output": {
-        "emoji": "🎫",
+        "emoji": "\ud83c\udfab",
         "title": "File incident review action items",
         "done": {
           "A": "Filed five tickets as drafted",
@@ -4603,7 +4603,7 @@
     "f88f7856a580aa4b7f75a1e580246213984ec0d2dd60f0d7f05052a3ca584cc6": {
       "label": "titles berlin-sync",
       "output": {
-        "emoji": "📅",
+        "emoji": "\ud83d\udcc5",
         "title": "Accept the Berlin billing sync",
         "done": {
           "A": "Accepted the weekly 7:30am sync",
@@ -4625,7 +4625,7 @@
     "1c615abb256d2255ebd2de0409b23f178590f06df5432a5e11ba43d5984f62e7": {
       "label": "titles onsite-flight",
       "output": {
-        "emoji": "✈️",
+        "emoji": "\u2708\ufe0f",
         "title": "Pick the Denver onsite flight",
         "done": {
           "A": "Booked the 6:05am flight",
@@ -4647,7 +4647,7 @@
     "be3f6244afa02d334cf581f994279de43406e180d636d286d66e53d6418d6148": {
       "label": "titles branch-cleanup",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 41 old feature branches",
         "done": {
           "A": "Deleted 41 old feature branches",
@@ -4669,7 +4669,7 @@
     "8667d96bf24d8abfcc53246269b9d441a426e288bd08a749aa20ca152fa4bb65": {
       "label": "titles reconciliation-path",
       "output": {
-        "emoji": "🧾",
+        "emoji": "\ud83e\uddfe",
         "title": "Fix tax totals on invoices",
         "done": {
           "A": "Reissued about 1.5% of invoices",
@@ -4691,7 +4691,7 @@
     "d54ecf33b88e015803d3ba431c070758b445f4aac34a37eedc8b414d595c0783": {
       "label": "titles patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump nine dependencies by patch versions",
         "done": {
           "A": "Merged nine dependency bumps",
@@ -4713,7 +4713,7 @@
     "573c61e47759d49a0858916b55d644e7b3be016b7f94daa1d493a33e87139f94": {
       "label": "titles py-sdk-format",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Format the SDK tests folder",
         "done": {
           "A": "Formatted 58 test files",
@@ -4735,7 +4735,7 @@
     "320babaabd1cb55052c9877537d7b1e7973a394c1e9b6318441a9555f7124d1c": {
       "label": "titles ts-sdk-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 37 lint auto-fixes in SDK",
         "done": {
           "A": "Applied 37 lint auto-fixes",
@@ -4757,7 +4757,7 @@
     "87a672496f615d263b4ae22e3bcddc2a14add84094d8c19e7bac0ad9aa101e14": {
       "label": "titles launch-dash-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump dashboard dependencies to patch versions",
         "done": {
           "A": "Merged four dependency updates",
@@ -4779,7 +4779,7 @@
     "183340f73a2e1d91258bad4c925fd5f92ee52164ac08af40711eb5f3e174b4c3": {
       "label": "titles webhooks-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete nine merged webhooks branches",
         "done": {
           "A": "Deleted 9 merged branches",
@@ -4801,7 +4801,7 @@
     "acaebf5ce8b40c4d0fe6f326cd7b9f60c5355ce450572add552f00c0192e3029": {
       "label": "titles ts-sdk-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine the flaky backoff test",
         "done": {
           "A": "Quarantined the flaky backoff test",
@@ -4823,7 +4823,7 @@
     "04f7746b4510ce795400f6d7145e755088f2b44d4d9c94108be3ae5112b9c553": {
       "label": "titles web-patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Update date and icon libraries",
         "done": {
           "A": "Merged the library updates",
@@ -4845,7 +4845,7 @@
     "45e2db5e1a4b4b9445f0823b2456cc26eafa926ae2431efc401b6e3ee50d5af4": {
       "label": "titles billing-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 21 lint fixes to invoices",
         "done": {
           "A": "Applied 21 lint fixes",
@@ -4867,7 +4867,7 @@
     "72bd1c2a914a781e2fe8ca741672cb5d426ebaf41efa3c592805b481e084fa84": {
       "label": "titles billing-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 17 merged billing branches",
         "done": {
           "A": "Deleted 17 merged branches",
@@ -4889,7 +4889,7 @@
     "450ad576cfc110b8b465349f9c3ff3fb1c7304d7579a79a22aa2da7e2992b4c2": {
       "label": "titles billing-dash-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Update dashboard packages to patches",
         "done": {
           "A": "Merged three package updates",
@@ -4911,7 +4911,7 @@
     "bca0e161fdd25c27d9745db3509cf696b20ebdbd2cb14732d6dbdd4d4fd97add": {
       "label": "titles billing-gofmt",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run Go formatter on billing scheduler",
         "done": {
           "A": "Formatted 19 scheduler files",
@@ -4933,7 +4933,7 @@
     "6ff610bd21ebde690ee4a1a83c542300ce895ed773b7c8239ae5cea22953cb43": {
       "label": "titles billing-dash-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine the flaky dashboard test",
         "done": {
           "A": "Skipped flaky dashboard test with ticket",
@@ -4955,7 +4955,7 @@
     "781bdbe53c0c551f07b1e81a4db0528099343fd50372f3366322c64a1d5e1220": {
       "label": "titles billing-ci-bumps",
       "output": {
-        "emoji": "🔧",
+        "emoji": "\ud83d\udd27",
         "title": "Update billing repo's CI actions",
         "done": {
           "A": "Merged the CI action updates",
@@ -4977,7 +4977,7 @@
     "68c7e3d95d4e5d0c9cfb31d48ca6b342be59734166d041f8168208a8ec079009": {
       "label": "titles cutover-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete six old merged spike branches",
         "done": {
           "A": "Deleted 6 merged spike branches",
@@ -4999,7 +4999,7 @@
     "920956a30686dbbcdb76cac1e40cceac279d47bd897de96612290229664781f5": {
       "label": "titles cli-patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Update seven Python packages to patches",
         "done": {
           "A": "Merged seven package patch updates",
@@ -5021,7 +5021,7 @@
     "c1abea212f2353ab66efbb7f002f0ada4f135afbc6030ce5e5d26dbfdc58800c": {
       "label": "titles infra-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 23 merged branches in infrastructure",
         "done": {
           "A": "Deleted 23 merged branches",
@@ -5043,7 +5043,7 @@
     "70ae45272d4a9b0d274481b1b67e87346fb50c8cb84ab87831b49b223a5bc3d8": {
       "label": "titles cache-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine the flaky cache test",
         "done": {
           "A": "Quarantined the flaky cache test",
@@ -5065,7 +5065,7 @@
     "52e96cca2539bd2bc6f8508c1d7c51bd689a15b35b66f71231017b02e4a634a2": {
       "label": "titles dockerfile-format",
       "output": {
-        "emoji": "🐳",
+        "emoji": "\ud83d\udc33",
         "title": "Clean up 12 Dockerfiles",
         "done": {
           "A": "Cleaned up 12 Dockerfiles",
@@ -5087,7 +5087,7 @@
     "cc93c5346d2474a1c0ed07186edae1da0bf1a192658f8d4373712b45f6f3fdb1": {
       "label": "titles precommit-bumps",
       "output": {
-        "emoji": "🔧",
+        "emoji": "\ud83d\udd27",
         "title": "Update the code check tools",
         "done": {
           "A": "Merged five tool updates",
@@ -5109,7 +5109,7 @@
     "08e59ba9062db319e1aa520517c60490b2459394f47e0ba96a09cbabe756110d": {
       "label": "titles admin-import-sort",
       "output": {
-        "emoji": "🗂️",
+        "emoji": "\ud83d\uddc2\ufe0f",
         "title": "Sort imports across the admin tool",
         "done": {
           "A": "Sorted imports in 64 files",
@@ -5131,7 +5131,7 @@
     "f45900ab848060adff5fcfa4a12a4d53a3a553733c4590d05ac77a3f0a13db98": {
       "label": "titles release-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 5 old release branches",
         "done": {
           "A": "Deleted 5 old release branches",
@@ -5153,7 +5153,7 @@
     "b22771d26e7c13cc2333a18b44bf160142c75ab0c8ab439d6c921491242292cc": {
       "label": "titles agent-go-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Update three Go modules to patches",
         "done": {
           "A": "Merged three patch module updates",
@@ -5175,7 +5175,7 @@
     "6e29f51b833e79bfcf6d44491b6c02956cb26e2e8e301ee602cdefab4650943f": {
       "label": "titles tooling-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 44 lint auto-fixes to tooling",
         "done": {
           "A": "Applied 44 lint auto-fixes",
@@ -5558,7 +5558,7 @@
     "809b8861278c5a268559cb8c1c37bad9c8bd28bf98026c7810b5426bd512f3c0": {
       "label": "titles settings-ui-format",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run the formatter before review",
         "done": {
           "A": "Formatted 23 settings page files",
@@ -5580,7 +5580,7 @@
     "05203e0943845a0bfa6f490ce63da6af8eae0aa143b93f9b04afa81dda897503": {
       "label": "titles checklist-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Sort imports and apply lint fixes",
         "done": {
           "A": "Cleaned up 6 files",
@@ -5602,7 +5602,7 @@
     "1cb07e0f22c56f8b029d367ec1b21c5ff78abc9fcd85edfed598621b344a4381": {
       "label": "titles api-rename",
       "output": {
-        "emoji": "🏷️",
+        "emoji": "\ud83c\udff7\ufe0f",
         "title": "Rename user_id to account_id",
         "done": {
           "A": "Renamed user_id to account_id",
@@ -5624,7 +5624,7 @@
     "e0bb6ce49f87fcec438771afecd2abc05a1a44ec028336ff9cbe5c2296f9e5ac": {
       "label": "titles sdk-dependency",
       "output": {
-        "emoji": "🔍",
+        "emoji": "\ud83d\udd0d",
         "title": "Add a runtime validation library",
         "done": {
           "A": "Added the library, adding 40 KB",
@@ -5646,7 +5646,7 @@
     "e1122a32ff4c0287b3c88b0e975b79116e25e3628206817a7f4818e8deddb147": {
       "label": "titles webhook-rename",
       "output": {
-        "emoji": "📨",
+        "emoji": "\ud83d\udce8",
         "title": "Rename the webhook timestamp field",
         "done": {
           "A": "Renamed the field to created_at",
@@ -5668,7 +5668,7 @@
     "09d5b43b90f782e73928be9a8cc83224568b2146b0a7cd51470589596ccfcd15": {
       "label": "titles incident-action-items",
       "output": {
-        "emoji": "🎫",
+        "emoji": "\ud83c\udfab",
         "title": "File incident review action items",
         "done": {
           "A": "Filed five incident review tickets",
@@ -5690,7 +5690,7 @@
     "269445c0d8df61c1d6778818c4b35fd56dee4ec90d90fb0678b193fac4db2f24": {
       "label": "titles onsite-flight",
       "output": {
-        "emoji": "✈️",
+        "emoji": "\u2708\ufe0f",
         "title": "Book Denver flight for Tuesday",
         "done": {
           "A": "Booked the 6:05am flight",
@@ -5712,7 +5712,7 @@
     "299c63782d78db04257f91ac8729fbb018e8552c3c9d5233c8c8728f391b5923": {
       "label": "titles berlin-sync",
       "output": {
-        "emoji": "📅",
+        "emoji": "\ud83d\udcc5",
         "title": "Accept the Berlin billing sync",
         "done": {
           "A": "Accepted the weekly 7:30am sync",
@@ -5734,7 +5734,7 @@
     "9b39dde4646e451ed0c54417fec4ed37732ed560740966c354a3368c0a364599": {
       "label": "titles formatter-run",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run the formatter across files",
         "done": {
           "A": "Ran formatter on 412 files",
@@ -5756,7 +5756,7 @@
     "34c7f3f2ed66054d7c6949f10f27e71b2ccc94f6f3a9540088c609337e14fa20": {
       "label": "titles reconciliation-path",
       "output": {
-        "emoji": "🧾",
+        "emoji": "\ud83e\uddfe",
         "title": "Decide on tax invoice corrections",
         "done": {
           "A": "Corrected about 1.5% of invoices",
@@ -5778,7 +5778,7 @@
     "efffbfd31fa7a84d7a5f2716575ddbf2b990cc435f9a83736142db74918ed9db": {
       "label": "titles branch-cleanup",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 41 old feature branches",
         "done": {
           "A": "Deleted 41 merged feature branches",
@@ -5800,7 +5800,7 @@
     "851f62084a384a4f670778c0af877ca3bc56880a58229efcbccb4296e2101a02": {
       "label": "titles patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump nine dependencies by patch versions",
         "done": {
           "A": "Merged nine dependency bumps",
@@ -5822,7 +5822,7 @@
     "98db47d4dcb4888d72e019a10208095991c8ad71b4fcf4e7f8303a9f80472e4b": {
       "label": "titles ts-sdk-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 37 lint auto-fixes",
         "done": {
           "A": "Applied 37 lint fixes",
@@ -5844,7 +5844,7 @@
     "570f4d99c092cf6f4e31b8e25b97404816a91f66415f87ba6a95708ded2eaa6a": {
       "label": "titles py-sdk-format",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Reformat the SDK tests folder",
         "done": {
           "A": "Reformatted 58 test files",
@@ -5866,7 +5866,7 @@
     "a16311357c97231128fea09860ff09663d399f4f006eca37f4fe2c52fca14956": {
       "label": "titles launch-dash-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Update launch dashboard dependencies",
         "done": {
           "A": "Merged four dependency updates",
@@ -5888,7 +5888,7 @@
     "3355d3a2ce8059a9583f256442873ae33a4f527288862a05b943859de58e1efd": {
       "label": "titles settings-ui-format",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run formatter on settings page",
         "done": {
           "A": "Formatted 23 files on settings",
@@ -5910,7 +5910,7 @@
     "48287fc62b482e69653fe0578718aada4f44ce5f7d71c6b1802c8547e723c3da": {
       "label": "titles gateway-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 14 merged branches",
         "done": {
           "A": "Deleted 14 merged branches",
@@ -5932,7 +5932,7 @@
     "a2bf8ac774c4edbe91f7745b3126b7750f4965c426251b10f36c7a53f1ce2c3e": {
       "label": "titles webhooks-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete nine merged webhooks branches",
         "done": {
           "A": "Deleted 9 merged branches",
@@ -5954,7 +5954,7 @@
     "58d50266e7cc44ace525777964b827c69760ae2cbbeac57a3c4824cde6b9f77a": {
       "label": "titles ts-sdk-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine the flaky retry test",
         "done": {
           "A": "Quarantined the flaky retry test",
@@ -5976,7 +5976,7 @@
     "938e518e988ecc33d78541659273bd1e67c859f70aa0af5019255290fe968e39": {
       "label": "titles web-patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump web app libraries by patch",
         "done": {
           "A": "Merged the library bumps",
@@ -5998,7 +5998,7 @@
     "f52d732d1f3ba9065e6a7928f28647d552dae30e2967e21c9bacaba4477f462b": {
       "label": "titles billing-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 21 lint fixes",
         "done": {
           "A": "Applied 21 lint fixes",
@@ -6020,7 +6020,7 @@
     "633b9277a7f8496dc715def2babad888c58d60c2109e0a7d91a0591b8f825ff0": {
       "label": "titles billing-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 17 merged branches",
         "done": {
           "A": "Deleted 17 merged branches",
@@ -6042,7 +6042,7 @@
     "760e0664c32740157a802720fe11fcc67a233c843ff5d27d3411d8c6216c6120": {
       "label": "titles billing-gofmt",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Run Go formatter on billing scheduler",
         "done": {
           "A": "Formatted 19 billing scheduler files",
@@ -6064,7 +6064,7 @@
     "a294ad6f2f2c552398a5b1d30d5f777656dc4b0a139b987a938845fd228e98b3": {
       "label": "titles billing-dash-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine the flaky dashboard test",
         "done": {
           "A": "Skipped flaky test, opened ticket",
@@ -6086,7 +6086,7 @@
     "51b7b34c70aaf43351bdc4c2f8ce3f02e1516b3ba76b05b5881add3a67dbcc81": {
       "label": "titles billing-dash-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Bump dashboard dependencies by patches",
         "done": {
           "A": "Merged three patch bumps",
@@ -6108,7 +6108,7 @@
     "f47769a3b9fd08aedbf491463098710f0468694d8a7c95056767af0394952fa5": {
       "label": "titles cutover-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete six merged spike branches",
         "done": {
           "A": "Deleted 6 merged spike branches",
@@ -6130,7 +6130,7 @@
     "67cf7546660f523f7ada0c769e4eb8bfbd616ee19b03883ef6b2e38c4e054087": {
       "label": "titles billing-ci-bumps",
       "output": {
-        "emoji": "🔧",
+        "emoji": "\ud83d\udd27",
         "title": "Update billing repo's CI tools",
         "done": {
           "A": "Merged the CI tool updates",
@@ -6152,7 +6152,7 @@
     "30a9d8f85732bec8e8cdd4358f7a383bd4c37616021389c059dc1dbc85976375": {
       "label": "titles ci-yaml-format",
       "output": {
-        "emoji": "🛠️",
+        "emoji": "\ud83d\udee0\ufe0f",
         "title": "Format CI config files",
         "done": {
           "A": "Formatted 31 CI config files",
@@ -6174,7 +6174,7 @@
     "3b5a55153a54a5cea8bcceb35b69c5a3d836020d83fde6e19168fd9b791f81dc": {
       "label": "titles cli-patch-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Update seven internal tool packages",
         "done": {
           "A": "Merged seven small package updates",
@@ -6196,7 +6196,7 @@
     "11678e4a5c5e67260e569f47fcd2872744b050d3c115e9f837b94796ab0e7434": {
       "label": "titles infra-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 23 merged branches",
         "done": {
           "A": "Deleted 23 merged branches",
@@ -6218,7 +6218,7 @@
     "582891d277fe60ceaab479f91496e07926688cc264a2cc281f4a98e28aedc6ea": {
       "label": "titles cache-flaky",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine the flaky cache test",
         "done": {
           "A": "Skipped flaky test, opened ticket",
@@ -6240,7 +6240,7 @@
     "4c479b69a27ff4aa49c01cac64f9f2f377d5dba31fe2a5aa1d021b7e45bf142b": {
       "label": "titles precommit-bumps",
       "output": {
-        "emoji": "🔧",
+        "emoji": "\ud83d\udd27",
         "title": "Update code checking tools",
         "done": {
           "A": "Merged five tool updates",
@@ -6262,7 +6262,7 @@
     "03f92873b1330683707b38e4bb81140ac13592ea4a98fc882b4011aea254fc0a": {
       "label": "titles admin-import-sort",
       "output": {
-        "emoji": "📚",
+        "emoji": "\ud83d\udcda",
         "title": "Sort imports across admin tool",
         "done": {
           "A": "Sorted imports in 64 files",
@@ -6284,7 +6284,7 @@
     "560e6d0e003de8bc41cc3c0b5e790f790ea1a1ed6344af5772403ca645124622": {
       "label": "titles tooling-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Apply 44 lint auto-fixes",
         "done": {
           "A": "Applied 44 fixes and merged",
@@ -6306,7 +6306,7 @@
     "cc8272e0354edff3945671a7589da7333b56b5df55fffca3990ae5156d80b107": {
       "label": "titles release-branches",
       "output": {
-        "emoji": "🌿",
+        "emoji": "\ud83c\udf3f",
         "title": "Delete 5 old release branches",
         "done": {
           "A": "Deleted 5 old release branches",
@@ -6328,7 +6328,7 @@
     "640c2c2dbe27f182183af42dfdcd597f909b8494e6d7aad0a7cc181228591f83": {
       "label": "titles agent-go-bumps",
       "output": {
-        "emoji": "📦",
+        "emoji": "\ud83d\udce6",
         "title": "Update three Go modules by patch",
         "done": {
           "A": "Merged three patch module updates",
@@ -6350,7 +6350,7 @@
     "0b5055e644febaa6c11c87eab05ce0a4ef575c05117a6dbe881934527c2dc2d3": {
       "label": "titles dockerfile-format",
       "output": {
-        "emoji": "🐳",
+        "emoji": "\ud83d\udc33",
         "title": "Trim and sort 12 Dockerfiles",
         "done": {
           "A": "Tidied and merged 12 Dockerfiles",
@@ -6710,7 +6710,7 @@
     "4d88e37ff35ec6ef154536eca6879891ddaf84e5b4f1f6f8fff1b7d7af94e3a2": {
       "label": "titles free-tier",
       "output": {
-        "emoji": "🆓",
+        "emoji": "\ud83c\udd93",
         "title": "Set the free tier limit",
         "done": {
           "A": "Kept free tier at 1,000 daily",
@@ -6732,7 +6732,7 @@
     "159c6c28f2ad2993ac856d119b2e670b4ea71cddd38cdb4b6608bfe4ed057ba3": {
       "label": "titles flaky-test",
       "output": {
-        "emoji": "🧪",
+        "emoji": "\ud83e\uddea",
         "title": "Quarantine or delete flaky export test",
         "done": {
           "A": "Skipped test and filed ticket",
@@ -6754,7 +6754,7 @@
     "4124ed3e604fc0a92fd470d09e59c2e32a60c6e027c377c06f378ebb64d51df4": {
       "label": "titles settings-redesign",
       "output": {
-        "emoji": "⚙️",
+        "emoji": "\u2699\ufe0f",
         "title": "Settings page layout: tabs or scroll",
         "done": {
           "A": "Built tabbed settings page",
@@ -6816,7 +6816,7 @@
     "81b0f27297640e4334a7e41d12d9ec93e8b5949bf8843ae993e98031ca12ff76": {
       "label": "titles checklist-lint",
       "output": {
-        "emoji": "🧹",
+        "emoji": "\ud83e\uddf9",
         "title": "Sort imports and apply lint fixes",
         "done": {
           "A": "Sorted imports in 6 files",
@@ -7396,13 +7396,13 @@
       },
       "ms": 4781
     },
-    "abda4febe05ffc8f0b7bed3080726796d0037368ac544804335c363a27e0a59e": {
+    "fabdfa7dede322b586e67c66d84daf2c6c1f3df2c7060f41843cffe5c492544f": {
       "label": "onboarding note",
       "output": {
         "lines": [
           {
             "id": "n1",
-            "text": "For anything visual or shippable, send a clickable preview link, never a pasted diff or two-sentence description.",
+            "text": "Don't describe changes or designs in words or diffs; build them on a preview and send links Jordan can click through.",
             "kind": "preference",
             "cites": [
               "h08",
@@ -7413,7 +7413,7 @@
           },
           {
             "id": "n2",
-            "text": "Frame options by what customers experience, not internal names or algorithms; Jordan won't decode jargon like shim names.",
+            "text": "Explain choices by what customers will actually see or feel, not by technical names or internal labels.",
             "kind": "preference",
             "cites": [
               "h06",
@@ -7423,7 +7423,7 @@
           },
           {
             "id": "n3",
-            "text": "In billing, always pick the slower, safer option; never trade review, timing, or accuracy for speed.",
+            "text": "In Billing, always pick the slower, safer option; Jordan would rather ship late than send a wrong invoice.",
             "kind": "rule-like",
             "cites": [
               "h05",
@@ -7434,16 +7434,7 @@
           },
           {
             "id": "n4",
-            "text": "No new runtime dependencies in the SDKs; hand-write it instead, since every customer installs them.",
-            "kind": "rule-like",
-            "cites": [
-              "h16",
-              "h04"
-            ]
-          },
-          {
-            "id": "n5",
-            "text": "Never break fields or behaviour integrators rely on today; consistency or tidiness alone is not a reason.",
+            "text": "Never break anything integrators already rely on just for tidiness; bring the strongest real reason for the change, beyond neatness.",
             "kind": "rule-like",
             "cites": [
               "h11",
@@ -7452,86 +7443,97 @@
             ]
           },
           {
+            "id": "n5",
+            "text": "No new runtime libraries in the SDKs; Jordan allowed date-fns, then regretted it and refused zod.",
+            "kind": "contradiction",
+            "cites": [
+              "h04",
+              "h16"
+            ]
+          },
+          {
             "id": "n6",
-            "text": "When recommending a risky change, include the strongest case for it and the worst-case downside up front.",
+            "text": "When asking for access, a contract or a big redo, say who else needs it, the narrowest option, and the worst case.",
             "kind": "preference",
             "cites": [
-              "h11",
+              "h22",
               "h14",
-              "h19",
-              "h22"
+              "h19"
             ]
           },
           {
             "id": "n7",
-            "text": "Prefer a one-page written summary Jordan can comment on over booking a meeting to align.",
+            "text": "Swap meetings for a one-page written summary Jordan can comment on, though routine invites still get accepted.",
             "kind": "preference",
             "cites": [
-              "h18"
+              "h18",
+              "h10",
+              "h26"
             ]
           },
           {
             "id": "n8",
-            "text": "For access requests, propose the narrowest grant that works and note who else has asked.",
-            "kind": "preference",
+            "text": "Jordan answers housekeeping in seconds and gets annoyed being asked; stop asking about formatting, lint, patch bumps and merged branches.",
+            "kind": "rule-like",
             "cites": [
-              "h22"
+              "h03",
+              "h30",
+              "h20",
+              "h24"
             ]
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-14T19:31:48.374Z",
+      "recorded_at": "2026-10-16T17:16:41.466Z",
       "usage": {
-        "input": 4454,
-        "output": 532
+        "input": 4545,
+        "output": 589
       },
-      "ms": 8097
+      "ms": 8151
     },
-    "b07887c7830ebec211c0e8eb7a59bc45084cee7c5d859e6e68a01d9fb3537ea1": {
+    "3d43a1fa11c3bd8f0add8e1c28c624f601ed85f24a9867a0f84f4b255916ca27": {
       "label": "onboarding interview",
       "output": {
         "questions": [
           {
             "id": "q1",
-            "text": "You let date-fns into the SDK in nine seconds, then on zod said no new runtime dependencies and you regret date-fns. Is that a hard rule now, and should agents propose ripping date-fns out?",
+            "text": "You let date-fns into the SDK, then said you regretted it and turned down zod. Should the rule be no new libraries in the SDKs ever, or is there a case where one is worth it? And should date-fns come out?",
             "about": [
-              "n4"
+              "n5"
             ]
           },
           {
             "id": "q2",
-            "text": "Billing safety came up four times, and you asked for worst cases on the annual plan and backfill. But you approved exponential retries quickly. Is slow-and-safe only for billing, or anything touching customer money and data?",
+            "text": "You said yes to branch cleanup, formatting and a vitest patch in about two seconds, and asked why we were asking. Can agents just do that kind of housekeeping without asking? Where does it stop, like bigger version bumps?",
             "about": [
-              "n3",
-              "n6"
+              "n8"
             ]
           },
           {
             "id": "q3",
-            "text": "The meeting and access lines each rest on one decision. You said access is yours, always. Should agents never grant access themselves, and is skipping meetings a firm rule or just that once?",
+            "text": "You swapped the docs meeting for a one-page write-up, but accepted the Tuesday sync and the 7:30am Berlin call in seconds. Is the rule: turn new meetings into write-ups, but accept regular recurring ones?",
             "about": [
-              "n7",
-              "n8"
+              "n7"
             ]
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-14T19:31:54.500Z",
+      "recorded_at": "2026-10-16T17:16:47.118Z",
       "usage": {
-        "input": 3090,
-        "output": 265
+        "input": 3731,
+        "output": 287
       },
-      "ms": 6126
+      "ms": 5651
     },
-    "1eef6186a9bfa122ce57ee555d6e06b67eade0234e6f36fc7fee5b84a8b2aec7": {
+    "ec189f8c7c53fc637000a864dd22961bb5078ba3612ae7dc52a1f42a1808c3fc": {
       "label": "onboarding revision",
       "output": {
         "lines": [
           {
             "id": "n1",
-            "text": "For anything visual or shippable, send a clickable preview link, never a pasted diff or two-sentence description.",
+            "text": "Don't describe changes or designs in words or diffs; build them on a preview and send links Jordan can click through.",
             "kind": "preference",
             "cites": [
               "h08",
@@ -7545,7 +7547,7 @@
           },
           {
             "id": "n2",
-            "text": "Frame options by what customers experience, not internal names or algorithms; Jordan won't decode jargon like shim names.",
+            "text": "Explain choices by what customers will actually see or feel, not by technical names or internal labels.",
             "kind": "preference",
             "cites": [
               "h06",
@@ -7558,7 +7560,7 @@
           },
           {
             "id": "n3",
-            "text": "Anything touching customer money or customer data: pick the slower, safer option and show the worst case; plumbing like retries is exempt.",
+            "text": "In Billing, always pick the slower, safer option; Jordan would rather ship late than send a wrong invoice.",
             "kind": "rule-like",
             "cites": [
               "h05",
@@ -7566,25 +7568,13 @@
               "h25",
               "h14"
             ],
-            "change": "changed",
-            "because": "q2",
-            "why": "if a wrong call means a customer sees a wrong number or loses something, go slow"
+            "change": "kept",
+            "because": "",
+            "why": ""
           },
           {
             "id": "n4",
-            "text": "Hard rule: no new runtime dependencies in the SDKs; hand-write it instead. After v2 ships, replace date-fns with ten lines of our own.",
-            "kind": "rule-like",
-            "cites": [
-              "h16",
-              "h04"
-            ],
-            "change": "changed",
-            "because": "q1",
-            "why": "date-fns was a mistake, but don't rip it out mid-launch"
-          },
-          {
-            "id": "n5",
-            "text": "Never break fields or behaviour integrators rely on today; consistency or tidiness alone is not a reason.",
+            "text": "Never break anything integrators already rely on just for tidiness; bring the strongest real reason for the change, beyond neatness.",
             "kind": "rule-like",
             "cites": [
               "h11",
@@ -7596,14 +7586,25 @@
             "why": ""
           },
           {
+            "id": "n5",
+            "text": "No new libraries in the SDKs, ever, since every customer installs them; after v2 ships, replace date-fns with a few lines of our own.",
+            "kind": "rule-like",
+            "cites": [
+              "h04",
+              "h16"
+            ],
+            "change": "changed",
+            "because": "q1",
+            "why": "Jordan said never, and date-fns comes out after the launch, not during it."
+          },
+          {
             "id": "n6",
-            "text": "When recommending a risky change, include the strongest case for it and the worst-case downside up front.",
+            "text": "When asking for access, a contract or a big redo, say who else needs it, the narrowest option, and the worst case.",
             "kind": "preference",
             "cites": [
-              "h11",
+              "h22",
               "h14",
-              "h19",
-              "h22"
+              "h19"
             ],
             "change": "kept",
             "because": "",
@@ -7611,35 +7612,40 @@
           },
           {
             "id": "n7",
-            "text": "Start with a short written summary Jordan can comment on; book a meeting only if the comments don't settle a real debate.",
-            "kind": "preference",
+            "text": "New meetings get a one-page write-up first, booked only if comments don't settle it; accept regular ones, but nothing before 8:30.",
+            "kind": "rule-like",
             "cites": [
-              "h18"
+              "h18",
+              "h10",
+              "h26"
             ],
             "change": "changed",
             "because": "q3",
-            "why": "meetings aren't a hard rule; fine for a real debate"
+            "why": "Jordan does school drop-off, so the 7:30 Berlin call was a mistake."
           },
           {
             "id": "n8",
-            "text": "Never grant access on your own, ever; propose the narrowest grant that works to Jordan and note who else has asked.",
+            "text": "Just do formatting, lint, merged-branch cleanup and patch bumps without asking; anything bigger, or that changes what customers get, still goes to Jordan.",
             "kind": "rule-like",
             "cites": [
-              "h22"
+              "h03",
+              "h30",
+              "h20",
+              "h24"
             ],
             "change": "changed",
-            "because": "q3",
-            "why": "access is Jordan's, always"
+            "because": "q2",
+            "why": "Jordan said don't ask about housekeeping, but bigger bumps still come to them."
           }
         ]
       },
       "model": "claude-opus-5-5",
-      "recorded_at": "2026-10-14T19:32:16.579Z",
+      "recorded_at": "2026-10-16T17:17:50.632Z",
       "usage": {
-        "input": 1801,
-        "output": 781
+        "input": 2040,
+        "output": 810
       },
-      "ms": 8343
+      "ms": 6394
     }
   }
 }
