@@ -18,6 +18,7 @@ Read `README.md`, then `docs/BUILD-PLAN.md` (the sequenced plan with pass/fail c
 ## Interface principles (from David)
 
 - Simplicity and symbolism over text: one job per screen, short copy in the person's terms, explanation lives on the explainer page.
+- Plain English in the product's own words: about a 6th-grade reading level, not patronizing. No jargon ("infer", "route", "synthetic", "recorded run") where a plain word works. Run new in-product copy through the humanizer skill. This is for the product's text only: David writes his own documents (proposal, memo) and they are never rewritten.
 - One accent color, reserved for the person's own agency; routes are symbols (○ ◐ ●), not colored chips.
 - Decision briefings are purpose-built visuals (timelines, clocks, before/after charts, payload diffs, comparisons, clickable prototypes), not tables or walls of text.
 - Load the frontend design skill before UI work, and check every screen in a real browser at desktop and phone widths.

@@ -89,7 +89,7 @@ function canRevise(): { ok: boolean; why: string } {
   const answered = w.questions.filter((q) => (w.answers[q.id] ?? "").trim());
   if (!answered.length) return { ok: false, why: "" };
   if (!Q.owner && Q.mode === "recorded" && w.questions.some((q) => w.answers[q.id] !== ONBOARDING_ANSWERS[q.id])) {
-    return { ok: false, why: "No live connection here: use Jordan's answers (DEMO REPLY) for all three." };
+    return { ok: false, why: "Live Claude is off here. Press DEMO REPLY to use Jordan's answers." };
   }
   return { ok: true, why: "" };
 }
@@ -162,7 +162,7 @@ async function step(kind: "draft" | "interview" | "revise" | "keep"): Promise<vo
       if (JSON.stringify(w.answers) !== JSON.stringify(sent)) throw new Error("you changed an answer while Bug Me updated the rules; press Update again");
       Object.assign(w, { revised: r.lines, revisedSource: r.source, submitted: sent });
     }
-    announce(kind === "draft" ? "Rules inferred." : kind === "interview" ? "Questions ready." : kind === "keep" ? "Kept." : "Rules updated.");
+    announce(kind === "draft" ? "Rules found." : kind === "interview" ? "Questions ready." : kind === "keep" ? "Kept." : "Rules updated.");
   } catch (e) {
     if (g !== generation) return;
     w.error = (e as Error).message;
@@ -181,7 +181,7 @@ function stats(): HTMLElement {
   return h(
     "p",
     { class: "brief-meta welcome-stats" },
-    chip("▤", `${history.length} decisions · ${span} days`, Q.owner ? "Your recent decisions, from allowed projects" : "Jordan's recent decisions (synthetic)"),
+    chip("▤", `${history.length} decisions · ${span} days`, Q.owner ? "Your recent decisions, from allowed projects" : "Jordan's recent decisions (made up for this demo)"),
     // Imported history carries no timings: say nothing rather than "0".
     history.some((x) => x.seconds !== undefined) ? chip("⚡", `${pct(quick)} answered in ≤5 s`, "Answered almost without reading") : null,
     chip("✍", `${pct(worded)} with reasons`, "Jordan typed a reason or an answer of their own"),
@@ -316,9 +316,9 @@ export function renderWelcomeView(view: HTMLElement): void {
         "section",
         { class: "page welcome" },
         h("h1", {}, "Getting to know you"),
-        h("p", { class: "quiet" }, "Bug Me infers the rules you seem to follow from your own decisions, on the runner, with your Claude login. On this Mac:"),
+        h("p", { class: "quiet" }, "Bug Me finds the rules you seem to follow in your own past decisions. It runs on this Mac, with your Claude login:"),
         h("pre", { class: "onboard-cmd" }, h("code", {}, "npm run onboard -- --allow <allow-list.json> <rows.jsonl>")),
-        h("p", { class: "quiet small" }, "Rows extracted from your transcripts; only projects on your allow list are read."),
+        h("p", { class: "quiet small" }, "Decisions taken from your Claude Code history. It only reads projects on your allow list."),
         w.error ? h("p", { class: "think-msg", role: "alert" }, w.error) : null,
       ),
     );
@@ -334,8 +334,8 @@ export function renderWelcomeView(view: HTMLElement): void {
         "p",
         { class: "quiet" },
         Q.owner
-          ? "Bug Me reads your past decisions, infers the rules you seem to follow (each with the decisions behind it), asks about the ones it's unsure of, and updates them from your answers. On this Mac, with your Claude login."
-          : "Before it routes anything, Bug Me reads Jordan's past decisions, infers the rules Jordan seems to follow (each with the decisions behind it), asks about the ones it's unsure of, and updates them from the answers.",
+          ? "Bug Me reads your past decisions and writes down the rules you seem to follow, with the decisions behind each one. Then it asks about the rules it isn't sure of and fixes them using your answers. It all runs on this Mac, with your Claude login."
+          : "Before Bug Me decides anything for Jordan, it reads Jordan's past decisions and writes down the rules Jordan seems to follow, with the decisions behind each one. Then it asks about the rules it isn't sure of and fixes them using Jordan's answers.",
       ),
       h(
         "ol",
@@ -345,13 +345,13 @@ export function renderWelcomeView(view: HTMLElement): void {
           { id: "step-read" },
           h("h2", {}, Q.owner ? "Read your past decisions" : "Read Jordan's past decisions"),
           stats(),
-          w.note || Q.owner ? null : h("button", { type: "button", class: "primary", id: "draft-note", disabled: Boolean(w.busy), onclick: () => void step("draft") }, busyLabel("draft", "Infer Jordan's rules", "Reading…")),
+          w.note || Q.owner ? null : h("button", { type: "button", class: "primary", id: "draft-note", disabled: Boolean(w.busy), onclick: () => void step("draft") }, busyLabel("draft", "Find Jordan's rules", "Reading…")),
         ),
         w.note
           ? h(
               "li",
               { id: "step-draft" },
-              h("h2", {}, "Rules it inferred, and why"),
+              h("h2", {}, "The rules it found, and why"),
               w.revised
                 ? h("details", { class: "draft-was" }, h("summary", {}, `Before your answers, ${w.note.length} rules`), h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))))
                 : h("ol", { class: "wnote" }, ...w.note.map((l) => noteLine(l))),
@@ -363,7 +363,7 @@ export function renderWelcomeView(view: HTMLElement): void {
           ? h(
               "li",
               { id: "step-interview" },
-              h("h2", {}, Q.owner ? "Questions about the unclear ones" : "Questions for Jordan about the unclear ones"),
+              h("h2", {}, "Questions about the rules it isn't sure of"),
               interview(w.questions),
               source(w.questionsSource),
               w.revised
@@ -392,9 +392,9 @@ export function renderWelcomeView(view: HTMLElement): void {
                 : h(
                     "p",
                     { class: "quiet small" },
-                    "This is a separate demonstration: the morning still runs on Jordan's hand-written rules (",
+                    "This is a separate demo. The morning still uses the rules Jordan wrote by hand (",
                     h("a", { href: hrefFor({ view: "rules" }) }, "Rules"),
-                    "), so its recordings stay exact. Next, in a real release: a week of guessing before every answer, acting on none.",
+                    "), so its recorded answers still match. In a real product, Bug Me would next spend a week guessing each of Jordan's answers before Jordan gives it, without acting on any.",
                   ),
             )
           : null,

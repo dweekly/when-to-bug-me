@@ -23,7 +23,7 @@ test("Home links to onboarding; it reads, drafts with receipts, interviews and r
   await revise.click();
   await expect(page.locator("#step-note .note-line").first()).toBeVisible();
   await expect(page.locator("#step-note .change-changed")).toHaveCount(1);
-  await expect(page.locator("#step-note")).toContainText("hand-written rules");
+  await expect(page.locator("#step-note")).toContainText("rules Jordan wrote by hand");
   // The draft folds away once there's a revision.
   await expect(page.locator("#step-draft details.draft-was")).toBeVisible();
   // The answers that made it are locked; Change answers drops the revision and unlocks them.
