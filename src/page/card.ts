@@ -11,7 +11,7 @@ import { canHuh, confirmThread, decideUnread, replacesUnanswered, done, finalize
 import { drawableMarks } from "../shared/parse";
 import { MAX_REASON_CHARS } from "../shared/constants";
 import { payloadLine } from "./visuals-layout";
-import { GLYPH, ROUTE_LABEL, SOURCE_LABEL, routeOf } from "./derive";
+import { GLYPH, ROUTE_LABEL, SOURCE_HINT, SOURCE_LABEL, routeOf } from "./derive";
 import { go } from "./router";
 import { tourAfterRender } from "./tour";
 import { type VoiceTarget, setVoiceTarget, voiceTargetKey } from "./voice";
@@ -164,7 +164,7 @@ function drawNow(): void {
       h("span", { class: "route-label" }, ROUTE_LABEL[route]),
       h("span", { class: "chain" }, d.agent.join(" › ")),
       // Where the routing, briefing and notes came from, visible before anything is pressed (issue #57).
-      h("span", { class: `src-badge src-${c.source}`, title: `Routing, briefing and notes: ${SOURCE_LABEL[c.source]}` }, SOURCE_LABEL[c.source]),
+      h("span", { class: `src-badge src-${c.source}`, title: `Routing, briefing and notes. ${SOURCE_HINT[c.source]}` }, SOURCE_LABEL[c.source]),
     ),
     // Brief first, then why it is the person's, then any more context, then the question; the
     // conversation starts below the options.
@@ -351,7 +351,7 @@ function bugTurn(t: ShownBugTurn): HTMLElement {
     { class: `turn bug${t.next === "confirm" ? " readback" : t.next === "explain" ? " explain" : ""}` },
     face(),
     h("p", {}, h("span", { class: "sr-only" }, "Bug Me: "), before, said ? h("strong", { class: "readback-line" }, said) : null),
-    t.source ? h("span", { class: "turn-src", title: SOURCE_LABEL[t.source] }, t.source === "code" ? "stand-in" : t.source) : null,
+    t.source ? h("span", { class: "turn-src", title: `${SOURCE_LABEL[t.source]}. ${SOURCE_HINT[t.source]}` }, t.source === "code" ? "stand-in" : t.source) : null,
   );
 }
 

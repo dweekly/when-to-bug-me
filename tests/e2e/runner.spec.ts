@@ -304,7 +304,7 @@ test("onboarding on your own history: imported on the runner, interviewed, kept 
   await page.locator("#revise-note").click();
   await expect(page.locator("#step-note .note-line").first()).toBeVisible();
   await page.locator("#keep-note").click();
-  await expect(page.locator("#step-note")).toContainText("It's your note now");
+  await expect(page.locator("#step-note")).toContainText("They're your rules now");
   // Rules: the kept lines are facts you can edit, and the note is yours.
   await page.goto("/me#/rules");
   await expect(page.locator("#facts")).toContainText("onboarding");
@@ -334,7 +334,7 @@ test("onboarding steps name their run: a newer import isn't acted on unseen, and
   await page.locator("#answer-q1").fill("Yes.");
   await page.locator("#revise-note").click();
   await page.locator("#keep-note").click();
-  await expect(page.locator("#step-note")).toContainText("It's your note now");
+  await expect(page.locator("#step-note")).toContainText("They're your rules now");
   await expect(page.locator("#change-answers")).toHaveCount(0);
   const run = (await (await request.get("/api/me/onboarding", { headers: auth })).json()).run;
   const late = await request.post("/api/me/onboarding/revise", { headers: auth, data: { run: run.id, answers: { q1: "No." } } });
@@ -374,7 +374,7 @@ test("an answer edited while Revise is out stays, and Revise again uses it; hist
   await page.locator("#revise-note").click();
   await page.locator("#answer-q1").fill("Only for cleanups.");
   release();
-  await expect(page.locator(".welcome")).toContainText("changed an answer while Bug Me revised");
+  await expect(page.locator(".welcome")).toContainText("changed an answer while Bug Me updated the rules");
   await expect(page.locator("#answer-q1")).toHaveValue("Only for cleanups.");
   await page.unroute("**/api/me/onboarding/revise");
   const sent = page.waitForRequest((r) => r.url().includes("/api/me/onboarding/revise"));

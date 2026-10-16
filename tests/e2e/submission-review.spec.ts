@@ -54,7 +54,7 @@ test("#55: every route failing is not an empty, successful morning", async ({ pa
 test("#57: the card says where its routing came from before anything is pressed", async ({ page }) => {
   await openDecision(page, "api-rename");
   await expect(page.locator("#now .meta .src-badge")).toBeVisible();
-  await expect(page.locator("#now .meta .src-badge")).toHaveText(/live Claude|cached Claude|recorded Claude run|code stand-in/);
+  await expect(page.locator("#now .meta .src-badge")).toHaveText(/Claude, live|Claude, cached|Claude, recorded earlier|code stand-in/);
 });
 
 test("#51: when no model can reply, the person can still decide, and their words go down whole", async ({ page }) => {
@@ -191,7 +191,7 @@ test("#64: a job Bug Me decided opens to what it decided and why", async ({ page
   await expect(detail).toContainText("The agent asked:");
   await expect(detail).toContainText("Bug Me chose:");
   await expect(detail).toContainText("Its reasoning:");
-  await expect(detail).toContainText(/Decided by (live Claude|cached Claude|recorded Claude run|code stand-in)\./);
+  await expect(detail).toContainText(/Decided by (Claude, live|Claude, cached|Claude, recorded earlier|code stand-in)\./);
   // Undo and the marks are still there beside it.
   await expect(row.locator(".dundo")).toBeVisible();
 });

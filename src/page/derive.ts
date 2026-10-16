@@ -12,7 +12,15 @@ const decidable = () => Q.decisions.filter((d) => !isMirror(d.id));
 export const ROUTE_LABEL: Record<RouteKind, string> = { settle: "Settled for you", check_in: "Quick check-in", decide: "Your decision" };
 /** Routes as symbols: handled for you, a quick check, needs you. */
 export const GLYPH: Record<RouteKind, string> = { settle: "○", check_in: "◐", decide: "●" };
-export const SOURCE_LABEL: Record<Source, string> = { live: "live Claude", cached: "cached Claude", recorded: "recorded Claude run", code: "code stand-in" };
+// Plain words for where model output came from (issue #66): a visitor shouldn't need the README to read them.
+export const SOURCE_LABEL: Record<Source, string> = { live: "Claude, live", cached: "Claude, cached", recorded: "Claude, recorded earlier", code: "code stand-in" };
+/** What each source means, for a tooltip. */
+export const SOURCE_HINT: Record<Source, string> = {
+  live: "Real Claude output, asked just now.",
+  cached: "Real Claude output, saved from an earlier identical request.",
+  recorded: "Real Claude output, recorded once and replayed here for free (no live call).",
+  code: "Written by code, not Claude: a deterministic stand-in.",
+};
 
 export function routeOf(id: string): RouteKind | null {
   const c = S.cards[id];

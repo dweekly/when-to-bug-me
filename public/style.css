@@ -613,6 +613,12 @@ abbr.est { text-decoration: none; font: 12px var(--mono); color: var(--ink-3); b
 .interview .turn-q { margin: 0 0 6px; color: var(--ink); font-size: 15.5px; line-height: 1.5; }
 .interview .iq { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
 .interview .iq .composer { position: relative; }
+/* The person's answer, as their turn in a conversation: right-aligned, in a bubble, named (issue #66). */
+.interview .iq-answer { display: flex; flex-direction: column; align-items: flex-end; margin-left: 12%; }
+.interview .iq-who { font: 600 11px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); margin: 2px 8px 4px 0; }
+.interview .iq-answer .composer { width: 100%; background: var(--night-3); border-radius: 16px 16px 4px 16px; padding: 4px 12px 0; box-sizing: border-box; }
+.interview .iq-answer .composer textarea { background: transparent; border-bottom: none !important; }
+@media (max-width: 560px) { .interview .iq-answer { margin-left: 0; } }
 .interview textarea { min-height: 1.6em; padding-bottom: 32px; font-size: 15px; line-height: 1.5; overflow: hidden; resize: none; }
 .onboard-cmd { margin: 10px 0; padding: 10px 12px; background: var(--night); border: 1px solid var(--line); border-radius: 8px; font: 12.5px/1.55 var(--mono); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .interview textarea[readonly] { padding-bottom: 8px; color: var(--ink-2); }
