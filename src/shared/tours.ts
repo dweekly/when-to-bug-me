@@ -219,7 +219,7 @@ export const TOURS: Tour[] = [
     mood: "pleased",
     path: [],
     steps: [
-      { go: "#/welcome", target: "#step-read", title: "It reads first", text: "Bug Me read thirty of Jordan's recent decisions on its own: how fast Jordan answered, what Jordan typed, and where Jordan overruled the agent.", until: "next" },
+      { go: "#/welcome", target: "#step-read", title: "It reads first", text: "Bug Me read Jordan's past decisions on its own: how fast Jordan answered, what Jordan typed, and where Jordan overruled the agent.", until: "next" },
       { target: "#step-draft .wnote", title: "Each rule shows why", text: "Each rule it found lists the decisions behind it. Open one.", until: { click: "#step-draft .cites" } },
       { target: "#step-interview .iq:nth-child(1)", side: "top", title: "Then it asks", text: "Only about the rules it isn't sure of. Say your answer, or use Jordan's.", until: "next", example: { textarea: "#answer-q1", text: ONBOARDING_ANSWERS.q1 } },
       { target: "#step-interview .iq:nth-child(2)", side: "top", title: "Where it's unsure", text: "Jordan's answer to the second.", until: "next", example: { textarea: "#answer-q2", text: ONBOARDING_ANSWERS.q2 } },

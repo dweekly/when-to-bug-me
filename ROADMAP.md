@@ -1,6 +1,6 @@
 # Roadmap
 
-fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototype's own stages are in `docs/BUILD-PLAN.md`; this file holds what comes after, and concerns raised in review that belong outside the current effort.
+fresh as of 2026-10-16 · stack-ranked; the top is the current work. The prototype's own stages are in `docs/BUILD-PLAN.md`; this file holds what comes after, and concerns raised in review that belong outside the current effort.
 
 ## Prototype, before submission (October 16)
 
@@ -97,6 +97,8 @@ fresh as of 2026-10-11 · stack-ranked; the top is the current work. The prototy
 - **Does the drafted note predict the person?** Nothing yet measures whether a note drafted from history predicts David's next answers better than none. That is the fleet spike's shadow week (a guess before every answer, acting on none).
 - **History over time.** An import is one snapshot. It has no retention or deletion beyond replacing the run, no rolling imports, and no weekly job. The extractor stops at its own cutoff, so newer history needs a rerun.
 - **Concurrent tabs.** A step that read an older version of the run is refused with "Reload to see it", rather than merged.
+- **Read everything it can find, not a fixed slice** (David, 2026-10-16). The import keeps the newest 200 decisions (`MAX_ONBOARD_HISTORY`) because they must fit one prompt, and the demo's 30 is only the size of Jordan's hand-written history. Capturing a person's whole decision history needs reading in batches and merging what each batch finds.
+- **More sources** (David, 2026-10-16). Other coding harnesses (Codex, Cursor, Antigravity) and, in extremis, meetings, decks, email and Slack. Each source stays on the person's machine and is opt-in. Sources outside agent sessions seed interview questions for the person to confirm rather than going straight into the rules, since stated reasons and behaviour differ.
 - **Jordan's drafted note doesn't route the demo.** Routing it would change every recording's key, so the morning runs on the hand-written note.
 
 ## From stage 10d (hooks into Bug Me)

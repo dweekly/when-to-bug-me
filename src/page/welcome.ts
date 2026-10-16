@@ -189,6 +189,9 @@ async function readAndAsk(): Promise<void> {
   }
 }
 
+/** How far back the history on the page goes, in whole weeks (at least one). */
+const weeksOfHistory = () => Math.max(1, Math.round(Math.max(...history.map((x) => x.days_ago)) / 7));
+
 const pct = (n: number) => `${n}`;
 function stats(): HTMLElement {
   const quick = history.filter((x) => (x.seconds ?? 99) <= 5).length;
@@ -353,7 +356,7 @@ export function renderWelcomeView(view: HTMLElement): void {
         { class: "quiet" },
         Q.owner
           ? "Bug Me reads your past decisions and writes down the rules you seem to follow, with the decisions behind each one. Then it asks about the rules it isn't sure of and fixes them using your answers. It all runs on this Mac, with your Claude login."
-          : `Before Bug Me decides anything for Jordan, it reads Jordan's last ${history.length} decisions to learn how Jordan decides. Here's what it found, and what it wants to ask Jordan.`,
+          : `Before Bug Me decides anything for Jordan, it reads as much of Jordan's decision history as it can find. Here, that's ${weeksOfHistory()} weeks of questions from Jordan's agents. Here's what it found, and what it wants to ask Jordan.`,
       ),
       h(
         "ol",
