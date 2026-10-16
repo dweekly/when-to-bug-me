@@ -42,7 +42,9 @@ export function tourActive(): boolean {
 export function startTour(id: string): void {
   const tour = TOURS.find((t) => t.id === id);
   if (!tour) return;
-  const hasProgress = S.record.length > 0 || Object.keys(S.punts).length > 0;
+  // Progress is what the person did. Time with a card in front of them (attention.ts) is logged as
+  // they leave it, so it is not counted: looking at a card loses nothing worth a warning (issue #70).
+  const hasProgress = S.record.some((r) => r.kind !== "attention") || Object.keys(S.punts).length > 0;
   if (!hasProgress) return begin(tour);
   confirmFresh(tour, () => begin(tour));
 }
