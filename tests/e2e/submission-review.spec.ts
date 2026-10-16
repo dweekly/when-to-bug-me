@@ -244,3 +244,14 @@ test("#55: a routing retry that comes back after a rule edit doesn't overwrite t
   await page.waitForTimeout(1000);
   expect((await stored(page))!.cards["formatter-run"].route).toBe(newer);
 });
+
+test("#70: a demo started after only looking at a card starts straight away", async ({ page }) => {
+  await openDecision(page, "onsite-flight");
+  await page.waitForTimeout(1500);
+  await page.locator("#bar nav").getByRole("link", { name: /^Home$/ }).click();
+  // The time spent looking is in the record, and it is all that is there.
+  await expect.poll(async () => ((await stored(page))?.record ?? []).map((r) => r.kind)).toEqual(["attention"]);
+  await page.goto("/app?tour=say-why#/");
+  await expect(page.locator(".driver-popover-title")).toHaveText("Code said no");
+  await expect(page.getByRole("dialog", { name: "Start a fresh morning?" })).toHaveCount(0);
+});
