@@ -15,6 +15,24 @@ Read `README.md`, then `docs/BUILD-PLAN.md` (the sequenced plan with pass/fail c
 - Label anything simulated as simulated, in the UI and the README. Every card says whether its content is live model output, a saved run, or code.
 - The deployed Worker uses its own API key secret, never a key from a developer's keychain.
 
+## Shipping
+
+Push to production continuously; don't queue changes behind a request for approval (David,
+2026-10-20). This repo is an explicit exception to David's standing global rule that production
+deploys need his go; that rule still holds everywhere else. The sequence for a change that is
+committed and whose suites pass: `git push`, `npm run deploy:production`, then
+`node scripts/smoke-deployed.mjs https://bugme.weekly.org`, and report the commit it serves.
+Deploy staging on the way when you want to look first, not as a gate.
+
+What makes that safe is what the repo already checks, not a human in the loop: the pre-push hook
+runs the secret scan and the unit suite, `npm run typecheck` and the e2e suite run before the
+commit, and the smoke check refuses a build made from uncommitted changes. A deploy is one command
+to redo from any commit, so recovery is cheap. Keep it that way: if a change cannot be verified by
+a command, that is the thing to fix before shipping it, not a reason to ask.
+
+Still ask before anything a redeploy cannot undo — rotating the Worker's API key secret, changing
+the custom domain, deleting a Durable Object's stored state.
+
 ## Interface principles (from David)
 
 - Simplicity and symbolism over text: one job per screen, short copy in the person's terms, explanation lives on the explainer page.

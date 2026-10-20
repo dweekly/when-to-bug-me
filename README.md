@@ -205,7 +205,7 @@ someone back to it. The stage files are the record of what was built and why, in
 not revised once their stage merges, so a stage's current behaviour lives in the code and in
 `CHANGELOG.md`.
 
-- [CLAUDE.md](CLAUDE.md): how to work in this repo — what Bug Me is, the commands that must pass, the data rules, and the guardrails an agent must not quietly relax. (updated 2026-10-16; update when: a command, convention or guardrail changes)
+- [CLAUDE.md](CLAUDE.md): how to work in this repo — what Bug Me is, the commands that must pass, the data rules, how shipping to production works, and the guardrails an agent must not quietly relax. (updated 2026-10-20; update when: a command, convention or guardrail changes)
 - [ROADMAP.md](ROADMAP.md): stack-ranked work after the prototype, including concerns raised in review that belong outside the current effort. (updated 2026-10-16; update when: an item lands, or a new concern is deferred out of the current effort)
 - [CHANGELOG.md](CHANGELOG.md): what shipped, newest first. (updated 2026-10-14; update when: anything ships)
 - [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md): the PRD and sequenced plan for the hosted prototype — the first stage of the MVP, with its pass-or-fail commands. (updated 2026-10-09; update when: a new stage is planned or the prototype's scope changes)
