@@ -4,7 +4,7 @@
 
 **Try it:** [bugme.weekly.org](https://bugme.weekly.org), live Claude behind a daily spend cap. This repo is the MVP for an Anthropic Labs take-home (the assignment calls it the working prototype); the proposal calls what would ship to customers v1.
 
-Plans: [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) (the MVP's first stage; fresh as of 2026-10-09), [`docs/STAGE-2.md`](docs/STAGE-2.md) (home and focus views, Not now, tours, the explainer; fresh as of 2026-10-09), [`docs/STAGE-3.md`](docs/STAGE-3.md) (piles on Home, the decision card, always-on voice; fresh as of 2026-10-11), [`docs/STAGE-4.md`](docs/STAGE-4.md) (think out loud: one place to talk a decision through, marked up as Bug Me reads it; fresh as of 2026-10-12), [`docs/STAGE-6.md`](docs/STAGE-6.md) (the decision as a conversation; fresh as of 2026-10-12), [`docs/STAGE-6E.md`](docs/STAGE-6E.md) ("Huh?": say that again, plainly; fresh as of 2026-10-13), [`docs/STAGE-6F.md`](docs/STAGE-6F.md) (the card in Jordan's words; fresh as of 2026-10-13), [`docs/STAGE-8.md`](docs/STAGE-8.md) (Dispatch: work sent out at the right size; fresh as of 2026-10-13).
+Every document in this repo is indexed under [Documents](#documents) at the end: what is in it, when it last changed, and what would bring someone back to it.
 
 > **Everything here is synthetic.** Jordan Okafor, Larkspur, the twenty agents and all 40 of their questions are made up. No real agent receives anything Bug Me "sends down".
 
@@ -197,3 +197,27 @@ Then open `/me#/welcome` on the runner, do the interview, and press **Keep it**:
 Designed by David E. Weekly, built with Claude Code (Claude Opus 5.5) as the implementing agent, from a written product proposal and a plan per stage. Each plan was reviewed once by OpenAI Codex before building, and every diff by Codex before merge. Design changes went through quick mockups first (two versions each of Home and the decision card, picked by David) before any code. Claude Code wrote the code, fixtures and tests; subagents built the two settings prototypes, the secret scanner and CI, and test suites in parallel. Each recorded run was made against the live API for about a dollar.
 
 See also: [`ROADMAP.md`](ROADMAP.md) (fresh as of 2026-10-11), [`CHANGELOG.md`](CHANGELOG.md) (fresh as of 2026-10-11), [`CLAUDE.md`](CLAUDE.md) (guardrails for agents working here).
+
+## Documents
+
+Each entry says what the document holds, when it last changed, and the trigger that would bring
+someone back to it. The stage files are the record of what was built and why, in order; they are
+not revised once their stage merges, so a stage's current behaviour lives in the code and in
+`CHANGELOG.md`.
+
+- [CLAUDE.md](CLAUDE.md): how to work in this repo — what Bug Me is, the commands that must pass, the data rules, and the guardrails an agent must not quietly relax. (updated 2026-10-16; update when: a command, convention or guardrail changes)
+- [ROADMAP.md](ROADMAP.md): stack-ranked work after the prototype, including concerns raised in review that belong outside the current effort. (updated 2026-10-16; update when: an item lands, or a new concern is deferred out of the current effort)
+- [CHANGELOG.md](CHANGELOG.md): what shipped, newest first. (updated 2026-10-14; update when: anything ships)
+- [docs/BUILD-PLAN.md](docs/BUILD-PLAN.md): the PRD and sequenced plan for the hosted prototype — the first stage of the MVP, with its pass-or-fail commands. (updated 2026-10-09; update when: a new stage is planned or the prototype's scope changes)
+- [docs/STAGE-2.md](docs/STAGE-2.md): home and focus views, "not now", the guided tours and the explainer page. (updated 2026-10-09; update when: that stage's behaviour changes)
+- [docs/STAGE-3.md](docs/STAGE-3.md): piles on Home, the decision card, answer types and always-on voice. (updated 2026-10-11; update when: that stage's behaviour changes)
+- [docs/STAGE-4.md](docs/STAGE-4.md): think out loud — one place to talk a decision through, marked up as Bug Me reads it, after a review found the card mixed directions. (updated 2026-10-11; update when: that stage's behaviour changes)
+- [docs/STAGE-5.md](docs/STAGE-5.md): the fixture rewrite that made the demo morning match the proposal — 40 questions raised, 31 settled, 9 waiting. (updated 2026-10-12; update when: the morning's fixtures or the proposal's numbers change)
+- [docs/STAGE-6.md](docs/STAGE-6.md): the decision as a conversation — Bug Me opens, the person talks back, and nothing closes without a read-back. (updated 2026-10-13; update when: that stage's behaviour changes)
+- [docs/STAGE-6E.md](docs/STAGE-6E.md): "Huh?" — one press that makes Bug Me say the card again in plain English and counts it as a miss on its own translation. (updated 2026-10-13; update when: that stage's behaviour changes)
+- [docs/STAGE-6F.md](docs/STAGE-6F.md): the card in Jordan's words, and where the "Huh?" control belongs. (updated 2026-10-14; update when: that stage's behaviour changes)
+- [docs/STAGE-7.md](docs/STAGE-7.md): live fire — real Claude Code sessions asking through MCP instead of stopping, answered on a private owner page. (updated 2026-10-12; update when: the live queue, the MCP tools or the owner page change)
+- [docs/STAGE-8.md](docs/STAGE-8.md): Dispatch — sizing and briefing a task before the session starts, with what the person must do first. (updated 2026-10-13; update when: Dispatch's brief or prerequisites change)
+- [docs/STAGE-9.md](docs/STAGE-9.md): the runner — starting dispatched work on your own machine rather than handing over a command to paste. (updated 2026-10-14; update when: the runner's behaviour or setup changes)
+- [docs/STAGE-10.md](docs/STAGE-10.md): closing the gaps before pencils down — the four differences between what the demo did and what a release would do, and which were closed. (updated 2026-10-14; update when: one of the remaining gaps is closed)
+- [docs/STAGE-11.md](docs/STAGE-11.md): answering a reviewer who read the whole submission on 2026-10-14 — which of their points were taken, and what was declined. (updated 2026-10-14; update when: another full review arrives)
