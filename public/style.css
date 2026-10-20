@@ -212,6 +212,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
    border stays dark. Two pixels: with the box focused the moment a card opens, a thick ring would be
    the resting state rather than a signal. */
 .think-field:focus-within { box-shadow: 0 0 0 2px var(--glow); }
+/* Here the paper, the border and the ring belong to the wrapper, so the textarea inside draws none
+   of its own: two rings, one inside the other, is what that looked like. */
+.think-field textarea:focus { box-shadow: none; }
 /* The conversation (docs/STAGE-6.md): Jordan's turns on the right, Bug Me's on the left with the firefly,
    the composer under the last turn. Marks show what Bug Me heard in Jordan's words: the choice lit,
    reasons, conditions, questions and feedback as underlines that differ by shape. */
