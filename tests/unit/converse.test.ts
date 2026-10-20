@@ -1,7 +1,7 @@
 // src/shared/converse.ts and its stand-in: the decision as a conversation (docs/STAGE-6.md). The model
 // proposes; `advance` decides. These pin the rules code enforces whatever the model says.
 import { describe, expect, it } from "vitest";
-import { MAX_CONVERSE_QUESTIONS, MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_EXPLAIN_CHARS, MAX_HUH, MAX_REPLY_CHARS } from "../../src/shared/constants";
+import { MAX_CONVERSE_QUESTIONS, MAX_CONVERSE_TURNS, MAX_EVIDENCE_CHARS, MAX_EXPLAIN_CHARS, MAX_HUH, MAX_REASON_CHARS, MAX_REPLY_CHARS } from "../../src/shared/constants";
 import {
   type ConvTurn,
   EMPTY_LEDGER,
@@ -281,14 +281,16 @@ describe("parseConverseRequest: the projection the model sees", () => {
     expect(() => parseConverseRequest(body({ turns: [j("   ")] }), api)).toThrow(/neither/);
     expect(() => parseConverseRequest(body({ turns: Array.from({ length: 7 }, () => j("x")) }), api)).toThrow(/at most 6/);
     expect(() => parseConverseRequest(body({ turns: Array.from({ length: 5 }, () => j("x".repeat(500))) }), api)).toThrow(/2400/);
-    expect(() => parseConverseRequest(body({ turns: [j("x".repeat(601))] }), api)).toThrow(/600/);
+    expect(() => parseConverseRequest(body({ turns: [j("x".repeat(MAX_REASON_CHARS + 1))] }), api)).toThrow(
+      new RegExp(String(MAX_REASON_CHARS)),
+    );
   });
   it("the largest thread's prompt fits the per-call spend reservation (under 8k tokens, about 24k characters)", () => {
     const big = decisions.reduce((a, b) => (JSON.stringify(a).length > JSON.stringify(b).length ? a : b));
     const turns: ConvTurn[] = [];
     for (let i = 0; i < 6; i++) turns.push(j("x".repeat(400)), bug("y".repeat(i < 5 ? 300 : 3000), i < 5 ? "ask" : "confirm"));
     turns.pop();
-    expect(conversePrompt(persona, rules, facts, big, { route: "decide", why_here: "z".repeat(600) }, turns).length).toBeLessThan(24_000);
+    expect(conversePrompt(persona, rules, facts, big, { route: "decide", why_here: "z".repeat(MAX_REASON_CHARS) }, turns).length).toBeLessThan(24_000);
   });
 });
 

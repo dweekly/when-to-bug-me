@@ -226,9 +226,19 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
     "aria-label": "Your turn: which way you lean, why, any conditions, any questions",
   }) as HTMLTextAreaElement;
   ta.value = flow.think;
+  // The cap must never bite silently: once it is close, say how much room is left.
+  const counter = h("span", { class: "char-left", hidden: true }) as HTMLElement;
+  const showRemaining = () => {
+    const left = MAX_REASON_CHARS - ta.value.length;
+    counter.hidden = left > 200;
+    if (counter.hidden) return;
+    counter.textContent = left > 0 ? `${left} characters left` : "That is the limit; the gist is enough";
+    counter.classList.toggle("at-limit", left <= 0);
+  };
   ta.addEventListener("input", () => {
     thinkEdited(flow, ta.value);
     fit(ta);
+    showRemaining();
   });
   // Enter sends (Shift+Enter for a new line), as in any chat.
   ta.addEventListener("keydown", (e) => {
@@ -255,6 +265,7 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
               ta.value = t.text;
               thinkEdited(flow, t.text);
               fit(ta);
+              showRemaining();
             },
           },
           "DEMO REPLY",
@@ -273,6 +284,7 @@ function threadArea(flow: Flow, d: Decision, route: RouteKind): HTMLElement | nu
       "div",
       { class: "think-actions" },
       h("button", { type: "button", class: "linkish skip-q", onclick: () => startPunt(flow) }, "Skip"),
+      counter,
       h("button", { type: "button", class: "primary send", onclick: () => primary(flow, d, route) }, "Send"),
     ),
   );

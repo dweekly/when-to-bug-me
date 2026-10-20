@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Usability pass on the decision card.** Found by driving the app end to end rather than by reading it.
+  - **The reason box no longer cuts you off.** It was capped at 600 characters, which `maxlength` enforced silently: a long explanation simply stopped accepting keystrokes mid-sentence, exactly when someone was giving the rich context the product exists to collect. The cap is now 1500, and a counter appears in the last 200 characters so it is never a surprise. Six turns of that still leave the conversation prompt inside the bound `tests/unit/converse.test.ts` asserts.
+  - **Line height in the box was 2.0** (19px text on 38px lines), which read as loose and unfinished. Now 1.6, matching the conversation turns, which already carry the same underline marks.
+  - **The box keeps its full width.** DEMO REPLY and the microphone sit in a 40px strip along the bottom, instead of reserving 150px on the right of *every* line to clear two buttons in one corner — which also meant the last line ran under them as the box grew. Two now-redundant rules removed.
+  - **Bug Me's read-back is its own line,** with a quiet amber rule beside it, instead of inline bold that switched weight mid-sentence and read as stray emphasis.
+  - **The focus indicator is visible.** `--line` on the page background is 1.42:1, under the 3:1 that WCAG 1.4.11 requires for a focus indicator, so a keyboard user could not see which box they were in. It is now the glow, at 13.4:1.
+- **One type scale.** The stylesheet had grown to 18 distinct font sizes, including six pairs a half-pixel apart (16/16.5, 15/15.5, 14/14.5, 13/13.5, 12/12.5, 11/11.5) that read as inconsistency rather than hierarchy, and three weights. It is now eight sizes — 40, 20, 19, 16, 15, 14, 13, 12 — and two weights, documented at the top of `public/style.css` so it does not drift again. Emphasis comes from weight, colour or italic, never from a size that sits beside an existing one.
+
 - **Stage 11: answering the submission review.**
   - **Pushback:** Bug Me no longer argues with a reason already given. The rule is quoted back only when the person picked with no reason, so the flight decision is one prompt shorter.
   - **Measured time:** each stretch a decision's card is on screen, while the tab is visible, is logged to the record as `{kind: "attention"}`. `#/review` shows it next to the estimate.

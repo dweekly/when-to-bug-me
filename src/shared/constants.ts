@@ -42,8 +42,13 @@ export const MAX_PUSHBACKS_PER_SESSION = 2;
 export const MINUTES_PER_CHECK_IN = 1;
 export const MINUTES_PER_DECISION = 3;
 
-/** Input caps, in characters, for anything a visitor types that reaches a model. */
-export const MAX_REASON_CHARS = 600;
+/**
+ * Input caps, in characters, for anything a visitor types that reaches a model. The reason cap is
+ * the one a person feels: 600 cut off a rich explanation mid-sentence with no warning, which is
+ * exactly the input the product exists to collect. 1500 is about 250 words, and six turns of it
+ * still leave the conversation prompt inside the bound asserted in tests/unit/converse.test.ts.
+ */
+export const MAX_REASON_CHARS = 1500;
 export const MAX_RULE_CHARS = 240;
 export const MAX_RULES = 20;
 export const MAX_FACTS = 30;
