@@ -3,8 +3,10 @@
 //   npm run smoke:deployed -- https://bugme.weekly.org
 //
 // It passes only if the page carries this checkout's commit (so the deploy is the build you meant),
-// the queue loads with a routed card for every question (none unavailable), and the app's routes
-// (Home, Dispatch, onboarding, review) are in the bundle. Read-only: no model calls, no state changes.
+// that commit is on the remote (so what is live can be read, reviewed and rolled back by anyone, not
+// just from this laptop), the queue loads with a routed card for every question (none unavailable),
+// and the app's routes (Home, Dispatch, onboarding, review) are in the bundle.
+// Read-only: no model calls, no state changes.
 
 import { execFileSync } from "node:child_process";
 
@@ -14,6 +16,15 @@ if (!/^https?:\/\//.test(base)) {
   process.exit(2);
 }
 const expected = execFileSync("git", ["rev-parse", "--short=7", "HEAD"], { encoding: "utf8" }).trim();
+/** Is this commit on a branch the remote has? Any git failure answers no, never a pass by accident. */
+const onRemote = (sha) => {
+  try {
+    execFileSync("git", ["fetch", "--quiet", "origin"], { stdio: "ignore" });
+    return execFileSync("git", ["branch", "--remotes", "--contains", sha], { encoding: "utf8" }).trim().length > 0;
+  } catch {
+    return false;
+  }
+};
 const failures = [];
 const check = (ok, what) => {
   console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
@@ -30,6 +41,9 @@ check(app.status === 200, `GET /app is 200 (got ${app.status})`);
 const js = await get("/app.js");
 check(js.text.includes(`"${expected}"`), `app.js carries this checkout's commit ${expected}`);
 check(!js.text.includes(`"${expected}-dirty"`), "app.js was not built from uncommitted changes");
+// A deploy of a commit that never reached the remote is live code nobody else can see. It happened
+// on 2026-10-20: a refused push was chained to a deploy with a pipe, which hid the push's exit code.
+check(onRemote(expected), `commit ${expected} is on origin`);
 for (const route of ["dispatch", "welcome", "review"]) check(js.text.includes(`"${route}"`), `app.js has the ${route} view`);
 
 const q = await get("/api/queue");
