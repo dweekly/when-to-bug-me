@@ -284,12 +284,21 @@ details.more p { margin: 10px 0 0; }
 .basis label, .punt label { display: block; font-size: 15px; color: var(--ink-2); margin: 16px 0 8px; }
 .basis-row { display: flex; gap: 8px; align-items: stretch; }
 .basis-row .demo-reply { position: static; align-self: flex-end; flex: none; }
+/* Every box the person writes in is paper, everywhere: the reason box, the guidance Bug Me proposes,
+   a rule being edited, the set-aside reason. One rule to learn — paper means this one is yours to
+   fill — instead of guessing per screen. The focus ring sits outside, where it has the night page to
+   contrast against (see .think-field above). */
 textarea {
   flex: 1; min-height: 64px; resize: vertical; border-radius: 10px; border: 1px solid var(--line);
-  background: var(--night-2); color: var(--ink); padding: 11px 13px; font-size: 15px;
+  background: var(--paper); color: var(--paper-ink); caret-color: var(--paper-ink);
+  padding: 11px 13px; font-size: 15px;
 }
-textarea:focus { border-color: var(--ink-3); outline: none; }
-textarea:disabled { opacity: 0.5; }
+textarea::placeholder { color: var(--paper-ink-2); }
+textarea:focus { outline: none; box-shadow: 0 0 0 2px var(--glow); }
+/* Not yet yours to fill (the set-aside reason, before a reason kind is picked). Paper at half opacity
+   is a grey slab that pulls the eye; an empty dashed outline says "not this one, yet". */
+textarea:disabled { background: transparent; color: var(--ink-3); border-style: dashed; }
+textarea:disabled::placeholder { color: var(--ink-3); }
 /* The voice firefly, top-right on every view. Its mood shows whether it is listening. */
 .voice { position: fixed; top: 6px; right: max(10px, 2vw); z-index: 20; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
 .voice-glow { display: block; width: 64px; height: 64px; position: relative; }
@@ -302,17 +311,17 @@ textarea:disabled { opacity: 0.5; }
 .voice-note { margin: 2px 0 0; font-size: 12px; color: var(--ink-3); }
 .bar { padding-right: calc(max(10px, 2vw) + 72px); }
 /* The microphone sits inside the box it fills: bottom right of the think field, beside the other boxes. */
-.mic { flex: none; align-self: flex-end; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--line); cursor: pointer; background: var(--night-2); color: var(--ink-2); }
+/* The microphone looks the same wherever it is, because it is the same control: a lit button, since
+   speaking is the way in this product is built around. Listening adds a halo and the pulse, so the
+   two states never read alike. */
+.mic { flex: none; align-self: flex-end; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--glow); cursor: pointer; background: var(--glow); color: var(--glow-ink); }
 .mic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.mic:hover { color: var(--ink); border-color: var(--ink-3); }
+.mic:hover { background: var(--glow-deep); border-color: var(--glow-deep); }
 .mic:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
-.mic[data-state="listening"] { background: var(--glow); border-color: var(--glow); color: var(--glow-ink); animation: pulse 1.2s infinite; }
-.mic[data-state="paused"] { color: var(--glow); border-color: var(--glow); }
+.mic[data-state="listening"] { box-shadow: 0 0 0 5px var(--glow-soft); animation: pulse 1.2s infinite; }
+.mic[data-state="paused"] { background: transparent; color: var(--glow); border-color: var(--glow); }
 .think-field .mic { position: absolute; right: 10px; bottom: 8px; }
-/* Inside the box, the microphone is the way in that the product is built around, so it is the lit
-   thing there and DEMO REPLY (demo scaffolding) is the quietest. */
-.think-field .mic { background: var(--glow); border-color: var(--glow); color: var(--glow-ink); }
-.think-field .mic:hover { background: var(--glow-deep); border-color: var(--glow-deep); }
+/* DEMO REPLY is demo scaffolding, so inside the box it is the quietest thing. */
 .think-field .demo-reply { background: transparent; border-color: transparent; color: var(--paper-ink-2); }
 .think-field .demo-reply:hover { color: var(--paper-ink); border-color: var(--paper-line); }
 .reach-label { color: var(--ink-3); }

@@ -555,7 +555,9 @@ export function startPunt(flow: Flow): void {
  */
 function puntPanel(flow: Flow, d: Decision): HTMLElement {
   const spec = PUNT_KINDS.find((k) => k.kind === flow.puntKind);
-  const ta = h("textarea", { id: "punt-reason", rows: 2, placeholder: spec ? spec.ask : "", disabled: !spec }) as HTMLTextAreaElement;
+  // No placeholder: the label above the box already asks the question, and it stays put once there
+  // are words in the box, where a placeholder would have vanished.
+  const ta = h("textarea", { id: "punt-reason", rows: 2, disabled: !spec }) as HTMLTextAreaElement;
   ta.value = flow.puntReason;
   ta.addEventListener("input", () => (flow.puntReason = ta.value));
   return h(
