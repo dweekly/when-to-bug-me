@@ -87,7 +87,7 @@ function renderBar(route: Route): void {
     h(
       "a",
       { href: "#/", class: "brand" },
-      h("span", { class: "wordmark" }, "Bug Me"),
+      h("span", { class: "wordmark" }, "Bug ", h("span", { class: "wordmark-lit" }, "Me")),
     ),
     h(
       "nav",

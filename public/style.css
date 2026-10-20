@@ -3,8 +3,9 @@
    Two weights: 600 for headings and emphasis, 700 for the display face. Emphasise with weight,
    colour or italic — never with a size that sits half a pixel from an existing one. */
 /* Bug Me. A night canvas and one light: firefly yellow marks only what the person chooses or
-   controls (the option they pick, the primary action, the mic, the lit stars). Everything else is
-   quiet ink. Routes are symbols (○ settled for you, ◐ a quick check, ● needs you), not colours. */
+   controls (the option they pick, the primary action, the mic, the lit stars) — plus the "Me" in the
+   wordmark, which is the mascot's own glow rather than something to press. Everything else is quiet
+   ink. Routes are symbols (○ settled for you, ◐ a quick check, ● needs you), not colours. */
 
 :root {
   --night: #0f1226;
@@ -17,6 +18,13 @@
   --glow: #ffd84d;
   --glow-ink: #1a1500;
   --glow-soft: rgba(255, 216, 77, 0.14);
+  /* The one lit surface: the box the person answers in. Dark ink on paper says "this is yours to
+     fill" in a way no outline on the night canvas does, so it gets its own small palette. */
+  --paper: #fbfbfd;
+  --paper-ink: #11162e; /* 16.5:1 on --paper */
+  --paper-ink-2: #4a5273; /* 6.9:1 on --paper, so the placeholder clears AA */
+  --paper-line: #c9cde0;
+  --glow-deep: #f0c42e;
   /* Icon tints only (Dispatch): done, and not this time. Text stays ink. */
   --ok: #7fd3a8;
   --stop: #f2998c;
@@ -54,6 +62,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .wordmark { font: 700 20px/1 var(--display); }
+/* The "Me" carries the firefly's own light. It is the mascot's glow in the mark, not an affordance;
+   everything else in firefly yellow is still something the person picks or controls. */
+.wordmark-lit { color: var(--glow); text-shadow: 0 0 12px rgba(255, 216, 77, 0.45); }
 .bar nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .nav { padding: 6px 10px; border-radius: 8px; text-decoration: none; color: var(--ink-2); font-size: 15px; }
 .nav:hover { color: var(--ink); }
@@ -183,7 +194,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
    before it is touched: its own surface, a border, room for several lines, and the mic and DEMO REPLY
    inside it rather than floating beside it. A bare transparent textarea read as a caption. */
 .think-field {
-  position: relative; background: var(--night-2); border: 1px solid var(--line);
+  position: relative; background: var(--paper); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 14px 16px 46px;
 }
 .think-field textarea {
@@ -193,12 +204,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 }
 .think-field textarea {
   position: relative; display: block; min-height: 3.2em; resize: none; overflow: hidden;
-  background: transparent; color: var(--ink); caret-color: var(--glow); outline: none;
+  background: transparent; color: var(--paper-ink); caret-color: var(--paper-ink); outline: none;
 }
-.think-field textarea::placeholder { color: var(--ink-3); }
-/* The focus indicator has to clear 3:1 against the page (WCAG 1.4.11); --line is 1.42:1, so the
-   glow does the job and says "you are here" in the firefly's own colour. */
-.think-field:focus-within { border-color: var(--glow); box-shadow: 0 0 0 3px var(--glow-soft); }
+.think-field textarea::placeholder { color: var(--paper-ink-2); }
+/* The focus indicator has to clear 3:1 against what it touches (WCAG 1.4.11). The glow is 13.4:1 on
+   the night page but only 1.5:1 on the paper, so the ring sits outside the box, on the page, and the
+   border stays dark. Two pixels: with the box focused the moment a card opens, a thick ring would be
+   the resting state rather than a signal. */
+.think-field:focus-within { box-shadow: 0 0 0 2px var(--glow); }
 /* The conversation (docs/STAGE-6.md): Jordan's turns on the right, Bug Me's on the left with the firefly,
    the composer under the last turn. Marks show what Bug Me heard in Jordan's words: the choice lit,
    reasons, conditions, questions and feedback as underlines that differ by shape. */
@@ -298,10 +311,10 @@ textarea:disabled { opacity: 0.5; }
 .think-field .mic { position: absolute; right: 10px; bottom: 8px; }
 /* Inside the box, the microphone is the way in that the product is built around, so it is the lit
    thing there and DEMO REPLY (demo scaffolding) is the quietest. */
-.think-field .mic { background: transparent; border-color: var(--glow); color: var(--glow); }
-.think-field .mic:hover { background: var(--glow); color: var(--glow-ink); }
-.think-field .demo-reply { border-color: transparent; color: var(--ink-3); }
-.think-field .demo-reply:hover { color: var(--ink-2); border-color: var(--line); }
+.think-field .mic { background: var(--glow); border-color: var(--glow); color: var(--glow-ink); }
+.think-field .mic:hover { background: var(--glow-deep); border-color: var(--glow-deep); }
+.think-field .demo-reply { background: transparent; border-color: transparent; color: var(--paper-ink-2); }
+.think-field .demo-reply:hover { color: var(--paper-ink); border-color: var(--paper-line); }
 .reach-label { color: var(--ink-3); }
 
 @keyframes pulse { 50% { opacity: 0.7; } }
@@ -646,11 +659,12 @@ abbr.est { text-decoration: none; font: 12px var(--mono); color: var(--ink-3); b
 /* The person's answer, as their turn in a conversation: right-aligned, in a bubble, named (issue #66). */
 .interview .iq-answer { display: flex; flex-direction: column; align-items: flex-end; margin-left: 12%; }
 .interview .iq-who { font: 600 12px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); margin: 2px 8px 4px 0; }
-.interview .iq-answer .composer { width: 100%; background: var(--night-3); border-radius: 16px 16px 4px 16px; padding: 10px 14px 40px; box-sizing: border-box; }
+/* The answer bubble is a box to fill, so it is paper like the card's, in the bubble's own shape. */
+.interview .iq-answer .composer { width: 100%; border-radius: 16px 16px 4px 16px; padding: 10px 14px 40px; box-sizing: border-box; }
 @media (max-width: 560px) { .interview .iq-answer { margin-left: 0; } }
 .interview textarea { min-height: 1.6em; font-size: 15px; line-height: 1.5; overflow: hidden; resize: none; }
 .onboard-cmd { margin: 10px 0; padding: 10px 12px; background: var(--night); border: 1px solid var(--line); border-radius: 8px; font: 13px/1.55 var(--mono); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .interview .iq-answer:has(textarea[readonly]) .composer { padding-bottom: 10px; }
-.interview textarea[readonly] { color: var(--ink-2); }
+.interview textarea[readonly] { color: var(--paper-ink-2); }
 .draft-was summary { cursor: pointer; color: var(--ink-3); font-size: 14px; margin-bottom: 8px; }
 @media (max-width: 560px) { .welcome-steps > li { padding-left: 0; } .welcome-steps > li::before { position: static; display: inline-block; margin-bottom: 6px; } }

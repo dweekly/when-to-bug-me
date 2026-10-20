@@ -196,6 +196,7 @@ function drawNow(): void {
     flow.phase === "punting" ? puntPanel(flow, d) : threadArea(flow, d, route),
     flow.phase === "punting" ? null : followup(d, route),
   );
+  const first = !arrived.has(id);
   arrived.add(id);
   // The think box is the same element across renders, so typing keeps its focus, caret and undo history.
   const focused = document.activeElement?.id === "think" ? (document.activeElement as HTMLTextAreaElement) : null;
@@ -206,6 +207,14 @@ function drawNow(): void {
     focused.setSelectionRange(sel[0], sel[1]);
   }
   paintThread();
+  // Answering is what this card is for, so the box has the caret the moment the card arrives: type or
+  // talk without reaching for it first. Only on the card's first draw (a re-render must not steal the
+  // caret back from somewhere else), never scrolling (the question is above it and must stay in view),
+  // and not on touch, where focus opens the keyboard over the decision.
+  if (first && flow.phase === "choose" && matchMedia("(hover: hover)").matches) {
+    const box = document.getElementById("think") as HTMLTextAreaElement | null;
+    if (box && !box.disabled) box.focus({ preventScroll: true });
+  }
   tourAfterRender();
 }
 
