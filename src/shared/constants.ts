@@ -91,7 +91,9 @@ export const VOICE_RETRY_BASE_MS = 1000;
 export const VOICE_DRAIN_MS = 1500;
 
 /** The conversation (docs/STAGE-6.md). Bug Me asks at most this many elicitation questions per decision;
- *  pushback, the guess reveal and the guidance offer don't count. Heuristic: one why, one follow-up. */
+ *  pushback, the guess reveal and the guidance offer don't count. Heuristic: one why, one follow-up.
+ *  Changing it changes the conversation prompt, and so the key every recorded reply is stored under:
+ *  cut it only together with `npm run record`, or the demo falls back to "Bug Me can't reply to this here". */
 export const MAX_CONVERSE_QUESTIONS = 2;
 
 /** Most of Jordan's turns in one thread, and their total characters; after that only the read-back. */

@@ -147,7 +147,8 @@ function drawNow(): void {
   );
   // A figure that describes both options (a timeline, bars, a chart, clocks) comes before them.
   const shared = d.visual && !payload ? drawnOnce(id, renderVisual(d.visual, d, flow.choice)) : null;
-  const reach = payload ? h("p", { class: "reach quiet" }, payload.reach) : null;
+  // Who the payload reaches, labelled as the figure's own text alternative labels it (visuals-layout.ts).
+  const reach = payload ? h("p", { class: "reach quiet" }, h("span", { class: "reach-label" }, "Who reads it: "), payload.reach) : null;
 
   const lastPunt = !S.answered[id] ? S.puntHistory[id]?.[S.puntHistory[id].length - 1] : undefined;
   const why = c.adjusted
@@ -166,8 +167,9 @@ function drawNow(): void {
       // Where the routing, briefing and notes came from, visible before anything is pressed (issue #57).
       h("span", { class: `src-badge src-${c.source}`, title: `Routing, briefing and notes. ${SOURCE_HINT[c.source]}` }, SOURCE_LABEL[c.source]),
     ),
-    // Brief first, then why it is the person's, then any more context, then the question; the
-    // conversation starts below the options.
+    // The question leads: it is the one thing that has to be read. The briefing and the reason it is
+    // the person's support it underneath, then any more context; the conversation starts below the options.
+    h("h3", { id: "now-q" }, c.headline || d.question),
     h("p", { class: "briefing" }, c.briefing || c.in_your_terms),
     why,
     h(
@@ -184,7 +186,6 @@ function drawNow(): void {
       c.adjusted ? h("p", { class: "quiet" }, "Claude's own reasoning: ", c.why_here) : null,
       h("p", { class: "quiet" }, `Routing, briefing and notes: ${SOURCE_LABEL[c.source]}.`),
     ),
-    h("h3", { id: "now-q" }, c.headline || d.question),
     lastPunt
       ? h("p", { class: "resumed" }, `You set this aside: “${lastPunt.reason}”. The agent was asked to: ${lastPunt.instruction.replace(/^[^:]*: /, "")} Nothing new has been gathered in this prototype.`)
       : null,
@@ -306,6 +307,14 @@ function huhButton(flow: Flow, d: Decision, route: RouteKind): HTMLElement {
     h("span", { "aria-hidden": "true" }, "🤔 "),
     "Huh?",
   );
+}
+
+/**
+ * What went down to the agent. It is the longest text on the closing screen and the least of what the
+ * person has to read, so it is folded away behind one line and opens when they want it.
+ */
+function sendDown(label: string, instruction: string): HTMLElement {
+  return h("details", { class: "senddown" }, h("summary", {}, label), h("p", { class: "senddown-text" }, instruction));
 }
 
 /** The primary button (and Enter): confirm what Bug Me read back, or send this turn. */
@@ -502,7 +511,7 @@ function renderClosed(root: HTMLElement, d: Decision, why: "answered" | "aside")
     const p = S.punts[d.id];
     body.push(
       h("p", {}, h("span", { class: "quiet" }, "Set aside: "), "“", p.reason, "”"),
-      h("p", { class: "senddown" }, OWNER_PAGE ? `Saved for the asking session: ${p.instruction}` : `The agent was asked (simulated): ${p.instruction}`),
+      sendDown(OWNER_PAGE ? "Saved for the asking session" : "The agent was asked (simulated)", p.instruction),
       h("div", { class: "actions" }, h("button", { type: "button", class: "primary", onclick: () => resume(d.id) }, "Resume")),
     );
   }
@@ -734,7 +743,7 @@ export function followup(d: Decision, route: RouteKind): Child {
       );
     }
     parts.push(
-      h("p", { class: "senddown" }, OWNER_PAGE ? `Saved for the asking session: ${F.send_down || "proceed with your choice."}` : `Sent down to ${d.agent[d.agent.length - 1]} (simulated): ${F.send_down || "proceed with your choice."}`),
+      sendDown(OWNER_PAGE ? "Saved for the asking session" : `Sent down to ${d.agent[d.agent.length - 1]} (simulated)`, F.send_down || "proceed with your choice."),
       h(
         "div",
         { class: "after-marks" },

@@ -8,6 +8,14 @@
   - **The box keeps its full width.** DEMO REPLY and the microphone sit in a 40px strip along the bottom, instead of reserving 150px on the right of *every* line to clear two buttons in one corner — which also meant the last line ran under them as the box grew. Two now-redundant rules removed.
   - **Bug Me's read-back is its own line,** with a quiet amber rule beside it, instead of inline bold that switched weight mid-sentence and read as stray emphasis.
   - **The focus indicator is visible.** `--line` on the page background is 1.42:1, under the 3:1 that WCAG 1.4.11 requires for a focus indicator, so a keyboard user could not see which box they were in. It is now the glow, at 13.4:1.
+- **A second usability pass: it should be obvious what to read, and where to answer.**
+  - **The question leads the card.** It used to come fourth, under the briefing, the rule quote and the More context disclosure — three blocks of chrome before the one sentence that has to be read. The question is now the first thing under the breadcrumb, and the briefing and the rule that makes it yours support it from underneath.
+  - **The reason box looks like a box.** It was a transparent textarea with no border and a hairline somewhere below it, so the placeholder read as a caption rather than the primary input on the card. It now has its own surface, a border, room for three lines before it grows, and the microphone and DEMO REPLY inside it. Focus lights the whole border in the firefly's colour instead of a 2px underline.
+  - **The microphone is the lit thing in that box,** and DEMO REPLY (demo scaffolding) the quietest. Speech is the way in the product is built around; it was the greyer of the two.
+  - **What went down to the agent is folded away.** On the closing screen it was seven lines of dense monospace — the longest text there and the least of what anyone has to read — competing with "Next decision". It is now one line that opens on a press.
+  - **The payload's reach line is labelled** ("Who reads it: …"), the same words the figure's own text alternative already used. It was a bare sentence floating under the options.
+  - **Dead CSS removed:** `.think-marks` and a comment describing a marks-behind-the-textarea layer that nothing has rendered for some time. The marks are drawn on the conversation turns, which is what the comment now says.
+
 - **One type scale.** The stylesheet had grown to 18 distinct font sizes, including six pairs a half-pixel apart (16/16.5, 15/15.5, 14/14.5, 13/13.5, 12/12.5, 11/11.5) that read as inconsistency rather than hierarchy, and three weights. It is now eight sizes — 40, 20, 19, 16, 15, 14, 13, 12 — and two weights, documented at the top of `public/style.css` so it does not drift again. Emphasis comes from weight, colour or italic, never from a size that sits beside an existing one.
 
 - **Stage 11: answering the submission review.**

@@ -15,11 +15,13 @@ const answered = async (page: Page, id: string) => (await stored(page))?.answere
 const turns = (page: Page) => page.locator("#now .turns > li");
 const sendBtn = (page: Page) => page.locator("#now .send");
 
-test("the card is Bug Me's opening: briefing, why it's yours, more context, the question, the options; Send waits for words or a pick", async ({ page }) => {
+test("the card is Bug Me's opening: the question, the briefing, why it's yours, more context, the options; Send waits for words or a pick", async ({ page }) => {
   await openDecision(page, "api-rename");
   const before = (a: string, b: string) => page.evaluate(`Boolean(document.querySelector(${JSON.stringify(a)}).compareDocumentPosition(document.querySelector(${JSON.stringify(b)})) & Node.DOCUMENT_POSITION_FOLLOWING)`);
+  // The question leads: it is the one thing that has to be read, and everything above it was chrome.
+  expect(await before("#now-q", "#now .briefing")).toBe(true);
   expect(await before("#now .briefing", "#now details.more")).toBe(true);
-  expect(await before("#now details.more", "#now-q")).toBe(true);
+  expect(await before("#now details.more", "#now .options")).toBe(true);
   expect(await before("#now .options", "#now .thread")).toBe(true);
   const [a, b] = await page.locator("#now .opt").all();
   const [ba, bb] = [await a.boundingBox(), await b.boundingBox()];

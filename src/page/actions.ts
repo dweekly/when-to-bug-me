@@ -135,6 +135,8 @@ export function scriptIndex(flow: Flow): number {
  *  turn, not a close), nothing is out or unanswered, and the thread has presses left. */
 export function canHuh(flow: Flow): boolean {
   const last = flow.turns.at(-1);
+  // The card itself is Bug Me's opening turn, so "Huh?" is offered from the start: at turn 0 it asks
+  // for the question itself in plainer words (docs/STAGE-6E.md).
   return flow.phase === "choose" && !sending.has(flow) && last?.who !== "jordan" && last?.next !== "close" && huhs(flow.turns) < MAX_HUH;
 }
 

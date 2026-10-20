@@ -175,24 +175,30 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .opt .snippet { display: block; font: 13px/1.6 var(--mono); color: var(--ink); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 0 0 12px; overflow-wrap: anywhere; }
 .opt .agent-pick { display: inline-block; font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-top: 8px; font-style: normal; }
 
-/* Think out loud: the person's words, marked up as Bug Me reads them. The marks sit on a layer behind
-   a transparent-text textarea with the same metrics, so the textarea stays a plain, editable box. The
-   choice is the one lit thing; reasons, conditions and questions are underlines that differ by shape. */
-.think { margin: 22px 0 8px; padding-top: 18px; border-top: 1px solid var(--line); }
-.think-field { position: relative; }
-.think-field textarea, .think-marks {
-  /* The mic and DEMO REPLY live in the bottom strip, so every line of text keeps the full width. */
-  font: 19px/1.6 var(--body); padding: 0 0 40px; margin: 0; border: 0; width: 100%; letter-spacing: normal;
+/* Think out loud: the box the person says it in. What Bug Me heard is marked up afterwards, on its
+   read-back and on the person's own turns in the thread (.turns mark below), not inside this box.
+   The choice is the one lit thing; reasons, conditions and questions are underlines that differ by shape. */
+.think { margin: 22px 0 8px; }
+/* The box the person is meant to fill. It is the primary input on the card, so it looks like one
+   before it is touched: its own surface, a border, room for several lines, and the mic and DEMO REPLY
+   inside it rather than floating beside it. A bare transparent textarea read as a caption. */
+.think-field {
+  position: relative; background: var(--night-2); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px 46px;
+}
+.think-field textarea {
+  /* The mic and DEMO REPLY live in the box's bottom strip, so every line of text keeps the full width. */
+  font: 19px/1.6 var(--body); padding: 0; margin: 0; border: 0; width: 100%; letter-spacing: normal;
   white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
 }
 .think-field textarea {
-  position: relative; display: block; min-height: 2em; resize: none; overflow: hidden;
-  background: transparent; color: var(--ink); caret-color: var(--ink); outline: none;
+  position: relative; display: block; min-height: 3.2em; resize: none; overflow: hidden;
+  background: transparent; color: var(--ink); caret-color: var(--glow); outline: none;
 }
 .think-field textarea::placeholder { color: var(--ink-3); }
 /* The focus indicator has to clear 3:1 against the page (WCAG 1.4.11); --line is 1.42:1, so the
    glow does the job and says "you are here" in the firefly's own colour. */
-.think-field:focus-within { box-shadow: 0 2px 0 var(--glow); }
+.think-field:focus-within { border-color: var(--glow); box-shadow: 0 0 0 3px var(--glow-soft); }
 /* The conversation (docs/STAGE-6.md): Jordan's turns on the right, Bug Me's on the left with the firefly,
    the composer under the last turn. Marks show what Bug Me heard in Jordan's words: the choice lit,
    reasons, conditions, questions and feedback as underlines that differ by shape. */
@@ -223,7 +229,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .huh { border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 999px; padding: 5px 13px; font-size: 14px; cursor: pointer; white-space: nowrap; }
 .huh:hover { border-color: var(--glow); color: var(--ink); }
 /* DEMO REPLY: inside the box, left of the microphone; the box keeps room for both. */
-.demo-reply { position: absolute; right: 46px; bottom: 6px; border: 1px solid var(--line); background: var(--night-2); color: var(--ink-2); border-radius: 999px; padding: 3px 10px; font: 600 12px/1.6 var(--mono); letter-spacing: 0.06em; cursor: pointer; }
+.demo-reply { position: absolute; right: 56px; bottom: 15px; border: 1px solid var(--line); background: var(--night-2); color: var(--ink-2); border-radius: 999px; padding: 3px 10px; font: 600 12px/1.6 var(--mono); letter-spacing: 0.06em; cursor: pointer; }
 .demo-reply:hover { color: var(--ink); border-color: var(--ink-3); }
 .demo-reply[hidden] { display: none; }
 .turn.mine.huh-turn { padding: 6px 12px; }
@@ -234,7 +240,6 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.0
 .turns mark.m-but { text-decoration-line: underline; text-decoration-style: dashed; }
 .turns mark.m-ask { text-decoration-line: underline; text-decoration-style: dotted; }
 .turns mark.m-fb { text-decoration-line: underline; text-decoration-style: wavy; }
-.composer textarea { border-bottom: 1px solid var(--line) !important; }
 .send.decide { min-width: 9em; }
 /* Pushback, the guess, "why?" and guidance continue the conversation as Bug Me's turns. */
 .thread ~ .followup { border: 0; background: none; padding: 0 0 0 38px; position: relative; }
@@ -290,7 +295,15 @@ textarea:disabled { opacity: 0.5; }
 .mic:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .mic[data-state="listening"] { background: var(--glow); border-color: var(--glow); color: var(--glow-ink); animation: pulse 1.2s infinite; }
 .mic[data-state="paused"] { color: var(--glow); border-color: var(--glow); }
-.think-field .mic { position: absolute; right: 0; bottom: 2px; }
+.think-field .mic { position: absolute; right: 10px; bottom: 8px; }
+/* Inside the box, the microphone is the way in that the product is built around, so it is the lit
+   thing there and DEMO REPLY (demo scaffolding) is the quietest. */
+.think-field .mic { background: transparent; border-color: var(--glow); color: var(--glow); }
+.think-field .mic:hover { background: var(--glow); color: var(--glow-ink); }
+.think-field .demo-reply { border-color: transparent; color: var(--ink-3); }
+.think-field .demo-reply:hover { color: var(--ink-2); border-color: var(--line); }
+.reach-label { color: var(--ink-3); }
+
 @keyframes pulse { 50% { opacity: 0.7; } }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: flex-end; margin-top: 16px; }
 /* The way forward sits at the right; a quiet way out (Skip, Cancel) at the far left. */
@@ -306,7 +319,12 @@ textarea:disabled { opacity: 0.5; }
 .followup p { margin: 0 0 10px; }
 .followup.push { border-color: var(--ink-3); }
 .followup .fact-edit { width: 100%; }
-.senddown, .meta-line { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-top: 12px; }
+.meta-line { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-top: 12px; }
+/* The agent's payload: one line to say it went, the words themselves on a press. */
+.senddown { margin-top: 12px; }
+.senddown summary { font-family: var(--mono); font-size: 13px; color: var(--ink-3); cursor: pointer; }
+.senddown summary:hover { color: var(--ink-2); }
+.senddown-text { font: 13px/1.6 var(--mono); color: var(--ink-3); margin: 8px 0 0; }
 .rerouted { border-left: 2px solid var(--glow); padding: 6px 12px; font-size: 14px; }
 .after-marks { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
 .after-marks button[aria-pressed], .marks button { font-size: 13px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); cursor: pointer; }
@@ -386,7 +404,7 @@ dialog.tours { max-width: min(520px, calc(100vw - 32px)); }
   .basis-row textarea { flex: 1 0 100%; }
   .basis-row .demo-reply { align-self: center; }
   .variant iframe { height: 340px; }
-  .think-field textarea, .think-marks { font-size: 16px; }
+  .think-field textarea { font-size: 16px; }
   .actions .ghost { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -628,11 +646,11 @@ abbr.est { text-decoration: none; font: 12px var(--mono); color: var(--ink-3); b
 /* The person's answer, as their turn in a conversation: right-aligned, in a bubble, named (issue #66). */
 .interview .iq-answer { display: flex; flex-direction: column; align-items: flex-end; margin-left: 12%; }
 .interview .iq-who { font: 600 12px var(--mono); letter-spacing: 0.04em; color: var(--ink-3); margin: 2px 8px 4px 0; }
-.interview .iq-answer .composer { width: 100%; background: var(--night-3); border-radius: 16px 16px 4px 16px; padding: 4px 12px 0; box-sizing: border-box; }
-.interview .iq-answer .composer textarea { background: transparent; border-bottom: none !important; }
+.interview .iq-answer .composer { width: 100%; background: var(--night-3); border-radius: 16px 16px 4px 16px; padding: 10px 14px 40px; box-sizing: border-box; }
 @media (max-width: 560px) { .interview .iq-answer { margin-left: 0; } }
-.interview textarea { min-height: 1.6em; padding-bottom: 32px; font-size: 15px; line-height: 1.5; overflow: hidden; resize: none; }
+.interview textarea { min-height: 1.6em; font-size: 15px; line-height: 1.5; overflow: hidden; resize: none; }
 .onboard-cmd { margin: 10px 0; padding: 10px 12px; background: var(--night); border: 1px solid var(--line); border-radius: 8px; font: 13px/1.55 var(--mono); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
-.interview textarea[readonly] { padding-bottom: 8px; color: var(--ink-2); }
+.interview .iq-answer:has(textarea[readonly]) .composer { padding-bottom: 10px; }
+.interview textarea[readonly] { color: var(--ink-2); }
 .draft-was summary { cursor: pointer; color: var(--ink-3); font-size: 14px; margin-bottom: 8px; }
 @media (max-width: 560px) { .welcome-steps > li { padding-left: 0; } .welcome-steps > li::before { position: static; display: inline-block; margin-bottom: 6px; } }
