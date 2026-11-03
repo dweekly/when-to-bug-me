@@ -114,3 +114,7 @@ Hardening:
 
 - Seven formatting decisions have an option labeled "Skip" (leave the code as is), the same word as the card's set-aside link. Those cards reach Jordan only after a rule change. Relabel them ("Leave as is") at the next re-recording, since the label is part of the recorded routing prompt.
 - Re-routing candidates come from topic tags plus the model's suggestions; a rule edit re-checks everything waiting. A cheaper, more complete dependency signal would help.
+
+## Hardening (dependencies)
+
+- **Playwright is pinned to an alpha.** `@playwright/test` is on `1.65.0-alpha-2026-11-02`, the first build bundling a Chromium (158.0.8127.2) with the fixes for CVE-2026-118306, -118331, -118344 and -118348; stable 1.64.1 still bundles the unpatched 156.0.8078.4. Move to stable `1.65.0` once it ships and its `browsers.json` lists Chromium 158 or later.
